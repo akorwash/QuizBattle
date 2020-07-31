@@ -6,6 +6,12 @@ type BotPlayer struct {
 	level   int
 }
 
+//BotList to do
+type BotList []BotPlayer
+
+//BotSet to do
+var BotSet BotList
+
 //NewBot ctor for User Account
 //name is Bot Player Account
 //botLevel is Bot Player Account

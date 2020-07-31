@@ -11,9 +11,8 @@ import (
 )
 
 func main() {
-	var bots []actor.BotPlayer
-
 	user := actor.NewUser("Ahmed Korwash", "123456789", "email@site.com", "01024873097")
+	actor.UserSet = append(actor.UserSet, *user)
 
 	//randomize for number of bots
 	rand.Seed(time.Now().UnixNano())
@@ -34,11 +33,11 @@ func main() {
 
 		//create the bot account
 		bot := actor.NewBot(buffer.String(), level)
-		bots = append(bots, *bot)
+		actor.BotSet = append(actor.BotSet, *bot)
 	}
 
-	fmt.Println("Number of Bots: ", len(bots))
-	for _, bot := range bots {
+	fmt.Println("Number of Bots: ", len(actor.BotSet))
+	for _, bot := range actor.BotSet {
 		fmt.Println("Bot Name: ", bot.GetName(), " Level: ", bot.GetLevel())
 	}
 

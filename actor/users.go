@@ -15,6 +15,12 @@ type UserModel struct {
 	mobileNumber string
 }
 
+//UserList to do
+type UserList []User
+
+//UserSet to do
+var UserSet UserList
+
 //NewUser ctor for User Account
 func NewUser(name string, pass string, _email string, mobNum string) *User {
 	user := User{username: name, password: pass, email: _email, mobileNumber: mobNum}
