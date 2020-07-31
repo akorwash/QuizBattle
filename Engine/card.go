@@ -11,7 +11,9 @@ type Card struct {
 	owner string
 
 	likes int
-	Hits  int
+	hits  int
+
+	questions []Question
 }
 
 //CardList to do
@@ -29,6 +31,13 @@ func GetUserCards(ownderUser string) *[]Card {
 		}
 	}
 	return &resCards
+}
+
+//GetQuestions get name of Bot
+func (card *Card) GetQuestions() []Question {
+	var res []Question
+
+	return res
 }
 
 //NewCard ctor for User Account
