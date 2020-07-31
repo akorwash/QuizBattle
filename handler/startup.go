@@ -5,6 +5,7 @@ import (
 	"QuizBattle/engine"
 	"bytes"
 	"errors"
+	"fmt"
 	"math/rand"
 	"strconv"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 //Startup to do
 type Startup struct {
-	errors error
+	Errors error
 }
 
 //StartUp to do
@@ -21,25 +22,43 @@ func StartUp() *Startup {
 	return &Startup{}
 }
 
-//IntaiteQuestions to do
-func (startup *Startup) IntaiteQuestions() *Startup {
+//AssignQuestionsToCards to do
+func (startup *Startup) AssignQuestionsToCards() *Startup {
+	if startup.Errors != nil {
+		return startup
+	}
+
 	if len(engine.CardsSet) <= 0 {
-		startup.errors = errors.New("No Cards Found")
+		startup.Errors = errors.New("No Cards Found")
 		return startup
 	}
 
 	if len(engine.QuestionSet) <= 0 {
-		startup.errors = errors.New("No Questions Found")
+		fmt.Println("No Questions Found")
+		startup.Errors = errors.New("No Questions Found")
 		return startup
 	}
+
 	for _, card := range engine.CardsSet {
 		card.CalculateQuestions()
 	}
 	return startup
 }
 
-//IntaiteBots to do
-func (startup *Startup) IntaiteBots() *Startup {
+//LoadQuestions to do
+func (startup *Startup) LoadQuestions() *Startup {
+	if startup.Errors != nil {
+		return startup
+	}
+
+	return startup
+}
+
+//LoadBots to do
+func (startup *Startup) LoadBots() *Startup {
+	if startup.Errors != nil {
+		return startup
+	}
 	min := 25
 	max := 63
 
@@ -62,8 +81,12 @@ func (startup *Startup) IntaiteBots() *Startup {
 	return startup
 }
 
-//IntaiteCards to do
-func (startup *Startup) IntaiteCards() *Startup {
+//LoadCards to do
+func (startup *Startup) LoadCards() *Startup {
+	if startup.Errors != nil {
+		return startup
+	}
+
 	min := 100
 	max := 250
 
@@ -74,9 +97,4 @@ func (startup *Startup) IntaiteCards() *Startup {
 		engine.CardsSet = append(engine.CardsSet, *card)
 	}
 	return startup
-}
-
-//GetError to do
-func (startup *Startup) GetError() error {
-	return startup.errors
 }

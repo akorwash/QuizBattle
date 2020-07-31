@@ -12,10 +12,10 @@ func main() {
 	actor.UserSet = append(actor.UserSet, *user)
 
 	//Intaite the Game
-	err := handler.StartUp().IntaiteBots().IntaiteCards().IntaiteQuestions().GetError()
+	gameEngine := *handler.StartUp().LoadBots().LoadCards().LoadQuestions().AssignQuestionsToCards()
 
-	if err != nil {
-		fmt.Println("unexpected error: \nerr:", err)
+	if gameEngine.Errors != nil {
+		fmt.Println("unexpected error: \nerr:", gameEngine.Errors)
 		return
 	}
 
