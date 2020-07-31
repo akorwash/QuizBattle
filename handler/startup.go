@@ -4,7 +4,7 @@ import (
 	"QuizBattle/actor"
 	"QuizBattle/engine"
 	"bytes"
-	"fmt"
+	"errors"
 	"math/rand"
 	"strconv"
 	"time"
@@ -12,6 +12,7 @@ import (
 
 //Startup to do
 type Startup struct {
+	errors error
 }
 
 //StartUp to do
@@ -23,12 +24,12 @@ func StartUp() *Startup {
 //IntaiteQuestions to do
 func (startup *Startup) IntaiteQuestions() *Startup {
 	if len(engine.CardsSet) <= 0 {
-		fmt.Println("No Cards Found")
+		startup.errors = errors.New("No Cards Found")
 		return startup
 	}
 
 	if len(engine.QuestionSet) <= 0 {
-		fmt.Println("No Questions Found")
+		startup.errors = errors.New("No Questions Found")
 		return startup
 	}
 	for _, card := range engine.CardsSet {
@@ -73,4 +74,9 @@ func (startup *Startup) IntaiteCards() *Startup {
 		engine.CardsSet = append(engine.CardsSet, *card)
 	}
 	return startup
+}
+
+//GetError to do
+func (startup *Startup) GetError() error {
+	return startup.errors
 }

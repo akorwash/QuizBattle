@@ -2,6 +2,7 @@ package engine
 
 import (
 	"QuizBattle/actor"
+	"math/rand"
 )
 
 //Card to do
@@ -21,6 +22,13 @@ type CardList []Card
 
 //CardsSet to do
 var CardsSet CardList
+
+//GetRandomCard to do
+func (cardlist *CardList) GetRandomCard() *Card {
+	min := 1
+	max := len(CardsSet)
+	return &CardsSet[rand.Intn(max-min+1)+min]
+}
 
 //GetUserCards get name of Bot
 func GetUserCards(ownderUser string) *[]Card {

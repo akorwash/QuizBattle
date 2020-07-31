@@ -5,7 +5,6 @@ import (
 	"QuizBattle/engine"
 	"QuizBattle/handler"
 	"fmt"
-	"math/rand"
 )
 
 func main() {
@@ -13,7 +12,12 @@ func main() {
 	actor.UserSet = append(actor.UserSet, *user)
 
 	//Intaite the Game
-	handler.StartUp().IntaiteBots().IntaiteCards().IntaiteQuestions()
+	err := handler.StartUp().IntaiteBots().IntaiteCards().IntaiteQuestions().GetError()
+
+	if err != nil {
+		fmt.Println("unexpected error: \nerr:", err)
+		return
+	}
 
 	//randomize for number of bots
 	fmt.Println("Number of Bots: ", len(actor.BotSet))
@@ -21,12 +25,9 @@ func main() {
 		fmt.Println("Bot Name: ", bot.GetName(), " Level: ", bot.GetLevel())
 	}
 
-	min := 1
-	max := len(engine.CardsSet)
-
-	engine.CardsSet[rand.Intn(max-min+1)+min].AssignToUser(user)
-	engine.CardsSet[rand.Intn(max-min+1)+min].AssignToUser(user)
-	engine.CardsSet[rand.Intn(max-min+1)+min].AssignToUser(user)
+	engine.CardsSet.GetRandomCard().AssignToUser(user)
+	engine.CardsSet.GetRandomCard().AssignToUser(user)
+	engine.CardsSet.GetRandomCard().AssignToUser(user)
 
 	fmt.Println("User Info: ")
 	fmt.Println(*user.GetUser())
