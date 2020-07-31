@@ -26,6 +26,11 @@ func (userAccount *User) GetUserName() string {
 	return userAccount.username
 }
 
+//GetUserNamePointer get name of Bot
+func (userAccount *User) GetUserNamePointer() *string {
+	return &userAccount.username
+}
+
 //GetEmail get name of Bot
 func (userAccount *User) GetEmail() string {
 	return userAccount.email
