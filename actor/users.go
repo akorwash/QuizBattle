@@ -1,16 +1,43 @@
 package actor
 
 //User is class represent Player User account with login data
-type user struct {
+type User struct {
 	username     string
 	password     string
 	email        string
 	mobileNumber string
 }
 
+//UserModel is View model of User Account
+type UserModel struct {
+	username     string
+	email        string
+	mobileNumber string
+}
+
 //NewUser ctor for User Account
-//user is User Account
-func NewUser(name string, pass string, _email string, mobNum string) *user {
-	user := user{username: name, password: pass, email: _email, mobileNumber: mobNum}
+func NewUser(name string, pass string, _email string, mobNum string) *User {
+	user := User{username: name, password: pass, email: _email, mobileNumber: mobNum}
 	return &user
+}
+
+//GetUserName get name of Bot
+func (userAccount *User) GetUserName() string {
+	return userAccount.username
+}
+
+//GetEmail get name of Bot
+func (userAccount *User) GetEmail() string {
+	return userAccount.email
+}
+
+//GetMobileNumber get name of Bot
+func (userAccount *User) GetMobileNumber() string {
+	return userAccount.mobileNumber
+}
+
+//GetUser get name of Bot
+func (userAccount *User) GetUser() *UserModel {
+	usermodel := UserModel{username: userAccount.username, email: userAccount.email, mobileNumber: userAccount.mobileNumber}
+	return &usermodel
 }
