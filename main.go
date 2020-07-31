@@ -3,56 +3,26 @@ package main
 import (
 	"QuizBattle/actor"
 	"QuizBattle/engine"
-	"bytes"
+	"QuizBattle/handler"
 	"fmt"
 	"math/rand"
-	"strconv"
-	"time"
 )
 
 func main() {
 	user := actor.NewUser("Ahmed Korwash", "123456789", "email@site.com", "01024873097")
 	actor.UserSet = append(actor.UserSet, *user)
 
+	//Intaite the Game
+	handler.StartUp().IntaiteBots().IntaiteCards().IntaiteQuestions()
+
 	//randomize for number of bots
-	rand.Seed(time.Now().UnixNano())
-	min := 25
-	max := 63
-
-	numOfBots := rand.Intn(max-min+1) + min
-	for i := 1; i <= numOfBots; i++ {
-		//Calculate the name of bot
-		var buffer bytes.Buffer
-		buffer.WriteString("Bot #")
-		buffer.WriteString(strconv.Itoa(i))
-
-		//randomize the hardness level of the bot
-		min := 1
-		max := 25
-		level := rand.Intn(max-min+1) + min
-
-		//create the bot account
-		bot := actor.NewBot(buffer.String(), level)
-		actor.BotSet = append(actor.BotSet, *bot)
-	}
-
 	fmt.Println("Number of Bots: ", len(actor.BotSet))
 	for _, bot := range actor.BotSet {
 		fmt.Println("Bot Name: ", bot.GetName(), " Level: ", bot.GetLevel())
 	}
 
-	min = 100
-	max = 250
-
-	numberOfQuestions := rand.Intn(max-min+1) + min
-	for i := 1; i <= numberOfQuestions; i++ {
-		//create the bot account
-		card := engine.NewCard(i)
-		engine.CardsSet = append(engine.CardsSet, *card)
-	}
-
-	min = 1
-	max = numberOfQuestions
+	min := 1
+	max := len(engine.CardsSet)
 
 	engine.CardsSet[rand.Intn(max-min+1)+min].AssignToUser(user)
 	engine.CardsSet[rand.Intn(max-min+1)+min].AssignToUser(user)
