@@ -14,7 +14,7 @@ type Card struct {
 	likes int
 	hits  int
 
-	questions []Question
+	questions Question
 }
 
 //CardList to do

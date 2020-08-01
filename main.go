@@ -5,11 +5,18 @@ import (
 	"QuizBattle/engine"
 	"QuizBattle/handler"
 	"fmt"
+	"time"
 )
 
 func main() {
-	user := actor.NewUser("Ahmed Korwash", "123456789", "email@site.com", "01024873097")
-	actor.UserSet = append(actor.UserSet, *user)
+
+	//Loading the game
+	fmt.Print("Loading ")
+	for i := 0; i < 10; i++ {
+		time.Sleep(250 * time.Millisecond)
+		fmt.Print("-")
+	}
+	fmt.Println("-")
 
 	//Intaite the Game
 	gameEngine := *handler.StartUp().LoadBots().LoadCards().LoadQuestions().AssignQuestionsToCards()
@@ -19,19 +26,58 @@ func main() {
 		return
 	}
 
-	//randomize for number of bots
-	fmt.Println("Number of Bots: ", len(actor.BotSet))
-	for _, bot := range actor.BotSet {
-		fmt.Println("Bot Name: ", bot.GetName(), " Level: ", bot.GetLevel())
+	//start recieve inputs from the user
+	for {
+
+		//display options for user
+		engine.MainDialog()
+
+		var userInput string
+		fmt.Scanf("%s", &userInput)
+
+		switch userInput {
+		case "1":
+			fmt.Println("Thanks to choice our game")
+
+			fmt.Println("Please Enter Your mobile number")
+			_mobNum := engine.ReadString()
+
+			fmt.Println("Please Enter Your Password")
+			_pass := engine.ReadString()
+
+			fmt.Println("Please Enter Your Usernane")
+			_username := engine.ReadString()
+
+			fmt.Println("Please Enter Your Email")
+			_email := engine.ReadString()
+
+			user := actor.NewUser(_username, _pass, _email, _mobNum)
+			actor.UserSet = append(actor.UserSet, *user)
+
+			engine.CardsSet.GetRandomCard().AssignToUser(user)
+			engine.CardsSet.GetRandomCard().AssignToUser(user)
+			engine.CardsSet.GetRandomCard().AssignToUser(user)
+
+			fmt.Println("User Info: ")
+			fmt.Println(*user.GetUser())
+
+			fmt.Println("User Cards")
+			fmt.Println(*engine.GetUserCards(user.GetUserName()))
+			break
+		case "2":
+			fmt.Println("Please Enter Your mobile number")
+			_mobNum := engine.ReadString()
+
+			fmt.Println("Please Enter Your Password")
+			_pass := engine.ReadString()
+
+			fmt.Println(_mobNum, " - ", _pass)
+			break
+		case "3":
+		default:
+			handler.ClearConsole()
+			break
+		}
 	}
 
-	engine.CardsSet.GetRandomCard().AssignToUser(user)
-	engine.CardsSet.GetRandomCard().AssignToUser(user)
-	engine.CardsSet.GetRandomCard().AssignToUser(user)
-
-	fmt.Println("User Info: ")
-	fmt.Println(*user.GetUser())
-
-	fmt.Println("User Cards")
-	fmt.Println(*engine.GetUserCards(user.GetUserName()))
 }

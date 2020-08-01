@@ -5,8 +5,10 @@ import (
 	"QuizBattle/engine"
 	"bytes"
 	"errors"
-	"fmt"
 	"math/rand"
+	"os"
+	"os/exec"
+	"runtime"
 	"strconv"
 	"time"
 )
@@ -34,13 +36,12 @@ func (startup *Startup) AssignQuestionsToCards() *Startup {
 	}
 
 	if len(engine.QuestionSet) <= 0 {
-		fmt.Println("No Questions Found")
 		startup.Errors = errors.New("No Questions Found")
 		return startup
 	}
 
-	for _, card := range engine.CardsSet {
-		card.CalculateQuestions()
+	for index, card := range engine.CardsSet {
+		engine.CardsSet[index] = *card.CalculateQuestions()
 	}
 	return startup
 }
@@ -51,6 +52,10 @@ func (startup *Startup) LoadQuestions() *Startup {
 		return startup
 	}
 
+	for i := 1; i <= 100; i++ {
+		question := engine.NewQuestion(i, "test question #"+strconv.Itoa(i))
+		engine.QuestionSet = append(engine.QuestionSet, *question)
+	}
 	return startup
 }
 
@@ -97,4 +102,30 @@ func (startup *Startup) LoadCards() *Startup {
 		engine.CardsSet = append(engine.CardsSet, *card)
 	}
 	return startup
+}
+
+//ClearConsole to do
+func ClearConsole() {
+	value, ok := clear[runtime.GOOS] //runtime.GOOS -> linux, windows, darwin etc.
+	if ok {                          //if we defined a clear func for that platform:
+		value() //we execute it
+	} else { //unsupported platform
+		panic("Your platform is unsupported! I can't clear terminal screen :(")
+	}
+}
+
+var clear map[string]func() //create a map for storing clear funcs
+
+func init() {
+	clear = make(map[string]func()) //Initialize it
+	clear["linux"] = func() {
+		cmd := exec.Command("clear") //Linux example, its tested
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	}
+	clear["windows"] = func() {
+		cmd := exec.Command("cmd", "/c", "cls") //Windows example, its tested
+		cmd.Stdout = os.Stdout
+		cmd.Run()
+	}
 }
