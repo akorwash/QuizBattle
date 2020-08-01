@@ -31,7 +31,7 @@ func main() {
 
 		//display options for user
 		engine.MainDialog()
-
+		engine.ReadConsoleMessage()
 		var userInput string
 		fmt.Scanf("%s", &userInput)
 
@@ -40,15 +40,23 @@ func main() {
 			fmt.Println("Thanks to choice our game")
 
 			fmt.Println("Please Enter Your mobile number")
+			engine.ReadConsoleMessage()
+
 			_mobNum := engine.ReadString()
 
 			fmt.Println("Please Enter Your Password")
+			engine.ReadConsoleMessage()
+
 			_pass := engine.ReadString()
 
 			fmt.Println("Please Enter Your Usernane")
+			engine.ReadConsoleMessage()
+
 			_username := engine.ReadString()
 
 			fmt.Println("Please Enter Your Email")
+			engine.ReadConsoleMessage()
+
 			_email := engine.ReadString()
 
 			user := actor.NewUser(_username, _pass, _email, _mobNum)
@@ -66,9 +74,11 @@ func main() {
 			break
 		case "2":
 			fmt.Println("Please Enter Your mobile number")
+			engine.ReadConsoleMessage()
 			_mobNum := engine.ReadString()
 
 			fmt.Println("Please Enter Your Password")
+			engine.ReadConsoleMessage()
 			_pass := engine.ReadString()
 
 			fmt.Println(_mobNum, " - ", _pass)

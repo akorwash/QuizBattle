@@ -12,6 +12,12 @@ func MainDialog() {
 	fmt.Println("1: Create Account")
 	fmt.Println("2: Login")
 	fmt.Println("3: Clear Console and Relaod")
+
+}
+
+//ReadConsoleMessage to do
+func ReadConsoleMessage() {
+	fmt.Print("\n:>  ")
 }
 
 //ReadString to do
