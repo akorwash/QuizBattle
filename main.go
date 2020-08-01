@@ -5,18 +5,12 @@ import (
 	"QuizBattle/engine"
 	"QuizBattle/handler"
 	"fmt"
-	"time"
 )
 
 func main() {
 
 	//Loading the game
-	fmt.Print("Loading ")
-	for i := 0; i < 10; i++ {
-		time.Sleep(250 * time.Millisecond)
-		fmt.Print("-")
-	}
-	fmt.Println("-")
+	engine.StartTheGame()
 
 	//Intaite the Game
 	gameEngine := *handler.StartUp().LoadBots().LoadCards().LoadQuestions().AssignQuestionsToCards()
@@ -82,6 +76,10 @@ func main() {
 
 			fmt.Println(_mobNum, " - ", _pass)
 			break
+
+		case "4":
+			engine.ExitTheGame()
+			return
 		case "3":
 		default:
 			handler.ClearConsole()
