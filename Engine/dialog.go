@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"time"
 )
 
 //MainDialog to do
@@ -12,7 +13,32 @@ func MainDialog() {
 	fmt.Println("1: Create Account")
 	fmt.Println("2: Login")
 	fmt.Println("3: Clear Console and Relaod")
+	fmt.Println("4: Exit the game")
 
+}
+
+//ExitTheGame to do
+func ExitTheGame() {
+	fmt.Println("Thanks for your time.....")
+	for i := 0; i < 5; i++ {
+		time.Sleep(250 * time.Millisecond)
+		fmt.Print("-")
+	}
+	fmt.Print(" Exit ")
+	for i := 0; i < 5; i++ {
+		time.Sleep(250 * time.Millisecond)
+		fmt.Print("-")
+	}
+}
+
+//StartTheGame to do
+func StartTheGame() {
+	fmt.Print("Loading ")
+	for i := 0; i < 10; i++ {
+		time.Sleep(250 * time.Millisecond)
+		fmt.Print("-")
+	}
+	fmt.Println("-")
 }
 
 //ReadConsoleMessage to do
