@@ -28,7 +28,6 @@ func main() {
 
 	//start recieve inputs from the user
 	for {
-
 		//display options for user
 		engine.MainDialog()
 		engine.ReadConsoleMessage()
