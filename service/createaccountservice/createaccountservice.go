@@ -2,6 +2,7 @@ package createaccountservice
 
 import (
 	"QuizBattle/actor"
+	"QuizBattle/datastore"
 	"QuizBattle/engine"
 	"QuizBattle/handler"
 	"fmt"
@@ -42,5 +43,6 @@ func RecieveUserInputs() (_username, _pass, _email, _mobNum string) {
 func CreateAccount(_username, _pass, _email, _mobNum string) *actor.User {
 	user := actor.NewUser(_username, _pass, _email, _mobNum)
 	actor.UserSet = append(actor.UserSet, *user)
+	datastore.MyDBContext.SaveDB()
 	return user
 }
