@@ -18,13 +18,16 @@ func Login(loginservice ILoginServices) bool {
 func LoginFactory(_id string, _pass string) ILoginServices {
 	var loginModel ILoginServices
 
-	if handler.IsEmailValid(_id) {
+	switch {
+	case handler.IsEmailValid(_id):
 		loginModel = NewEmailLogin(_id, _pass)
-	} else if handler.IsMobileNumberValid(_id) {
+		break
+	case handler.IsMobileNumberValid(_id):
 		loginModel = NewMobileLogin(_id, _pass)
-	} else {
+		break
+	default:
 		loginModel = NewUsernameLogin(_id, _pass)
+		break
 	}
-
 	return loginModel
 }
