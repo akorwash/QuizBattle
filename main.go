@@ -4,6 +4,7 @@ import (
 	"QuizBattle/actor"
 	"QuizBattle/engine"
 	"QuizBattle/handler"
+	"QuizBattle/service/loginservice"
 	"fmt"
 )
 
@@ -66,17 +67,24 @@ func main() {
 			fmt.Println(*engine.GetUserCards(user.GetUserName()))
 			break
 		case "2":
-			fmt.Println("Please Enter Your mobile number")
+			fmt.Println("Please Enter Your Username/Email/Mobile")
 			engine.ReadConsoleMessage()
-			_mobNum := engine.ReadString()
+			_id := engine.ReadString()
 
 			fmt.Println("Please Enter Your Password")
 			engine.ReadConsoleMessage()
 			_pass := engine.ReadString()
 
-			fmt.Println(_mobNum, " - ", _pass)
+			loginModel := loginservice.LoginFactory(_id, _pass)
+			switch loginservice.Login(loginModel) {
+			case true:
+				fmt.Println("Login Successded")
+				break
+			case false:
+				fmt.Println("Identifier or password wrong")
+				break
+			}
 			break
-
 		case "4":
 			engine.ExitTheGame()
 			return
