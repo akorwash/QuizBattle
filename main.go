@@ -9,7 +9,6 @@ import (
 )
 
 func main() {
-
 	//Loading the game
 	engine.StartTheGame()
 

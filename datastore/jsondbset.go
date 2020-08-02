@@ -15,14 +15,17 @@ type DBContext struct {
 //MyDBContext to do
 var MyDBContext DBContext
 
+//BaseDirectory to do
+var BaseDirectory string
+
 //LoadUsers get name of Bot
 func (_context *DBContext) loadUsers() {
-	if _, err := os.Stat("users.json"); os.IsNotExist(err) {
-		ioutil.WriteFile("users.json", nil, 0644)
+	if _, err := os.Stat(BaseDirectory + "users.json"); os.IsNotExist(err) {
+		ioutil.WriteFile(BaseDirectory+"users.json", nil, 0644)
 	}
 
 	var users []entites.UserEntity
-	file, _ := ioutil.ReadFile("users.json")
+	file, _ := ioutil.ReadFile(BaseDirectory + "users.json")
 
 	_ = json.Unmarshal([]byte(file), &users)
 
@@ -40,7 +43,7 @@ func (_context *DBContext) saveUsers() {
 	}
 
 	file, _ := json.MarshalIndent(users, "", " ")
-	_ = ioutil.WriteFile("users.json", file, 0644)
+	_ = ioutil.WriteFile(BaseDirectory+"users.json", file, 0644)
 }
 
 //LoadDB to do

@@ -13,5 +13,4 @@ func StartNewGame(user *actor.User) {
 	fmt.Println("Thanks for choice Quiz Battle Game")
 	time.Sleep(250 * time.Microsecond)
 	fmt.Println("Hello: ", user.GetUserName())
-
 }

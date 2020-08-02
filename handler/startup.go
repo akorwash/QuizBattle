@@ -6,9 +6,11 @@ import (
 	"QuizBattle/engine"
 	"bytes"
 	"errors"
+	"fmt"
 	"math/rand"
 	"os"
 	"os/exec"
+	"os/user"
 	"runtime"
 	"strconv"
 	"time"
@@ -19,8 +21,23 @@ type Startup struct {
 	Errors error
 }
 
+var gameFilePath = "\\QuizBattle\\"
+
 //StartUp to do
 func StartUp() *Startup {
+
+	usr, err := user.Current()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	if _, err := os.Stat(usr.HomeDir + gameFilePath); os.IsNotExist(err) {
+		os.Mkdir(usr.HomeDir+gameFilePath, os.ModeDir)
+	}
+
+	datastore.BaseDirectory = usr.HomeDir + gameFilePath
+
+	fmt.Println(datastore.BaseDirectory)
 	datastore.MyDBContext.LoadDB()
 	rand.Seed(time.Now().UnixNano())
 	return &Startup{}
