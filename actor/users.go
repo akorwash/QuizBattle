@@ -90,6 +90,11 @@ func (userAccount *User) GetUserName() string {
 	return userAccount.username
 }
 
+//GetPassword get name of Bot
+func (userAccount *User) GetPassword() string {
+	return userAccount.password
+}
+
 //GetUserNamePointer get name of Bot
 func (userAccount *User) GetUserNamePointer() *string {
 	return &userAccount.username

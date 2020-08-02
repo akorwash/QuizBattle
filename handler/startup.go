@@ -2,6 +2,7 @@ package handler
 
 import (
 	"QuizBattle/actor"
+	"QuizBattle/datastore"
 	"QuizBattle/engine"
 	"bytes"
 	"errors"
@@ -20,6 +21,7 @@ type Startup struct {
 
 //StartUp to do
 func StartUp() *Startup {
+	datastore.MyDBContext.LoadDB()
 	rand.Seed(time.Now().UnixNano())
 	return &Startup{}
 }
