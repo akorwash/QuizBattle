@@ -25,3 +25,9 @@ func (loginModel UsernameLoginModel) Login() bool {
 	}
 	return false
 }
+
+//GetUser to do
+func (loginModel UsernameLoginModel) GetUser(_id string) *actor.User {
+	user := actor.GetUserByMobile(loginModel.username)
+	return user
+}

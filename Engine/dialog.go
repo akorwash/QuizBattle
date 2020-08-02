@@ -46,6 +46,16 @@ func StartTheGame() {
 	fmt.Println("-")
 }
 
+//StartSessionForUser to do
+func StartSessionForUser() {
+	fmt.Print("Loading ")
+	for i := 0; i < 10; i++ {
+		time.Sleep(250 * time.Millisecond)
+		fmt.Print("-")
+	}
+	fmt.Println("-")
+}
+
 //ReadConsoleMessage to do
 func ReadConsoleMessage() {
 	fmt.Print("\n:>  ")
