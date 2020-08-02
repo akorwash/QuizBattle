@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+//IValidateInput to do
+type IValidateInput interface {
+	Validate(data string) bool
+}
+
 //MainDialog to do
 func MainDialog() {
 	fmt.Println("Please Choice from this Options: ")
@@ -54,6 +59,25 @@ func ReadString() string {
 		_str = scanner.Text()
 		if len(_str) > 0 {
 			break
+		}
+	}
+	return _str
+}
+
+//ReadStringWithValidation to do
+func ReadStringWithValidation(validationModel IValidateInput) string {
+	var _str string
+	scanner := bufio.NewScanner(os.Stdin)
+	for scanner.Scan() {
+		_str = scanner.Text()
+		if len(_str) > 0 {
+			if validationModel.Validate(_str) {
+				break
+			} else {
+				fmt.Println("Please Insure you enterd valid data \n ")
+				fmt.Println("Enter Your Input Again")
+				ReadConsoleMessage()
+			}
 		}
 	}
 	return _str
