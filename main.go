@@ -60,7 +60,8 @@ func main() {
 			case true:
 				handler.ClearConsole()
 				engine.StartNewGame(loginModel.GetUser(_id))
-				break
+				engine.ExitTheGame()
+				return
 			case false:
 				handler.ClearConsole()
 				fmt.Println("Identifier or password wrong \n ")
