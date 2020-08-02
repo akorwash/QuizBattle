@@ -1,5 +1,7 @@
 package actor
 
+import . "github.com/ahmetb/go-linq"
+
 //User is class represent Player User account with login data
 type User struct {
 	username     string
@@ -25,6 +27,62 @@ var UserSet UserList
 func NewUser(name string, pass string, _email string, mobNum string) *User {
 	user := User{username: name, password: pass, email: _email, mobileNumber: mobNum}
 	return &user
+}
+
+//GetUserByName to do
+func GetUserByName(_name string) *User {
+	var owners []User
+
+	From(UserSet).Where(func(c interface{}) bool {
+		return c.(User).username == _name
+	}).Select(func(c interface{}) interface{} {
+		return c.(User)
+	}).ToSlice(&owners)
+
+	if len(owners) == 1 {
+		return &owners[0]
+	} else {
+		return nil
+	}
+}
+
+//GetUserByMobile to do
+func GetUserByMobile(_mobile string) *User {
+	var owners []User
+
+	From(UserSet).Where(func(c interface{}) bool {
+		return c.(User).mobileNumber == _mobile
+	}).Select(func(c interface{}) interface{} {
+		return c.(User)
+	}).ToSlice(&owners)
+
+	if len(owners) == 1 {
+		return &owners[0]
+	} else {
+		return nil
+	}
+}
+
+//GetUserByEmail to do
+func GetUserByEmail(_email string) *User {
+	var owners []User
+
+	From(UserSet).Where(func(c interface{}) bool {
+		return c.(User).email == _email
+	}).Select(func(c interface{}) interface{} {
+		return c.(User)
+	}).ToSlice(&owners)
+
+	if len(owners) == 1 {
+		return &owners[0]
+	} else {
+		return nil
+	}
+}
+
+//ValidatePassword get name of Bot
+func (userAccount *User) ValidatePassword(_pass string) bool {
+	return (userAccount.password == _pass)
 }
 
 //GetUserName get name of Bot
