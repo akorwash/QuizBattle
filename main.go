@@ -1,9 +1,9 @@
 package main
 
 import (
-	"QuizBattle/actor"
 	"QuizBattle/engine"
 	"QuizBattle/handler"
+	"QuizBattle/service/createaccountservice"
 	"QuizBattle/service/loginservice"
 	"fmt"
 )
@@ -31,30 +31,10 @@ func main() {
 
 		switch userInput {
 		case "1":
-			fmt.Println("Thanks to choice our game")
+			fmt.Println("Welcom at Quiz Battle Game")
+			fmt.Println("We Will Register Your Account Now  \n ")
 
-			fmt.Println("Please Enter Your mobile number")
-			engine.ReadConsoleMessage()
-
-			_mobNum := engine.ReadStringWithValidation(handler.ValidateMobile{})
-
-			fmt.Println("Please Enter Your Password")
-			engine.ReadConsoleMessage()
-
-			_pass := engine.ReadString()
-
-			fmt.Println("Please Enter Your Usernane")
-			engine.ReadConsoleMessage()
-
-			_username := engine.ReadString()
-
-			fmt.Println("Please Enter Your Email")
-			engine.ReadConsoleMessage()
-
-			_email := engine.ReadStringWithValidation(handler.ValidateEmail{})
-
-			user := actor.NewUser(_username, _pass, _email, _mobNum)
-			actor.UserSet = append(actor.UserSet, *user)
+			user := createaccountservice.CreateAccount(createaccountservice.RecieveUserInputs())
 
 			engine.CardsSet.GetRandomCard().AssignToUser(user)
 			engine.CardsSet.GetRandomCard().AssignToUser(user)
@@ -78,10 +58,12 @@ func main() {
 			loginModel := loginservice.LoginFactory(_id, _pass)
 			switch loginservice.Login(loginModel) {
 			case true:
-				fmt.Println("Login Successded")
+				handler.ClearConsole()
+				engine.StartNewGame(loginModel.GetUser(_id))
 				break
 			case false:
-				fmt.Println("Identifier or password wrong")
+				handler.ClearConsole()
+				fmt.Println("Identifier or password wrong \n ")
 				break
 			}
 			break

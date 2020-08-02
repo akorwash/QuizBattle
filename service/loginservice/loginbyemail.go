@@ -22,3 +22,9 @@ func (loginModel EmailLoginModel) Login() bool {
 	}
 	return false
 }
+
+//GetUser to do
+func (loginModel EmailLoginModel) GetUser(_id string) *actor.User {
+	user := actor.GetUserByEmail(loginModel.email)
+	return user
+}

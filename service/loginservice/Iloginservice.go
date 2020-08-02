@@ -1,12 +1,14 @@
 package loginservice
 
 import (
+	"QuizBattle/actor"
 	"QuizBattle/handler"
 )
 
 //ILoginServices to do
 type ILoginServices interface {
 	Login() bool
+	GetUser(_id string) *actor.User
 }
 
 //Login to do
