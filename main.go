@@ -36,7 +36,7 @@ func main() {
 			fmt.Println("Please Enter Your mobile number")
 			engine.ReadConsoleMessage()
 
-			_mobNum := engine.ReadString()
+			_mobNum := engine.ReadStringWithValidation(handler.ValidateMobile{})
 
 			fmt.Println("Please Enter Your Password")
 			engine.ReadConsoleMessage()
@@ -51,7 +51,7 @@ func main() {
 			fmt.Println("Please Enter Your Email")
 			engine.ReadConsoleMessage()
 
-			_email := engine.ReadString()
+			_email := engine.ReadStringWithValidation(handler.ValidateEmail{})
 
 			user := actor.NewUser(_username, _pass, _email, _mobNum)
 			actor.UserSet = append(actor.UserSet, *user)

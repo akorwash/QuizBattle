@@ -13,10 +13,29 @@ func IsEmailValid(e string) bool {
 	return emailRegex.MatchString(e)
 }
 
-// IsMobileNumberValid checks if the email provided passes the required structure and length.
+//IsMobileNumberValid checks if the email provided passes the required structure and length.
 func IsMobileNumberValid(e string) bool {
 	if len(e) != 11 {
 		return false
 	}
 	return mobileRegex.MatchString(e)
+}
+
+//ValidateMobile to do
+type ValidateMobile struct {
+}
+
+//Validate to do
+func (validationModel ValidateMobile) Validate(data string) bool {
+	return IsMobileNumberValid(data)
+}
+
+//ValidateEmail to do
+type ValidateEmail struct {
+}
+
+//Validate to do
+func (validationModel ValidateEmail) Validate(data string) bool {
+
+	return IsEmailValid(data)
 }
