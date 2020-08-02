@@ -20,12 +20,12 @@ var BaseDirectory string
 
 //LoadUsers get name of Bot
 func (_context *DBContext) loadUsers() {
-	if _, err := os.Stat(BaseDirectory + "users.json"); os.IsNotExist(err) {
-		ioutil.WriteFile(BaseDirectory+"users.json", nil, 0644)
+	if _, err := os.Stat(BaseDirectory + entites.UsersFileName); os.IsNotExist(err) {
+		ioutil.WriteFile(BaseDirectory+entites.UsersFileName, nil, 0644)
 	}
 
 	var users []entites.UserEntity
-	file, _ := ioutil.ReadFile(BaseDirectory + "users.json")
+	file, _ := ioutil.ReadFile(BaseDirectory + entites.UsersFileName)
 
 	_ = json.Unmarshal([]byte(file), &users)
 
@@ -43,7 +43,7 @@ func (_context *DBContext) saveUsers() {
 	}
 
 	file, _ := json.MarshalIndent(users, "", " ")
-	_ = ioutil.WriteFile(BaseDirectory+"users.json", file, 0644)
+	_ = ioutil.WriteFile(BaseDirectory+entites.UsersFileName, file, 0644)
 }
 
 //LoadDB to do
