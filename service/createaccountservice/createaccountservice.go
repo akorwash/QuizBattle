@@ -14,17 +14,17 @@ func RecieveUserInputs() (_username, _pass, _email, _mobNum string) {
 	fmt.Println("Please Enter Your Usernane")
 	fmt.Println("Can't start with numbers, or have a whitespace")
 	fmt.Println("Password should be >= 5 char.")
-	engine.ReadConsoleMessage()
+	engine.Game.ReadConsoleMessage()
 
 	_username = engine.ReadStringWithValidation(handler.ValidateUsername{})
 
 	fmt.Println("Please Enter Your mobile number")
-	engine.ReadConsoleMessage()
+	engine.Game.ReadConsoleMessage()
 
 	_mobNum = engine.ReadStringWithValidation(handler.ValidateMobile{})
 
 	fmt.Println("Please Enter Your Email")
-	engine.ReadConsoleMessage()
+	engine.Game.ReadConsoleMessage()
 
 	_email = engine.ReadStringWithValidation(handler.ValidateEmail{})
 
@@ -32,7 +32,7 @@ func RecieveUserInputs() (_username, _pass, _email, _mobNum string) {
 	fmt.Println("at least one (upper and lower) case letter.")
 	fmt.Println("at least one (digit and special) character.")
 	fmt.Println("Password should be >= 8 char.")
-	engine.ReadConsoleMessage()
+	engine.Game.ReadConsoleMessage()
 
 	_pass = engine.ReadStringWithValidation(handler.ValidatePassword{})
 

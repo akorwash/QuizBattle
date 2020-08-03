@@ -21,7 +21,8 @@ type Startup struct {
 	Errors error
 }
 
-var gameFilePath = "\\QuizBattle\\"
+//GameFilePath to do
+var GameFilePath = "\\QuizBattle\\"
 
 //StartUp to do
 func StartUp() *Startup {
@@ -31,11 +32,11 @@ func StartUp() *Startup {
 		fmt.Println(err)
 	}
 
-	if _, err := os.Stat(usr.HomeDir + gameFilePath); os.IsNotExist(err) {
-		os.Mkdir(usr.HomeDir+gameFilePath, os.ModeDir)
+	if _, err := os.Stat(usr.HomeDir + GameFilePath); os.IsNotExist(err) {
+		os.Mkdir(usr.HomeDir+GameFilePath, os.ModeDir)
 	}
 
-	datastore.BaseDirectory = usr.HomeDir + gameFilePath
+	datastore.BaseDirectory = usr.HomeDir + GameFilePath
 
 	fmt.Println(datastore.BaseDirectory)
 	datastore.MyDBContext.LoadDB()

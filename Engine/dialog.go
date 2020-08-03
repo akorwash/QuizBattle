@@ -47,7 +47,7 @@ func StartTheGame() {
 }
 
 //StartSessionForUser to do
-func StartSessionForUser() {
+func (game *GameEngine) StartSessionForUser() {
 	fmt.Print("Loading ")
 	for i := 0; i < 10; i++ {
 		time.Sleep(250 * time.Millisecond)
@@ -57,7 +57,7 @@ func StartSessionForUser() {
 }
 
 //ReadConsoleMessage to do
-func ReadConsoleMessage() {
+func (game *GameEngine) ReadConsoleMessage() {
 	fmt.Print("\n:>  ")
 }
 
@@ -86,7 +86,7 @@ func ReadStringWithValidation(validationModel IValidateInput) string {
 			} else {
 				fmt.Println("Please Insure you enterd valid data \n ")
 				fmt.Println("Enter Your Input Again")
-				ReadConsoleMessage()
+				Game.ReadConsoleMessage()
 			}
 		}
 	}

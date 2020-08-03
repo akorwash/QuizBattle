@@ -24,7 +24,7 @@ func main() {
 	for {
 		//display options for user
 		engine.MainDialog()
-		engine.ReadConsoleMessage()
+		engine.Game.ReadConsoleMessage()
 		var userInput string
 		fmt.Scanf("%s", &userInput)
 
@@ -47,18 +47,21 @@ func main() {
 			break
 		case "2":
 			fmt.Println("Please Enter Your Username/Email/Mobile")
-			engine.ReadConsoleMessage()
+			engine.Game.ReadConsoleMessage()
 			_id := engine.ReadString()
 
 			fmt.Println("Please Enter Your Password")
-			engine.ReadConsoleMessage()
+			engine.Game.ReadConsoleMessage()
 			_pass := engine.ReadString()
 
 			loginModel := loginservice.LoginFactory(_id, _pass)
 			switch loginservice.Login(loginModel) {
 			case true:
 				handler.ClearConsole()
-				engine.StartNewGame(loginModel.GetUser(_id))
+				if engine.StartNewGame(loginModel.GetUser(_id), handler.ClearConsole) {
+					handler.ClearConsole()
+					break
+				}
 				engine.ExitTheGame()
 				return
 			case false:
