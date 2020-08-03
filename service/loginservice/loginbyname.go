@@ -2,7 +2,6 @@ package loginservice
 
 import (
 	"QuizBattle/actor"
-	"fmt"
 )
 
 //UsernameLoginModel to do
@@ -30,6 +29,5 @@ func (loginModel UsernameLoginModel) Login() bool {
 //GetUser to do
 func (loginModel UsernameLoginModel) GetUser(_id string) *actor.User {
 	user := actor.GetUserByName(loginModel.username)
-	fmt.Println(user)
 	return user
 }
