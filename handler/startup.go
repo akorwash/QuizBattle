@@ -46,6 +46,11 @@ func createBaseDirectory() {
 
 //AssignQuestionsToCards to do
 func (startup *Startup) AssignQuestionsToCards() *Startup {
+
+	if len(engine.CardsSet) >= 0 {
+		return startup
+	}
+
 	if startup.Errors != nil {
 		return startup
 	}
@@ -79,7 +84,6 @@ func (startup *Startup) LoadQuestions() *Startup {
 			engine.QuestionSet = append(engine.QuestionSet, *question)
 		}
 	}
-
 	return startup
 }
 
