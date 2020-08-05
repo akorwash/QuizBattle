@@ -5,6 +5,7 @@ import (
 	"QuizBattle/datastore/entites"
 	"QuizBattle/engine"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 )
@@ -66,8 +67,34 @@ func (_context *DBContext) saveUsers() *DBContext {
 		users = append(users, entites.UserEntity{Username: _user.GetUserName(), Password: _user.GetPassword(), Email: _user.GetEmail(), MobileNumber: _user.GetMobileNumber()})
 	}
 
+	if !removeEntityFile(BaseDirectory + entites.UsersFileName) {
+		return _context
+	}
+
 	file, _ := json.MarshalIndent(users, "", " ")
 	_ = ioutil.WriteFile(BaseDirectory+entites.UsersFileName, file, 0644)
+	return _context
+}
+
+//SaveUsers to do
+func (_context *DBContext) saveQuestions() *DBContext {
+	var questions []entites.QuestionEntity
+
+	for _, _question := range engine.QuestionSet {
+		var _answers []entites.AnswerEntity
+		var answers []engine.Answer = *_question.GetAnswers()
+		for i := 0; i < len(answers); i++ {
+			_answers = append(_answers, entites.AnswerEntity{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
+		}
+		questions = append(questions, entites.QuestionEntity{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers})
+	}
+
+	if !removeEntityFile(BaseDirectory + entites.QuestionsFileName) {
+		return _context
+	}
+
+	file, _ := json.MarshalIndent(questions, "", " ")
+	_ = ioutil.WriteFile(BaseDirectory+entites.QuestionsFileName, file, 0644)
 	return _context
 }
 
@@ -78,5 +105,14 @@ func (_context *DBContext) LoadDB() {
 
 //SaveDB to do
 func (_context *DBContext) SaveDB() {
-	MyDBContext.saveUsers()
+	MyDBContext.saveUsers().saveQuestions()
+}
+
+func removeEntityFile(path string) bool {
+	err := os.Remove(path)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+	return true
 }
