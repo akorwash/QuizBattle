@@ -37,6 +37,11 @@ func (question *Question) GetHeader() *string {
 	return &question.header
 }
 
+//GetID ctor for User Account
+func (question *Question) GetID() *int {
+	return &question.id
+}
+
 //NewQuestion ctor for Answer
 func NewQuestion(_id int, _header string) *Question {
 	question := Question{id: _id, header: _header}

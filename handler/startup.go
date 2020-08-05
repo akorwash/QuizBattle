@@ -26,7 +26,13 @@ var GameFilePath = "\\QuizBattle\\"
 
 //StartUp to do
 func StartUp() *Startup {
+	createBaseDirectory()
+	datastore.MyDBContext.LoadDB()
+	rand.Seed(time.Now().UnixNano())
+	return &Startup{}
+}
 
+func createBaseDirectory() {
 	usr, err := user.Current()
 	if err != nil {
 		fmt.Println(err)
@@ -35,13 +41,7 @@ func StartUp() *Startup {
 	if _, err := os.Stat(usr.HomeDir + GameFilePath); os.IsNotExist(err) {
 		os.Mkdir(usr.HomeDir+GameFilePath, os.ModeDir)
 	}
-
 	datastore.BaseDirectory = usr.HomeDir + GameFilePath
-
-	fmt.Println(datastore.BaseDirectory)
-	datastore.MyDBContext.LoadDB()
-	rand.Seed(time.Now().UnixNano())
-	return &Startup{}
 }
 
 //AssignQuestionsToCards to do
@@ -63,6 +63,7 @@ func (startup *Startup) AssignQuestionsToCards() *Startup {
 	for index, card := range engine.CardsSet {
 		engine.CardsSet[index] = *card.CalculateQuestions()
 	}
+	datastore.MyDBContext.SaveDB()
 	return startup
 }
 
@@ -72,10 +73,13 @@ func (startup *Startup) LoadQuestions() *Startup {
 		return startup
 	}
 
-	for i := 1; i <= 100; i++ {
-		question := engine.NewQuestion(i, "test question #"+strconv.Itoa(i))
-		engine.QuestionSet = append(engine.QuestionSet, *question)
+	if len(engine.QuestionSet) <= 0 {
+		for i := 1; i <= 100; i++ {
+			question := engine.NewQuestion(i, "test question #"+strconv.Itoa(i))
+			engine.QuestionSet = append(engine.QuestionSet, *question)
+		}
 	}
+
 	return startup
 }
 
