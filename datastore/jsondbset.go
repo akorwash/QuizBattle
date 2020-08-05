@@ -60,6 +60,25 @@ func (_context *DBContext) loadQuestions() *DBContext {
 	return _context
 }
 
+//loadCards get name of Bot
+func (_context *DBContext) loadCards() *DBContext {
+	if _, err := os.Stat(BaseDirectory + entites.CardFileName); os.IsNotExist(err) {
+		ioutil.WriteFile(BaseDirectory+entites.CardFileName, nil, 0644)
+	}
+
+	var cards []entites.CardEntity
+	file, _ := ioutil.ReadFile(BaseDirectory + entites.CardFileName)
+
+	_ = json.Unmarshal([]byte(file), &cards)
+
+	for i := 0; i < len(cards); i++ {
+		card := engine.NewLoadCard(cards[i].ID, cards[i].Power, cards[i].Owner, cards[i].Likes, cards[i].Hits)
+		card.AssignQuestion(*card.GetQuestionByID(cards[i].Questions.ID))
+		engine.CardsSet = append(engine.CardsSet, *card)
+	}
+	return _context
+}
+
 //SaveUsers to do
 func (_context *DBContext) saveUsers() *DBContext {
 	var users []entites.UserEntity
@@ -98,14 +117,41 @@ func (_context *DBContext) saveQuestions() *DBContext {
 	return _context
 }
 
+//SaveUsers to do
+func (_context *DBContext) saveCards() *DBContext {
+	var cards []entites.CardEntity
+
+	for _, _card := range engine.CardsSet {
+		_id, _power, _owner, _likes, _hits := _card.GetCardData()
+		_question := _card.GetCardQuestion()
+		var card entites.CardEntity = entites.CardEntity{ID: _id, Power: _power, Owner: _owner, Likes: _likes, Hits: _hits}
+
+		var _answers []entites.AnswerEntity
+		var answers []engine.Answer = *_question.GetAnswers()
+		for i := 0; i < len(answers); i++ {
+			_answers = append(_answers, entites.AnswerEntity{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
+		}
+		card.Questions = entites.QuestionEntity{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers}
+		cards = append(cards, card)
+	}
+
+	if !removeEntityFile(BaseDirectory + entites.CardFileName) {
+		return _context
+	}
+
+	file, _ := json.MarshalIndent(cards, "", " ")
+	_ = ioutil.WriteFile(BaseDirectory+entites.CardFileName, file, 0644)
+	return _context
+}
+
 //LoadDB to do
 func (_context *DBContext) LoadDB() {
-	MyDBContext.loadUsers().loadQuestions()
+	MyDBContext.loadUsers().loadQuestions().loadCards()
 }
 
 //SaveDB to do
 func (_context *DBContext) SaveDB() {
-	MyDBContext.saveUsers().saveQuestions()
+	MyDBContext.saveUsers().saveQuestions().saveCards()
 }
 
 func removeEntityFile(path string) bool {

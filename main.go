@@ -1,6 +1,7 @@
 package main
 
 import (
+	"QuizBattle/datastore"
 	"QuizBattle/engine"
 	"QuizBattle/handler"
 	"QuizBattle/service/createaccountservice"
@@ -38,6 +39,7 @@ func main() {
 			engine.CardsSet.GetRandomCard().AssignToUser(user)
 			engine.CardsSet.GetRandomCard().AssignToUser(user)
 			engine.CardsSet.GetRandomCard().AssignToUser(user)
+			datastore.MyDBContext.SaveDB()
 
 			fmt.Println("User Info: ")
 			fmt.Println(*user.GetUser())

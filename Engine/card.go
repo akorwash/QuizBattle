@@ -48,14 +48,36 @@ func (card *Card) GetQuestions() []Question {
 	return res
 }
 
+//GetCardData get name of Bot
+func (card *Card) GetCardData() (_id int, _power float32, _owner string, _likes int, _hits int) {
+	return card.id, card.power, card.owner, card.likes, card.hits
+}
+
+//GetCardQuestion get name of Bot
+func (card *Card) GetCardQuestion() *Question {
+	return &card.questions
+}
+
 //NewCard ctor for User Account
 func NewCard(_id int) *Card {
 	card := Card{id: _id}
 	return &card
 }
 
+//NewLoadCard ctor for User Account
+func NewLoadCard(_id int, _power float32, _owner string, _likes int, _hits int) *Card {
+	card := Card{id: _id, power: _power, owner: _owner, likes: _likes, hits: _hits}
+	return &card
+}
+
 //AssignToUser ctor for User Account
 func (card *Card) AssignToUser(owner *actor.User) *Card {
 	card.owner = owner.GetUserName()
+	return card
+}
+
+//AssignQuestion ctor for User Account
+func (card *Card) AssignQuestion(_question Question) *Card {
+	card.questions = _question
 	return card
 }

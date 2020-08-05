@@ -2,6 +2,8 @@ package engine
 
 import (
 	"math/rand"
+
+	. "github.com/ahmetb/go-linq"
 )
 
 //Question to do
@@ -25,6 +27,24 @@ func (card *Card) CalculateQuestions() *Card {
 	questionIndex := rand.Intn(max-min+1) + min
 	card.questions = QuestionSet[questionIndex]
 	return card
+}
+
+//GetQuestionByID ctor for User Account
+func (card *Card) GetQuestionByID(_id int) *Question {
+	var _questions []Question
+
+	From(QuestionSet).Where(func(c interface{}) bool {
+		return c.(Question).id == _id
+	}).Select(func(c interface{}) interface{} {
+		return c.(Question)
+	}).ToSlice(&_questions)
+
+	if len(_questions) == 1 {
+		return &_questions[0]
+	} else {
+		return nil
+	}
+
 }
 
 //GetAnswers ctor for User Account
