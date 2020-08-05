@@ -124,11 +124,15 @@ func (startup *Startup) LoadCards() *Startup {
 	max := 250
 
 	numberOfQuestions := rand.Intn(max-min+1) + min
-	for i := 1; i <= numberOfQuestions; i++ {
-		//create the bot account
-		card := engine.NewCard(i)
-		engine.CardsSet = append(engine.CardsSet, *card)
+
+	if len(engine.CardsSet) <= 0 {
+		for i := 1; i <= numberOfQuestions; i++ {
+			//create the bot account
+			card := engine.NewCard(i)
+			engine.CardsSet = append(engine.CardsSet, *card)
+		}
 	}
+
 	return startup
 }
 
