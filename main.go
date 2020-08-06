@@ -19,13 +19,12 @@ func main() {
 
 	//Intaite the Game
 	gameEngine := *handler.StartUp().LoadBots().LoadCards().LoadQuestions().AssignQuestionsToCards()
-	a := web.App{}
-	a.Initialize(
+	web.Server.Initialize(
 		os.Getenv("APP_DB_USERNAME"),
 		os.Getenv("APP_DB_PASSWORD"),
 		os.Getenv("APP_DB_NAME"))
 
-	a.Run(":8010")
+	web.Server.Run(":8010")
 	if gameEngine.Errors != nil {
 		fmt.Println("unexpected error: \nerr:", gameEngine.Errors)
 		return

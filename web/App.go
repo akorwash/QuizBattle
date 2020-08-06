@@ -15,6 +15,9 @@ type App struct {
 	DB     *sql.DB
 }
 
+//Server to do
+var Server App
+
 //Initialize start project
 func (a *App) Initialize(user, password, dbname string) {
 	//connectionString :=
