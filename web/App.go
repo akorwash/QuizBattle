@@ -31,7 +31,7 @@ func (a *App) Initialize(user, password, dbname string) {
 	a.initializeRoutes()
 }
 
-var productController controller.QuestionController
+var questionController controller.QuestionController
 
 //Run the project
 func (a *App) Run(addr string) {
@@ -39,5 +39,5 @@ func (a *App) Run(addr string) {
 }
 
 func (a *App) initializeRoutes() {
-	a.Router.HandleFunc("/question/{id:[0-9]+}", productController.GetQuestionByID).Methods("GET")
+	a.Router.HandleFunc("/question/{id:[0-9]+}", questionController.GetQuestionByID).Methods("GET")
 }

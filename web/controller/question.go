@@ -2,7 +2,7 @@ package controller
 
 import (
 	"QuizBattle/datastore/entites"
-	engine "QuizBattle/engine"
+	"QuizBattle/engine"
 	"QuizBattle/handler"
 	"fmt"
 	"net/http"
