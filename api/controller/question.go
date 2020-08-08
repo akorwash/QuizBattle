@@ -25,12 +25,12 @@ func (controller *QuestionController) GetQuestionByID(w http.ResponseWriter, r *
 	}
 
 	_question := engine.CardsSet.GetRandomCard().GetQuestionByID(id)
-	var _answers []entites.AnswerEntity
+	var _answers []entites.Answer
 	var answers []engine.Answer = *_question.GetAnswers()
 	for i := 0; i < len(answers); i++ {
-		_answers = append(_answers, entites.AnswerEntity{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
+		_answers = append(_answers, entites.Answer{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
 	}
-	question := entites.QuestionEntity{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers}
+	question := entites.Question{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers}
 
 	//respondWithJSON(w, http.StatusOK, "payload")
 	responseHandler.RespondWithJSON(w, http.StatusOK, question)
