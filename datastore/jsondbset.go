@@ -26,7 +26,7 @@ func (_context *DBContext) loadUsers() *DBContext {
 		ioutil.WriteFile(BaseDirectory+entites.UsersFileName, nil, 0644)
 	}
 
-	var users []entites.UserEntity
+	var users []entites.User
 	file, _ := ioutil.ReadFile(BaseDirectory + entites.UsersFileName)
 
 	_ = json.Unmarshal([]byte(file), &users)
@@ -44,7 +44,7 @@ func (_context *DBContext) loadQuestions() *DBContext {
 		ioutil.WriteFile(BaseDirectory+entites.QuestionsFileName, nil, 0644)
 	}
 
-	var questions []entites.QuestionEntity
+	var questions []entites.Question
 	file, _ := ioutil.ReadFile(BaseDirectory + entites.QuestionsFileName)
 
 	_ = json.Unmarshal([]byte(file), &questions)
@@ -66,7 +66,7 @@ func (_context *DBContext) loadCards() *DBContext {
 		ioutil.WriteFile(BaseDirectory+entites.CardFileName, nil, 0644)
 	}
 
-	var cards []entites.CardEntity
+	var cards []entites.Card
 	file, _ := ioutil.ReadFile(BaseDirectory + entites.CardFileName)
 
 	_ = json.Unmarshal([]byte(file), &cards)
@@ -81,12 +81,12 @@ func (_context *DBContext) loadCards() *DBContext {
 
 //SaveUsers to do
 func (_context *DBContext) saveUsers() *DBContext {
-	var users []entites.UserEntity
+	var users []entites.User
 	for _, _user := range actor.UserSet {
-		users = append(users, entites.UserEntity{Username: _user.GetUserName(), Password: _user.GetPassword(), Email: _user.GetEmail(), MobileNumber: _user.GetMobileNumber()})
+		users = append(users, entites.User{Username: _user.GetUserName(), Password: _user.GetPassword(), Email: _user.GetEmail(), MobileNumber: _user.GetMobileNumber()})
 	}
 
-	if !removeEntityFile(BaseDirectory + entites.UsersFileName) {
+	if !removeFile(BaseDirectory + entites.UsersFileName) {
 		return _context
 	}
 
@@ -97,18 +97,18 @@ func (_context *DBContext) saveUsers() *DBContext {
 
 //SaveUsers to do
 func (_context *DBContext) saveQuestions() *DBContext {
-	var questions []entites.QuestionEntity
+	var questions []entites.Question
 
 	for _, _question := range engine.QuestionSet {
-		var _answers []entites.AnswerEntity
+		var _answers []entites.Answer
 		var answers []engine.Answer = *_question.GetAnswers()
 		for i := 0; i < len(answers); i++ {
-			_answers = append(_answers, entites.AnswerEntity{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
+			_answers = append(_answers, entites.Answer{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
 		}
-		questions = append(questions, entites.QuestionEntity{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers})
+		questions = append(questions, entites.Question{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers})
 	}
 
-	if !removeEntityFile(BaseDirectory + entites.QuestionsFileName) {
+	if !removeFile(BaseDirectory + entites.QuestionsFileName) {
 		return _context
 	}
 
@@ -119,23 +119,23 @@ func (_context *DBContext) saveQuestions() *DBContext {
 
 //SaveUsers to do
 func (_context *DBContext) saveCards() *DBContext {
-	var cards []entites.CardEntity
+	var cards []entites.Card
 
 	for _, _card := range engine.CardsSet {
 		_id, _power, _owner, _likes, _hits := _card.GetCardData()
 		_question := _card.GetCardQuestion()
-		var card entites.CardEntity = entites.CardEntity{ID: _id, Power: _power, Owner: _owner, Likes: _likes, Hits: _hits}
+		var card entites.Card = entites.Card{ID: _id, Power: _power, Owner: _owner, Likes: _likes, Hits: _hits}
 
-		var _answers []entites.AnswerEntity
+		var _answers []entites.Answer
 		var answers []engine.Answer = *_question.GetAnswers()
 		for i := 0; i < len(answers); i++ {
-			_answers = append(_answers, entites.AnswerEntity{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
+			_answers = append(_answers, entites.Answer{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
 		}
-		card.Questions = entites.QuestionEntity{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers}
+		card.Questions = entites.Question{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers}
 		cards = append(cards, card)
 	}
 
-	if !removeEntityFile(BaseDirectory + entites.CardFileName) {
+	if !removeFile(BaseDirectory + entites.CardFileName) {
 		return _context
 	}
 
@@ -154,7 +154,7 @@ func (_context *DBContext) SaveDB() {
 	MyDBContext.saveUsers().saveQuestions().saveCards()
 }
 
-func removeEntityFile(path string) bool {
+func removeFile(path string) bool {
 	err := os.Remove(path)
 	if err != nil {
 		fmt.Println(err)
