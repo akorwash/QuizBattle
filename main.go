@@ -6,7 +6,7 @@ import (
 
 	"github.com/akorwash/QuizBattle/api"
 	"github.com/akorwash/QuizBattle/datastore"
-	"github.com/akorwash/QuizBattle/engine"
+	gameengine "github.com/akorwash/QuizBattle/gameengine"
 	"github.com/akorwash/QuizBattle/handler"
 	"github.com/akorwash/QuizBattle/service/createaccountservice"
 	"github.com/akorwash/QuizBattle/service/loginservice"
@@ -15,7 +15,7 @@ import (
 
 func main() {
 	//Loading the game
-	engine.StartTheGame()
+	gameengine.StartTheGame()
 
 	//Intaite the Game
 	gameEngine := *handler.StartUp().LoadBots().LoadCards().LoadQuestions().AssignQuestionsToCards()
@@ -39,8 +39,8 @@ func main() {
 	//start recieve inputs from the user
 	for {
 		//display options for user
-		engine.MainDialog()
-		engine.Game.ReadConsoleMessage()
+		gameengine.MainDialog()
+		gameengine.Game.ReadConsoleMessage()
 		var userInput string
 		fmt.Scanf("%s", &userInput)
 
@@ -51,35 +51,35 @@ func main() {
 
 			user := createaccountservice.CreateAccount(createaccountservice.RecieveUserInputs())
 
-			engine.CardsSet.GetRandomCard().AssignToUser(user)
-			engine.CardsSet.GetRandomCard().AssignToUser(user)
-			engine.CardsSet.GetRandomCard().AssignToUser(user)
+			gameengine.CardsSet.GetRandomCard().AssignToUser(user)
+			gameengine.CardsSet.GetRandomCard().AssignToUser(user)
+			gameengine.CardsSet.GetRandomCard().AssignToUser(user)
 			datastore.MyDBContext.SaveDB()
 
 			fmt.Println("User Info: ")
 			fmt.Println(*user.GetUser())
 
 			fmt.Println("User Cards")
-			fmt.Println(*engine.GetUserCards(user.GetUserName()))
+			fmt.Println(*gameengine.GetUserCards(user.GetUserName()))
 			break
 		case "2":
 			fmt.Println("Please Enter Your Username/Email/Mobile")
-			engine.Game.ReadConsoleMessage()
-			_id := engine.ReadString()
+			gameengine.Game.ReadConsoleMessage()
+			_id := gameengine.ReadString()
 
 			fmt.Println("Please Enter Your Password")
-			engine.Game.ReadConsoleMessage()
-			_pass := engine.ReadString()
+			gameengine.Game.ReadConsoleMessage()
+			_pass := gameengine.ReadString()
 
 			loginModel := loginservice.LoginFactory(_id, _pass)
 			switch loginservice.Login(loginModel) {
 			case true:
 				handler.ClearConsole()
-				if engine.StartNewGame(loginModel.GetUser(_id), handler.ClearConsole) {
+				if gameengine.StartNewGame(loginModel.GetUser(_id), handler.ClearConsole) {
 					handler.ClearConsole()
 					break
 				}
-				engine.ExitTheGame()
+				gameengine.ExitTheGame()
 				return
 			case false:
 				handler.ClearConsole()
@@ -88,7 +88,7 @@ func main() {
 			}
 			break
 		case "4":
-			engine.ExitTheGame()
+			gameengine.ExitTheGame()
 			return
 		case "3":
 		default:
