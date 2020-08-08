@@ -1,11 +1,12 @@
 package createaccountservice
 
 import (
-	"QuizBattle/actor"
-	"QuizBattle/datastore"
-	"QuizBattle/engine"
-	"QuizBattle/handler"
 	"fmt"
+
+	"github.com/akorwash/QuizBattle/actor"
+	"github.com/akorwash/QuizBattle/datastore"
+	"github.com/akorwash/QuizBattle/engine"
+	"github.com/akorwash/QuizBattle/handler"
 )
 
 //RecieveUserInputs to do

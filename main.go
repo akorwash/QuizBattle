@@ -1,15 +1,15 @@
 package main
 
 import (
-	"QuizBattle/api"
-	"QuizBattle/datastore"
-	"QuizBattle/engine"
-	"QuizBattle/handler"
-	"QuizBattle/service/createaccountservice"
-	"QuizBattle/service/loginservice"
 	"fmt"
 	"os"
 
+	"github.com/akorwash/QuizBattle/api"
+	"github.com/akorwash/QuizBattle/datastore"
+	"github.com/akorwash/QuizBattle/engine"
+	"github.com/akorwash/QuizBattle/handler"
+	"github.com/akorwash/QuizBattle/service/createaccountservice"
+	"github.com/akorwash/QuizBattle/service/loginservice"
 	_ "github.com/lib/pq"
 )
 
@@ -24,7 +24,13 @@ func main() {
 		os.Getenv("APP_DB_PASSWORD"),
 		os.Getenv("APP_DB_NAME"))
 
-	api.Server.Run(":8010")
+	var port string
+	port = os.Getenv("PORT")
+	if port == "" {
+		port = "8010"
+	}
+	api.Server.Run(port)
+
 	if gameEngine.Errors != nil {
 		fmt.Println("unexpected error: \nerr:", gameEngine.Errors)
 		return

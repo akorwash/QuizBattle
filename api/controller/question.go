@@ -1,12 +1,12 @@
 package controller
 
 import (
-	"QuizBattle/datastore/entites"
-	"QuizBattle/engine"
-	"QuizBattle/handler"
 	"net/http"
 	"strconv"
 
+	"github.com/akorwash/QuizBattle/datastore/entites"
+	"github.com/akorwash/QuizBattle/engine"
+	"github.com/akorwash/QuizBattle/handler"
 	"github.com/gorilla/mux"
 )
 

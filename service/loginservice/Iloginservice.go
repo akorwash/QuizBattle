@@ -1,8 +1,9 @@
 package loginservice
 
 import (
-	"QuizBattle/actor"
-	"QuizBattle/handler"
+	"github.com/akorwash/QuizBattle/actor"
+
+	"github.com/akorwash/QuizBattle/handler"
 )
 
 //ILoginServices to do

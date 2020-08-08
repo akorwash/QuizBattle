@@ -1,7 +1,7 @@
 package loginservice
 
 import (
-	"QuizBattle/actor"
+	"github.com/akorwash/QuizBattle/actor"
 )
 
 //MobileLoginModel to do
