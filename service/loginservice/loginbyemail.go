@@ -1,6 +1,6 @@
 package loginservice
 
-import "QuizBattle/actor"
+import "github.com/akorwash/QuizBattle/actor"
 
 //EmailLoginModel to do
 type EmailLoginModel struct {

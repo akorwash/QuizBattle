@@ -1,8 +1,9 @@
 package engine
 
 import (
-	"QuizBattle/actor"
 	"math/rand"
+
+	"github.com/akorwash/QuizBattle/actor"
 )
 
 //Card to do

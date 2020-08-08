@@ -1,10 +1,11 @@
 package api
 
 import (
-	"QuizBattle/api/controller"
 	"database/sql"
 	"log"
 	"net/http"
+
+	"github.com/akorwash/QuizBattle/api/controller"
 
 	"github.com/gorilla/mux"
 )
@@ -27,8 +28,8 @@ func (a *App) Initialize(user, password, dbname string) {
 var questionController controller.QuestionController
 
 //Run the project
-func (a *App) Run(addr string) {
-	log.Fatal(http.ListenAndServe(":8010", a.Router))
+func (a *App) Run(port string) {
+	log.Fatal(http.ListenAndServe(":"+port, a.Router))
 }
 
 func (a *App) initializeRoutes() {

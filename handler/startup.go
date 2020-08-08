@@ -1,9 +1,6 @@
 package handler
 
 import (
-	"QuizBattle/actor"
-	"QuizBattle/datastore"
-	"QuizBattle/engine"
 	"bytes"
 	"errors"
 	"fmt"
@@ -14,6 +11,10 @@ import (
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/akorwash/QuizBattle/actor"
+	"github.com/akorwash/QuizBattle/datastore"
+	"github.com/akorwash/QuizBattle/engine"
 )
 
 //Startup to do
@@ -86,7 +87,7 @@ func (startup *Startup) AssignQuestionsToCards() *Startup {
 
 //LoadQuestions to do
 func (startup *Startup) LoadQuestions() *Startup {
-	if startup.Errors != nil || len(engine.QuestionSet) == 0 {
+	if startup.Errors != nil || len(engine.QuestionSet) > 0 {
 		return startup
 	}
 
@@ -122,7 +123,7 @@ func (startup *Startup) LoadBots() *Startup {
 
 //LoadCards to do
 func (startup *Startup) LoadCards() *Startup {
-	if startup.Errors != nil || len(engine.CardsSet) == 0 {
+	if startup.Errors != nil || len(engine.CardsSet) > 0 {
 		return startup
 	}
 

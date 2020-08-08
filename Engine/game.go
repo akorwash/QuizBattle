@@ -1,9 +1,10 @@
 package engine
 
 import (
-	"QuizBattle/actor"
 	"fmt"
 	"time"
+
+	"github.com/akorwash/QuizBattle/actor"
 )
 
 //GameEngine to do

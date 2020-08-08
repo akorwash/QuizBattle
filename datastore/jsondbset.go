@@ -1,13 +1,14 @@
 package datastore
 
 import (
-	"QuizBattle/actor"
-	"QuizBattle/datastore/entites"
-	"QuizBattle/engine"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+
+	"github.com/akorwash/QuizBattle/actor"
+	"github.com/akorwash/QuizBattle/datastore/entites"
+	"github.com/akorwash/QuizBattle/engine"
 )
 
 //DBContext to do
