@@ -4,7 +4,6 @@ import (
 	"QuizBattle/datastore/entites"
 	"QuizBattle/engine"
 	"QuizBattle/handler"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -32,18 +31,7 @@ func (controller *QuestionController) GetQuestionByID(w http.ResponseWriter, r *
 		_answers = append(_answers, entites.AnswerEntity{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
 	}
 	question := entites.QuestionEntity{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers}
-	/*p := product{ID: id}
-	    if err := p.getProduct(a.DB); err != nil {
-	        switch err {
-	        case sql.ErrNoRows:
-	            responseHandler.respondWithError(w, http.StatusNotFound, "Product not found")
-	        default:
-	            responseHandler.respondWithError(w, http.StatusInternalServerError, err.Error())
-	        }
-	        return
-		}*/
 
-	fmt.Println(question)
 	//respondWithJSON(w, http.StatusOK, "payload")
 	responseHandler.RespondWithJSON(w, http.StatusOK, question)
 }

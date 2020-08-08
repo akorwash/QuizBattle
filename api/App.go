@@ -1,7 +1,7 @@
-package web
+package api
 
 import (
-	"QuizBattle/web/controller"
+	"QuizBattle/api/controller"
 	"database/sql"
 	"log"
 	"net/http"
@@ -20,17 +20,7 @@ var Server App
 
 //Initialize start project
 func (a *App) Initialize(user, password, dbname string) {
-	//connectionString :=
-	//fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable", user, password, dbname)
-
-	//var err error
-	//a.DB, err = sql.Open("postgres", connectionString)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
-
 	a.Router = mux.NewRouter()
-
 	a.initializeRoutes()
 }
 
