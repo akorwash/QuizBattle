@@ -21,8 +21,24 @@ type Startup struct {
 	Errors error
 }
 
-//GameFilePath to do
-var GameFilePath = "\\QuizBattle\\"
+const (
+	//NumberOFQuestion to do
+	NumberOFQuestion = 100
+	//MinNumOfBots to do
+	MinNumOfBots = 25
+	//MaxNubOfBots to do
+	MaxNubOfBots = 63
+	//MinBotLevel to do
+	MinBotLevel = 1
+	//MaxBotLevel to do
+	MaxBotLevel = 25
+	//MinNumOfCards to do
+	MinNumOfCards = 100
+	//MaxNubOfCards to do
+	MaxNubOfCards = 250
+	//GameFilePath to do
+	GameFilePath = "\\QuizBattle\\"
+)
 
 //StartUp to do
 func StartUp() *Startup {
@@ -47,20 +63,16 @@ func createBaseDirectory() {
 //AssignQuestionsToCards to do
 func (startup *Startup) AssignQuestionsToCards() *Startup {
 
-	if len(engine.CardsSet) >= 0 {
-		return startup
-	}
-
 	if startup.Errors != nil {
 		return startup
 	}
 
-	if len(engine.CardsSet) <= 0 {
+	if len(engine.CardsSet) == 0 {
 		startup.Errors = errors.New("No Cards Found")
 		return startup
 	}
 
-	if len(engine.QuestionSet) <= 0 {
+	if len(engine.QuestionSet) == 0 {
 		startup.Errors = errors.New("No Questions Found")
 		return startup
 	}
@@ -74,15 +86,13 @@ func (startup *Startup) AssignQuestionsToCards() *Startup {
 
 //LoadQuestions to do
 func (startup *Startup) LoadQuestions() *Startup {
-	if startup.Errors != nil {
+	if startup.Errors != nil || len(engine.QuestionSet) == 0 {
 		return startup
 	}
 
-	if len(engine.QuestionSet) <= 0 {
-		for i := 1; i <= 100; i++ {
-			question := engine.NewQuestion(i, "test question #"+strconv.Itoa(i))
-			engine.QuestionSet = append(engine.QuestionSet, *question)
-		}
+	for i := 1; i <= NumberOFQuestion; i++ {
+		question := engine.NewQuestion(i, "test question #"+strconv.Itoa(i))
+		engine.QuestionSet = append(engine.QuestionSet, *question)
 	}
 	return startup
 }
@@ -92,10 +102,8 @@ func (startup *Startup) LoadBots() *Startup {
 	if startup.Errors != nil {
 		return startup
 	}
-	min := 25
-	max := 63
 
-	numOfBots := rand.Intn(max-min+1) + min
+	numOfBots := rand.Intn(MaxNubOfBots-MinNumOfBots+1) + MinNumOfBots
 	for i := 1; i <= numOfBots; i++ {
 		//Calculate the name of bot
 		var buffer bytes.Buffer
@@ -103,9 +111,7 @@ func (startup *Startup) LoadBots() *Startup {
 		buffer.WriteString(strconv.Itoa(i))
 
 		//randomize the hardness level of the bot
-		min := 1
-		max := 25
-		level := rand.Intn(max-min+1) + min
+		level := rand.Intn(MaxBotLevel-MinBotLevel+1) + MinBotLevel
 
 		//create the bot account
 		bot := actor.NewBot(buffer.String(), level)
@@ -116,23 +122,17 @@ func (startup *Startup) LoadBots() *Startup {
 
 //LoadCards to do
 func (startup *Startup) LoadCards() *Startup {
-	if startup.Errors != nil {
+	if startup.Errors != nil || len(engine.CardsSet) == 0 {
 		return startup
 	}
 
-	min := 100
-	max := 250
+	numberOfQuestions := rand.Intn(MaxNubOfCards-MinNumOfCards+1) + MinNumOfCards
 
-	numberOfQuestions := rand.Intn(max-min+1) + min
-
-	if len(engine.CardsSet) <= 0 {
-		for i := 1; i <= numberOfQuestions; i++ {
-			//create the bot account
-			card := engine.NewCard(i)
-			engine.CardsSet = append(engine.CardsSet, *card)
-		}
+	for i := 1; i <= numberOfQuestions; i++ {
+		//create the bot account
+		card := engine.NewCard(i)
+		engine.CardsSet = append(engine.CardsSet, *card)
 	}
-
 	return startup
 }
 
