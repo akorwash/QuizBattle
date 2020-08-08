@@ -6,9 +6,10 @@ import (
 	"io/ioutil"
 	"os"
 
+	gameengine "github.com/akorwash/QuizBattle/gameengine"
+
 	"github.com/akorwash/QuizBattle/actor"
 	"github.com/akorwash/QuizBattle/datastore/entites"
-	"github.com/akorwash/QuizBattle/engine"
 )
 
 //DBContext to do
@@ -51,12 +52,12 @@ func (_context *DBContext) loadQuestions() *DBContext {
 	_ = json.Unmarshal([]byte(file), &questions)
 
 	for i := 0; i < len(questions); i++ {
-		question := engine.NewQuestion(questions[i].ID, questions[i].Header)
+		question := gameengine.NewQuestion(questions[i].ID, questions[i].Header)
 		for _, _answer := range questions[i].Answers {
-			answer := engine.NewAnswer(_answer.ID, _answer.Text, _answer.IsCorrect)
+			answer := gameengine.NewAnswer(_answer.ID, _answer.Text, _answer.IsCorrect)
 			question.AddAnswers(answer)
 		}
-		engine.QuestionSet = append(engine.QuestionSet, *question)
+		gameengine.QuestionSet = append(gameengine.QuestionSet, *question)
 	}
 	return _context
 }
@@ -73,9 +74,9 @@ func (_context *DBContext) loadCards() *DBContext {
 	_ = json.Unmarshal([]byte(file), &cards)
 
 	for i := 0; i < len(cards); i++ {
-		card := engine.NewLoadCard(cards[i].ID, cards[i].Power, cards[i].Owner, cards[i].Likes, cards[i].Hits)
+		card := gameengine.NewLoadCard(cards[i].ID, cards[i].Power, cards[i].Owner, cards[i].Likes, cards[i].Hits)
 		card.AssignQuestion(*card.GetQuestionByID(cards[i].Questions.ID))
-		engine.CardsSet = append(engine.CardsSet, *card)
+		gameengine.CardsSet = append(gameengine.CardsSet, *card)
 	}
 	return _context
 }
@@ -100,9 +101,9 @@ func (_context *DBContext) saveUsers() *DBContext {
 func (_context *DBContext) saveQuestions() *DBContext {
 	var questions []entites.Question
 
-	for _, _question := range engine.QuestionSet {
+	for _, _question := range gameengine.QuestionSet {
 		var _answers []entites.Answer
-		var answers []engine.Answer = *_question.GetAnswers()
+		var answers []gameengine.Answer = *_question.GetAnswers()
 		for i := 0; i < len(answers); i++ {
 			_answers = append(_answers, entites.Answer{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
 		}
@@ -122,13 +123,13 @@ func (_context *DBContext) saveQuestions() *DBContext {
 func (_context *DBContext) saveCards() *DBContext {
 	var cards []entites.Card
 
-	for _, _card := range engine.CardsSet {
+	for _, _card := range gameengine.CardsSet {
 		_id, _power, _owner, _likes, _hits := _card.GetCardData()
 		_question := _card.GetCardQuestion()
 		var card entites.Card = entites.Card{ID: _id, Power: _power, Owner: _owner, Likes: _likes, Hits: _hits}
 
 		var _answers []entites.Answer
-		var answers []engine.Answer = *_question.GetAnswers()
+		var answers []gameengine.Answer = *_question.GetAnswers()
 		for i := 0; i < len(answers); i++ {
 			_answers = append(_answers, entites.Answer{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
 		}

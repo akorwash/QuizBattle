@@ -14,7 +14,7 @@ import (
 
 	"github.com/akorwash/QuizBattle/actor"
 	"github.com/akorwash/QuizBattle/datastore"
-	"github.com/akorwash/QuizBattle/engine"
+	gameengine "github.com/akorwash/QuizBattle/gameengine"
 )
 
 //Startup to do
@@ -68,18 +68,18 @@ func (startup *Startup) AssignQuestionsToCards() *Startup {
 		return startup
 	}
 
-	if len(engine.CardsSet) == 0 {
+	if len(gameengine.CardsSet) == 0 {
 		startup.Errors = errors.New("No Cards Found")
 		return startup
 	}
 
-	if len(engine.QuestionSet) == 0 {
+	if len(gameengine.QuestionSet) == 0 {
 		startup.Errors = errors.New("No Questions Found")
 		return startup
 	}
 
-	for index, card := range engine.CardsSet {
-		engine.CardsSet[index] = *card.CalculateQuestions()
+	for index, card := range gameengine.CardsSet {
+		gameengine.CardsSet[index] = *card.CalculateQuestions()
 	}
 	datastore.MyDBContext.SaveDB()
 	return startup
@@ -87,13 +87,13 @@ func (startup *Startup) AssignQuestionsToCards() *Startup {
 
 //LoadQuestions to do
 func (startup *Startup) LoadQuestions() *Startup {
-	if startup.Errors != nil || len(engine.QuestionSet) > 0 {
+	if startup.Errors != nil || len(gameengine.QuestionSet) > 0 {
 		return startup
 	}
 
 	for i := 1; i <= NumberOFQuestion; i++ {
-		question := engine.NewQuestion(i, "test question #"+strconv.Itoa(i))
-		engine.QuestionSet = append(engine.QuestionSet, *question)
+		question := gameengine.NewQuestion(i, "test question #"+strconv.Itoa(i))
+		gameengine.QuestionSet = append(gameengine.QuestionSet, *question)
 	}
 	return startup
 }
@@ -123,7 +123,7 @@ func (startup *Startup) LoadBots() *Startup {
 
 //LoadCards to do
 func (startup *Startup) LoadCards() *Startup {
-	if startup.Errors != nil || len(engine.CardsSet) > 0 {
+	if startup.Errors != nil || len(gameengine.CardsSet) > 0 {
 		return startup
 	}
 
@@ -131,8 +131,8 @@ func (startup *Startup) LoadCards() *Startup {
 
 	for i := 1; i <= numberOfQuestions; i++ {
 		//create the bot account
-		card := engine.NewCard(i)
-		engine.CardsSet = append(engine.CardsSet, *card)
+		card := gameengine.NewCard(i)
+		gameengine.CardsSet = append(gameengine.CardsSet, *card)
 	}
 	return startup
 }
