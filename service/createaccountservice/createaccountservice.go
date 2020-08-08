@@ -5,7 +5,7 @@ import (
 
 	"github.com/akorwash/QuizBattle/actor"
 	"github.com/akorwash/QuizBattle/datastore"
-	"github.com/akorwash/QuizBattle/engine"
+	engine "github.com/akorwash/QuizBattle/gameengine"
 	"github.com/akorwash/QuizBattle/handler"
 )
 
