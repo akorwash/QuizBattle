@@ -5,7 +5,7 @@ import (
 	"strconv"
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
-	"github.com/akorwash/QuizBattle/engine"
+	gameengine "github.com/akorwash/QuizBattle/gameengine"
 	"github.com/akorwash/QuizBattle/handler"
 	"github.com/gorilla/mux"
 )
@@ -24,9 +24,9 @@ func (controller *QuestionController) GetQuestionByID(w http.ResponseWriter, r *
 		return
 	}
 
-	_question := engine.CardsSet.GetRandomCard().GetQuestionByID(id)
+	_question := gameengine.CardsSet.GetRandomCard().GetQuestionByID(id)
 	var _answers []entites.Answer
-	var answers []engine.Answer = *_question.GetAnswers()
+	var answers []gameengine.Answer = *_question.GetAnswers()
 	for i := 0; i < len(answers); i++ {
 		_answers = append(_answers, entites.Answer{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
 	}
