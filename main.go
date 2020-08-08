@@ -1,12 +1,12 @@
 package main
 
 import (
+	"QuizBattle/api"
 	"QuizBattle/datastore"
 	"QuizBattle/engine"
 	"QuizBattle/handler"
 	"QuizBattle/service/createaccountservice"
 	"QuizBattle/service/loginservice"
-	"QuizBattle/web"
 	"fmt"
 	"os"
 
@@ -19,12 +19,12 @@ func main() {
 
 	//Intaite the Game
 	gameEngine := *handler.StartUp().LoadBots().LoadCards().LoadQuestions().AssignQuestionsToCards()
-	web.Server.Initialize(
+	api.Server.Initialize(
 		os.Getenv("APP_DB_USERNAME"),
 		os.Getenv("APP_DB_PASSWORD"),
 		os.Getenv("APP_DB_NAME"))
 
-	web.Server.Run(":8010")
+	api.Server.Run(":8010")
 	if gameEngine.Errors != nil {
 		fmt.Println("unexpected error: \nerr:", gameEngine.Errors)
 		return
