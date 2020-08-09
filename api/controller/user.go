@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/akorwash/QuizBattle/handler"
+	"github.com/akorwash/QuizBattle/resources"
+	"github.com/akorwash/QuizBattle/service/loginservice"
 
 	"github.com/akorwash/QuizBattle/actor"
 	"github.com/akorwash/QuizBattle/datastore"
@@ -63,6 +65,48 @@ func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Requ
 	gameengine.CardsSet.GetRandomCard().AssignToUser(user)
 	gameengine.CardsSet.GetRandomCard().AssignToUser(user)
 	datastore.MyDBContext.SaveUsers()
+	token, err := loginservice.CreateToken(user)
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response := resources.UserAccount{Username: user.GetUserName(), MobileNumber: user.GetMobileNumber(), Email: user.GetEmail(), Token: token}
+	responseHandler.RespondWithJSON(w, http.StatusCreated, response)
+}
 
-	responseHandler.RespondWithJSON(w, http.StatusCreated, _user)
+//Login to do
+func (controller *UserController) Login(w http.ResponseWriter, r *http.Request) {
+	var _userLogin resources.UserLogin
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&_userLogin); err != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+		return
+	}
+	defer r.Body.Close()
+
+	if len(_userLogin.Identifier) <= 0 {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, "Identifier Invalid request payload")
+		return
+	}
+	if len(_userLogin.Password) <= 0 {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, "Password Invalid request payload")
+		return
+	}
+
+	loginModel := loginservice.LoginFactory(_userLogin.Identifier, _userLogin.Password)
+	switch loginservice.Login(loginModel) {
+	case true:
+		user := loginModel.GetUser(_userLogin.Identifier)
+		token, err := loginservice.CreateToken(user)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		response := resources.UserAccount{Username: user.GetUserName(), MobileNumber: user.GetMobileNumber(), Email: user.GetEmail(), Token: token}
+		responseHandler.RespondWithJSON(w, http.StatusCreated, response)
+		return
+	case false:
+		responseHandler.RespondWithError(w, http.StatusBadRequest, "Password Invalid")
+		return
+	}
 }
