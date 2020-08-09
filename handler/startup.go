@@ -44,11 +44,7 @@ const (
 //StartUp to do
 func StartUp() *Startup {
 	createBaseDirectory()
-	client, err := datastore.MyDBContext.InitializingDB()
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	datastore.MyDBContext.LoadDB(client)
+	datastore.MyDBContext.InitializingDB().LoadDB()
 	rand.Seed(time.Now().UnixNano())
 	return &Startup{}
 }
