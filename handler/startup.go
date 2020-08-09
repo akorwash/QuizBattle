@@ -67,7 +67,7 @@ func createBaseDirectory() {
 
 //AssignQuestionsToCards to do
 func (startup *Startup) AssignQuestionsToCards() *Startup {
-
+	var v int = 0
 	if startup.Errors != nil {
 		return startup
 	}
@@ -83,9 +83,14 @@ func (startup *Startup) AssignQuestionsToCards() *Startup {
 	}
 
 	for index, card := range gameengine.CardsSet {
-		gameengine.CardsSet[index] = *card.CalculateQuestions()
+		if !gameengine.CardsSet[index].HasQuestion() {
+			v++
+			gameengine.CardsSet[index] = *card.CalculateQuestions()
+		}
 	}
-	datastore.MyDBContext.SaveDB()
+	if v > 0 {
+		datastore.MyDBContext.SaveDB()
+	}
 	return startup
 }
 

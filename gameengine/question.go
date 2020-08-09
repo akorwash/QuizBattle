@@ -44,7 +44,6 @@ func (card *Card) GetQuestionByID(_id int) *Question {
 	} else {
 		return nil
 	}
-
 }
 
 //GetAnswers ctor for User Account

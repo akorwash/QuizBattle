@@ -136,6 +136,26 @@ func (_context *DBContext) loadCards(client *firestore.Client) *DBContext {
 
 //SaveUsers to do
 func (_context *DBContext) saveUsers(client *firestore.Client) *DBContext {
+	// Get a batch of documents
+	iter := client.Collection("users").Documents(context.Background())
+	numDeleted := 0
+
+	// Iterate through the documents, adding
+	// a delete operation for each one to a
+	// WriteBatch.
+	batch := client.Batch()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		batch.Delete(doc.Ref)
+		numDeleted++
+	}
+
+	batch.Commit(context.Background())
+
 	for _, _user := range actor.UserSet {
 		client.Collection("users").Add(context.Background(), map[string]interface{}{
 			"Username":     _user.GetUserName(),
@@ -149,6 +169,26 @@ func (_context *DBContext) saveUsers(client *firestore.Client) *DBContext {
 
 //SaveUsers to do
 func (_context *DBContext) saveQuestions(client *firestore.Client) *DBContext {
+
+	// Get a batch of documents
+	iter := client.Collection("Question").Documents(context.Background())
+	numDeleted := 0
+
+	// Iterate through the documents, adding
+	// a delete operation for each one to a
+	// WriteBatch.
+	batch := client.Batch()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		batch.Delete(doc.Ref)
+		numDeleted++
+	}
+
+	batch.Commit(context.Background())
 
 	for _, _question := range gameengine.QuestionSet {
 		var answers []gameengine.Answer = *_question.GetAnswers()
@@ -174,6 +214,26 @@ func (_context *DBContext) saveQuestions(client *firestore.Client) *DBContext {
 
 //SaveUsers to do
 func (_context *DBContext) saveCards(client *firestore.Client) *DBContext {
+
+	// Get a batch of documents
+	iter := client.Collection("Card").Documents(context.Background())
+	numDeleted := 0
+
+	// Iterate through the documents, adding
+	// a delete operation for each one to a
+	// WriteBatch.
+	batch := client.Batch()
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+
+		batch.Delete(doc.Ref)
+		numDeleted++
+	}
+
+	batch.Commit(context.Background())
 
 	for _, _card := range gameengine.CardsSet {
 		_id, _power, _owner, _likes, _hits := _card.GetCardData()
