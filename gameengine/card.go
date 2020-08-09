@@ -42,11 +42,12 @@ func GetUserCards(ownderUser string) *[]Card {
 	return &resCards
 }
 
-//GetQuestions get name of Bot
-func (card *Card) GetQuestions() []Question {
-	var res []Question
-
-	return res
+//HasQuestion get name of Bot
+func (card *Card) HasQuestion() bool {
+	if card.questions.id == 0 {
+		return false
+	}
+	return true
 }
 
 //GetCardData get name of Bot

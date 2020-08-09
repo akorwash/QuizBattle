@@ -18,7 +18,7 @@ func main() {
 	gameengine.StartTheGame()
 
 	//Intaite the Game
-	gameEngine := *handler.StartUp().LoadBots().LoadCards().LoadQuestions().AssignQuestionsToCards()
+	gameEngine := *handler.StartUp().LoadBots().LoadQuestions().LoadCards().AssignQuestionsToCards()
 	api.Server.Initialize(
 		os.Getenv("APP_DB_USERNAME"),
 		os.Getenv("APP_DB_PASSWORD"),
