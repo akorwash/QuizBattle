@@ -2,3 +2,4 @@ users.json
 QuizBattle.exe
 .vscode
 __debug_bin
+datastore/accServices.json

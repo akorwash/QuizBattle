@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"strings"
 
 	"cloud.google.com/go/firestore"
 	firebase "firebase.google.com/go"
@@ -30,7 +31,23 @@ var BaseDirectory string
 
 //InitializingDB to do
 func (_context *DBContext) InitializingDB() (*firestore.Client, error) {
-	opt := option.WithCredentialsFile("./datastore/quizbattle-7a33e-firebase-adminsdk-tbg5l-51a241ca6a.json")
+	var accServices = AccServices{
+		AccountType:   os.Getenv("AccountType"),
+		ProjectID:     os.Getenv("ProjectID"),
+		PrivateKeyID:  os.Getenv("PrivateKeyID"),
+		PrivateKey:    os.Getenv("PrivateKey"),
+		ClientEmail:   os.Getenv("ClientEmail"),
+		ClientID:      os.Getenv("ClientID"),
+		AuthURI:       os.Getenv("AuthURI"),
+		TokenURI:      os.Getenv("TokenURI"),
+		AuthCERTURL:   os.Getenv("AuthCERTURL"),
+		ClientCERTURL: os.Getenv("ClientCERTURL"),
+	}
+	accServices.PrivateKey = strings.Replace(accServices.PrivateKey, "\\n", "\n", -1)
+	accServicesfile, _ := json.MarshalIndent(accServices, "", " ")
+	_ = ioutil.WriteFile("./datastore/accServices.json", accServicesfile, 0644)
+
+	opt := option.WithCredentialsFile("./datastore/accServices.json")
 
 	FireBaseApp, err := firebase.NewApp(context.Background(), nil, opt)
 	if err != nil {
