@@ -5,31 +5,18 @@ import (
 	"os"
 
 	"github.com/akorwash/QuizBattle/api"
-	"github.com/akorwash/QuizBattle/datastore"
 	gameengine "github.com/akorwash/QuizBattle/gameengine"
 	"github.com/akorwash/QuizBattle/handler"
-	"github.com/akorwash/QuizBattle/service/createaccountservice"
 	"github.com/akorwash/QuizBattle/service/loginservice"
 	_ "github.com/lib/pq"
 )
 
 func main() {
-	//Loading the game
-	gameengine.StartTheGame()
-
 	//Intaite the Game
 	gameEngine := *handler.StartUp().LoadBots().LoadQuestions().LoadCards().AssignQuestionsToCards()
-	api.Server.Initialize(
-		os.Getenv("APP_DB_USERNAME"),
-		os.Getenv("APP_DB_PASSWORD"),
-		os.Getenv("APP_DB_NAME"))
+	api.Server.Initialize()
 
-	var port string
-	port = os.Getenv("PORT")
-	if port == "" {
-		port = "8010"
-	}
-	api.Server.Run(port)
+	api.Server.Run(os.Getenv("PORT"))
 
 	if gameEngine.Errors != nil {
 		fmt.Println("unexpected error: \nerr:", gameEngine.Errors)
@@ -45,23 +32,6 @@ func main() {
 		fmt.Scanf("%s", &userInput)
 
 		switch userInput {
-		case "1":
-			fmt.Println("Welcom at Quiz Battle Game")
-			fmt.Println("We Will Register Your Account Now  \n ")
-
-			user := createaccountservice.CreateAccount(createaccountservice.RecieveUserInputs())
-
-			gameengine.CardsSet.GetRandomCard().AssignToUser(user)
-			gameengine.CardsSet.GetRandomCard().AssignToUser(user)
-			gameengine.CardsSet.GetRandomCard().AssignToUser(user)
-			datastore.MyDBContext.SaveDB()
-
-			fmt.Println("User Info: ")
-			fmt.Println(*user.GetUser())
-
-			fmt.Println("User Cards")
-			fmt.Println(*gameengine.GetUserCards(user.GetUserName()))
-			break
 		case "2":
 			fmt.Println("Please Enter Your Username/Email/Mobile")
 			gameengine.Game.ReadConsoleMessage()

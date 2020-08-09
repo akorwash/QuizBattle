@@ -14,7 +14,7 @@ func RecieveUserInputs() (_username, _pass, _email, _mobNum string) {
 
 	fmt.Println("Please Enter Your Usernane")
 	fmt.Println("Can't start with numbers, or have a whitespace")
-	fmt.Println("Password should be >= 5 char.")
+	fmt.Println("Usernane should be >= 5 char.")
 	engine.Game.ReadConsoleMessage()
 
 	_username = engine.ReadStringWithValidation(handler.ValidateUsername{})
