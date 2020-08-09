@@ -1,12 +1,18 @@
 package datastore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 
+	"cloud.google.com/go/firestore"
+	firebase "firebase.google.com/go"
 	gameengine "github.com/akorwash/QuizBattle/gameengine"
+	"google.golang.org/api/iterator"
+	"google.golang.org/api/option"
 
 	"github.com/akorwash/QuizBattle/actor"
 	"github.com/akorwash/QuizBattle/datastore/entites"
@@ -22,19 +28,39 @@ var MyDBContext DBContext
 //BaseDirectory to do
 var BaseDirectory string
 
-//LoadUsers get name of Bot
-func (_context *DBContext) loadUsers() *DBContext {
-	if _, err := os.Stat(BaseDirectory + entites.UsersFileName); os.IsNotExist(err) {
-		ioutil.WriteFile(BaseDirectory+entites.UsersFileName, nil, 0644)
+//InitializingDB to do
+func (_context *DBContext) InitializingDB() (*firestore.Client, error) {
+	opt := option.WithCredentialsFile("./datastore/quizbattle-7a33e-firebase-adminsdk-tbg5l-51a241ca6a.json")
+
+	FireBaseApp, err := firebase.NewApp(context.Background(), nil, opt)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing app: %v", err)
 	}
 
-	var users []entites.User
-	file, _ := ioutil.ReadFile(BaseDirectory + entites.UsersFileName)
+	client, err := FireBaseApp.Firestore(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("error initializing Database: %v", err)
+	}
+	return client, nil
+}
 
-	_ = json.Unmarshal([]byte(file), &users)
+//LoadUsers get name of Bot
+func (_context *DBContext) loadUsers(client *firestore.Client) *DBContext {
 
-	for i := 0; i < len(users); i++ {
-		user := actor.NewUser(users[i].Username, users[i].Password, users[i].Email, users[i].MobileNumber)
+	iter := client.Collection("users").Documents(context.Background())
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatalf("Failed to iterate: %v", err)
+		}
+		// convert map to json
+		jsonString, _ := json.Marshal(doc.Data())
+		_user := entites.User{}
+		json.Unmarshal(jsonString, &_user)
+		user := actor.NewUser(_user.Username, _user.Password, _user.Email, _user.MobileNumber)
 		actor.UserSet = append(actor.UserSet, *user)
 	}
 	return _context
@@ -82,18 +108,15 @@ func (_context *DBContext) loadCards() *DBContext {
 }
 
 //SaveUsers to do
-func (_context *DBContext) saveUsers() *DBContext {
-	var users []entites.User
+func (_context *DBContext) saveUsers(client *firestore.Client) *DBContext {
 	for _, _user := range actor.UserSet {
-		users = append(users, entites.User{Username: _user.GetUserName(), Password: _user.GetPassword(), Email: _user.GetEmail(), MobileNumber: _user.GetMobileNumber()})
+		client.Collection("users").Add(context.Background(), map[string]interface{}{
+			"Username":     _user.GetUserName(),
+			"Password":     _user.GetPassword(),
+			"Email":        _user.GetEmail(),
+			"MobileNumber": _user.GetMobileNumber(),
+		})
 	}
-
-	if !removeFile(BaseDirectory + entites.UsersFileName) {
-		return _context
-	}
-
-	file, _ := json.MarshalIndent(users, "", " ")
-	_ = ioutil.WriteFile(BaseDirectory+entites.UsersFileName, file, 0644)
 	return _context
 }
 
@@ -147,13 +170,19 @@ func (_context *DBContext) saveCards() *DBContext {
 }
 
 //LoadDB to do
-func (_context *DBContext) LoadDB() {
-	MyDBContext.loadUsers().loadQuestions().loadCards()
+func (_context *DBContext) LoadDB(client *firestore.Client) {
+	MyDBContext.loadUsers(client).loadQuestions().loadCards()
+	defer client.Close()
 }
 
 //SaveDB to do
 func (_context *DBContext) SaveDB() {
-	MyDBContext.saveUsers().saveQuestions().saveCards()
+	client, err := MyDBContext.InitializingDB()
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	MyDBContext.saveUsers(client).saveQuestions().saveCards()
+	defer client.Close()
 }
 
 func removeFile(path string) bool {
