@@ -2,18 +2,16 @@ package datastore
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
-	"strings"
+	"time"
 
-	"cloud.google.com/go/firestore"
-	firebase "firebase.google.com/go"
 	gameengine "github.com/akorwash/QuizBattle/gameengine"
-	"google.golang.org/api/iterator"
-	"google.golang.org/api/option"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 
 	"github.com/akorwash/QuizBattle/actor"
 	"github.com/akorwash/QuizBattle/datastore/entites"
@@ -26,57 +24,46 @@ type DBContext struct {
 //MyDBContext to do
 var MyDBContext DBContext
 
+var mongoContext *mongo.Database
+
 //BaseDirectory to do
 var BaseDirectory string
 
 //InitializingDB to do
-func (_context *DBContext) InitializingDB() (*firestore.Client, error) {
-	var accServices = AccServices{
-		AccountType:   os.Getenv("AccountType"),
-		ProjectID:     os.Getenv("ProjectID"),
-		PrivateKeyID:  os.Getenv("PrivateKeyID"),
-		PrivateKey:    os.Getenv("PrivateKey"),
-		ClientEmail:   os.Getenv("ClientEmail"),
-		ClientID:      os.Getenv("ClientID"),
-		AuthURI:       os.Getenv("AuthURI"),
-		TokenURI:      os.Getenv("TokenURI"),
-		AuthCERTURL:   os.Getenv("AuthCERTURL"),
-		ClientCERTURL: os.Getenv("ClientCERTURL"),
-	}
-	accServices.PrivateKey = strings.Replace(accServices.PrivateKey, "\\n", "\n", -1)
-	accServicesfile, _ := json.MarshalIndent(accServices, "", " ")
-	_ = ioutil.WriteFile("./datastore/accServices.json", accServicesfile, 0644)
+func (_context *DBContext) InitializingDB() *DBContext {
+	// Database Config
+	clientOptions := options.Client().ApplyURI("mongodb://" + os.Getenv("MongoUsername") + ":" + os.Getenv("MongoPassword") + "@ds029979.mlab.com:29979/heroku_9gr1xz3v?retryWrites=false")
+	client, err := mongo.NewClient(clientOptions)
+	//Set up a context required by mongo.Connect
+	ctx, _ := context.WithTimeout(context.Background(), 10*time.Second)
+	err = client.Connect(ctx)
+	//Cancel context to avoid memory leak
+	//defer cancel()
 
-	opt := option.WithCredentialsFile("./datastore/accServices.json")
-
-	FireBaseApp, err := firebase.NewApp(context.Background(), nil, opt)
+	// Ping our db connection
+	err = client.Ping(context.Background(), readpref.Primary())
 	if err != nil {
-		return nil, fmt.Errorf("error initializing app: %v", err)
+		log.Fatal("Couldn't connect to the database", err)
+		return _context
 	}
+	log.Println("Connected!")
 
-	client, err := FireBaseApp.Firestore(context.Background())
-	if err != nil {
-		return nil, fmt.Errorf("error initializing Database: %v", err)
-	}
-	return client, nil
+	// Connect to the database
+	mongoContext = client.Database("heroku_9gr1xz3v")
+	return _context
 }
 
 //LoadUsers get name of Bot
-func (_context *DBContext) loadUsers(client *firestore.Client) *DBContext {
-
-	iter := client.Collection("users").Documents(context.Background())
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Fatalf("Failed to iterate: %v", err)
-		}
-		// convert map to json
-		jsonString, _ := json.Marshal(doc.Data())
-		_user := entites.User{}
-		json.Unmarshal(jsonString, &_user)
+func (_context *DBContext) loadUsers() *DBContext {
+	iter := mongoContext.Collection("users")
+	cursor, err := iter.Find(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return _context
+	}
+	for cursor.Next(context.Background()) {
+		var _user entites.User
+		cursor.Decode(&_user)
 		user := actor.NewUser(_user.Username, _user.Password, _user.Email, _user.MobileNumber)
 		actor.UserSet = append(actor.UserSet, *user)
 	}
@@ -84,21 +71,18 @@ func (_context *DBContext) loadUsers(client *firestore.Client) *DBContext {
 }
 
 //loadQuestions get name of Bot
-func (_context *DBContext) loadQuestions(client *firestore.Client) *DBContext {
+func (_context *DBContext) loadQuestions() *DBContext {
 
-	iter := client.Collection("Question").Documents(context.Background())
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Fatalf("Failed to iterate: %v", err)
-		}
-		// convert map to json
-		jsonString, _ := json.Marshal(doc.Data())
-		_question := entites.Question{}
-		json.Unmarshal(jsonString, &_question)
+	iter := mongoContext.Collection("Question")
+	cursor, err := iter.Find(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return _context
+	}
+
+	for cursor.Next(context.Background()) {
+		var _question entites.Question
+		cursor.Decode(&_question)
 		question := gameengine.NewQuestion(_question.ID, _question.Header)
 		for _, _answer := range _question.Answers {
 			answer := gameengine.NewAnswer(_answer.ID, _answer.Text, _answer.IsCorrect)
@@ -111,21 +95,17 @@ func (_context *DBContext) loadQuestions(client *firestore.Client) *DBContext {
 }
 
 //loadCards get name of Bot
-func (_context *DBContext) loadCards(client *firestore.Client) *DBContext {
+func (_context *DBContext) loadCards() *DBContext {
 
-	iter := client.Collection("Card").Documents(context.Background())
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-		if err != nil {
-			log.Fatalf("Failed to iterate: %v", err)
-		}
-		// convert map to json
-		jsonString, _ := json.Marshal(doc.Data())
-		_card := entites.Card{}
-		json.Unmarshal(jsonString, &_card)
+	iter := mongoContext.Collection("Card")
+	cursor, err := iter.Find(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return _context
+	}
+	for cursor.Next(context.Background()) {
+		var _card entites.Card
+		cursor.Decode(&_card)
 		card := gameengine.NewLoadCard(_card.ID, _card.Power, _card.Owner, _card.Likes, _card.Hits)
 		card.AssignQuestion(*card.GetQuestionByID(_card.Questions.ID))
 		gameengine.CardsSet = append(gameengine.CardsSet, *card)
@@ -135,151 +115,122 @@ func (_context *DBContext) loadCards(client *firestore.Client) *DBContext {
 }
 
 //SaveUsers to do
-func (_context *DBContext) saveUsers(client *firestore.Client) *DBContext {
-	// Get a batch of documents
-	iter := client.Collection("users").Documents(context.Background())
-	numDeleted := 0
-
-	// Iterate through the documents, adding
-	// a delete operation for each one to a
-	// WriteBatch.
-	batch := client.Batch()
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-
-		batch.Delete(doc.Ref)
-		numDeleted++
+func (_context *DBContext) saveUsers() *DBContext {
+	iter := mongoContext.Collection("users")
+	cursor, err := iter.Find(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return _context
+	}
+	for cursor.Next(context.Background()) {
+		var _user entites.User
+		cursor.Decode(&_user)
+		iter.DeleteOne(context.Background(), _user)
 	}
 
-	batch.Commit(context.Background())
-
 	for _, _user := range actor.UserSet {
-		client.Collection("users").Add(context.Background(), map[string]interface{}{
-			"Username":     _user.GetUserName(),
-			"Password":     _user.GetPassword(),
-			"Email":        _user.GetEmail(),
-			"MobileNumber": _user.GetMobileNumber(),
-		})
+
+		user := entites.User{Username: _user.GetUserName(), Password: _user.GetPassword(), Email: _user.GetEmail(), MobileNumber: _user.GetMobileNumber()}
+		iter.InsertOne(context.Background(), user)
 	}
 	return _context
 }
 
 //SaveUsers to do
-func (_context *DBContext) saveQuestions(client *firestore.Client) *DBContext {
-
-	// Get a batch of documents
-	iter := client.Collection("Question").Documents(context.Background())
-	numDeleted := 0
-
-	// Iterate through the documents, adding
-	// a delete operation for each one to a
-	// WriteBatch.
-	batch := client.Batch()
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-
-		batch.Delete(doc.Ref)
-		numDeleted++
+func (_context *DBContext) saveQuestions() *DBContext {
+	collection := mongoContext.Collection("Question")
+	cursor, err := collection.Find(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return _context
 	}
-
-	batch.Commit(context.Background())
+	for cursor.Next(context.Background()) {
+		var _question entites.Question
+		cursor.Decode(&_question)
+		collection.DeleteOne(context.Background(), _question)
+	}
 
 	for _, _question := range gameengine.QuestionSet {
 		var answers []gameengine.Answer = *_question.GetAnswers()
-		var answersMap []map[string]interface{}
+		var answersMap []entites.Answer
 
 		for i := 0; i < len(answers); i++ {
-			answersMap = append(answersMap, map[string]interface{}{
-				"ID":        answers[i].GetID(),
-				"Text":      answers[i].GetText(),
-				"IsCorrect": answers[i].GetIsCorrect(),
+			answersMap = append(answersMap, entites.Answer{
+				ID:        answers[i].GetID(),
+				Text:      answers[i].GetText(),
+				IsCorrect: answers[i].GetIsCorrect(),
 			})
 		}
 
-		client.Collection("Question").Add(context.Background(), map[string]interface{}{
-			"ID":      *_question.GetID(),
-			"Header":  *_question.GetHeader(),
-			"Answers": answersMap,
-		})
+		question := entites.Question{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: answersMap}
+		rES, err := collection.InsertOne(context.Background(), question)
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("Inserted multiple documents: ", rES.InsertedID)
 	}
 
 	return _context
 }
 
 //SaveUsers to do
-func (_context *DBContext) saveCards(client *firestore.Client) *DBContext {
+func (_context *DBContext) saveCards() *DBContext {
 
-	// Get a batch of documents
-	iter := client.Collection("Card").Documents(context.Background())
-	numDeleted := 0
-
-	// Iterate through the documents, adding
-	// a delete operation for each one to a
-	// WriteBatch.
-	batch := client.Batch()
-	for {
-		doc, err := iter.Next()
-		if err == iterator.Done {
-			break
-		}
-
-		batch.Delete(doc.Ref)
-		numDeleted++
+	iter := mongoContext.Collection("Card")
+	cursor, err := iter.Find(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return _context
 	}
-
-	batch.Commit(context.Background())
+	for cursor.Next(context.Background()) {
+		var _card entites.Question
+		cursor.Decode(&_card)
+		iter.DeleteOne(context.Background(), _card)
+	}
 
 	for _, _card := range gameengine.CardsSet {
 		_id, _power, _owner, _likes, _hits := _card.GetCardData()
 		_question := _card.GetCardQuestion()
 		var answers []gameengine.Answer = *_question.GetAnswers()
-		var answersMap []map[string]interface{}
+		var answersMap []entites.Answer
 
 		for i := 0; i < len(answers); i++ {
-			answersMap = append(answersMap, map[string]interface{}{
-				"ID":        answers[i].GetID(),
-				"Text":      answers[i].GetText(),
-				"IsCorrect": answers[i].GetIsCorrect(),
+			answersMap = append(answersMap, entites.Answer{
+				ID:        answers[i].GetID(),
+				Text:      answers[i].GetText(),
+				IsCorrect: answers[i].GetIsCorrect(),
 			})
 		}
+		card := entites.Card{
+			ID:        _id,
+			Power:     _power,
+			Owner:     _owner,
+			Likes:     _likes,
+			Hits:      _hits,
+			Questions: entites.Question{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: answersMap},
+		}
 
-		client.Collection("Card").Add(context.Background(), map[string]interface{}{
-			"ID":    _id,
-			"Power": _power,
-			"Owner": _owner,
-			"Likes": _likes,
-			"Hits":  _hits,
-			"Questions": map[string]interface{}{
-				"ID":      *_question.GetID(),
-				"Header":  *_question.GetHeader(),
-				"Answers": answersMap,
-			},
-		})
+		rES, err := iter.InsertOne(context.Background(), card)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Println("Inserted multiple documents: ", rES.InsertedID)
 	}
 
 	return _context
 }
 
 //LoadDB to do
-func (_context *DBContext) LoadDB(client *firestore.Client) {
-	MyDBContext.loadUsers(client).loadQuestions(client).loadCards(client)
-	defer client.Close()
+func (_context *DBContext) LoadDB() {
+	MyDBContext.loadUsers().loadQuestions().loadCards()
 }
 
 //SaveDB to do
 func (_context *DBContext) SaveDB() {
-	client, err := MyDBContext.InitializingDB()
-	if err != nil {
-		fmt.Println(err.Error())
-	}
-	MyDBContext.saveUsers(client).saveQuestions(client).saveCards(client)
-	defer client.Close()
+	MyDBContext.saveUsers().saveQuestions().saveCards()
 }
 
 func removeFile(path string) bool {
