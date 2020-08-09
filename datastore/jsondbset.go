@@ -67,24 +67,29 @@ func (_context *DBContext) loadUsers(client *firestore.Client) *DBContext {
 }
 
 //loadQuestions get name of Bot
-func (_context *DBContext) loadQuestions() *DBContext {
-	if _, err := os.Stat(BaseDirectory + entites.QuestionsFileName); os.IsNotExist(err) {
-		ioutil.WriteFile(BaseDirectory+entites.QuestionsFileName, nil, 0644)
-	}
+func (_context *DBContext) loadQuestions(client *firestore.Client) *DBContext {
 
-	var questions []entites.Question
-	file, _ := ioutil.ReadFile(BaseDirectory + entites.QuestionsFileName)
-
-	_ = json.Unmarshal([]byte(file), &questions)
-
-	for i := 0; i < len(questions); i++ {
-		question := gameengine.NewQuestion(questions[i].ID, questions[i].Header)
-		for _, _answer := range questions[i].Answers {
+	iter := client.Collection("Question").Documents(context.Background())
+	for {
+		doc, err := iter.Next()
+		if err == iterator.Done {
+			break
+		}
+		if err != nil {
+			log.Fatalf("Failed to iterate: %v", err)
+		}
+		// convert map to json
+		jsonString, _ := json.Marshal(doc.Data())
+		_question := entites.Question{}
+		json.Unmarshal(jsonString, &_question)
+		question := gameengine.NewQuestion(_question.ID, _question.Header)
+		for _, _answer := range _question.Answers {
 			answer := gameengine.NewAnswer(_answer.ID, _answer.Text, _answer.IsCorrect)
 			question.AddAnswers(answer)
 		}
 		gameengine.QuestionSet = append(gameengine.QuestionSet, *question)
 	}
+
 	return _context
 }
 
@@ -121,29 +126,33 @@ func (_context *DBContext) saveUsers(client *firestore.Client) *DBContext {
 }
 
 //SaveUsers to do
-func (_context *DBContext) saveQuestions() *DBContext {
-	var questions []entites.Question
+func (_context *DBContext) saveQuestions(client *firestore.Client) *DBContext {
 
 	for _, _question := range gameengine.QuestionSet {
-		var _answers []entites.Answer
 		var answers []gameengine.Answer = *_question.GetAnswers()
+		var answersMap []map[string]interface{}
+
 		for i := 0; i < len(answers); i++ {
-			_answers = append(_answers, entites.Answer{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
+			answersMap = append(answersMap, map[string]interface{}{
+				"ID":        answers[i].GetID(),
+				"Text":      answers[i].GetText(),
+				"IsCorrect": answers[i].GetIsCorrect(),
+			})
+
 		}
-		questions = append(questions, entites.Question{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers})
+
+		client.Collection("Question").Add(context.Background(), map[string]interface{}{
+			"ID":      *_question.GetID(),
+			"Header":  *_question.GetHeader(),
+			"Answers": answersMap,
+		})
 	}
 
-	if !removeFile(BaseDirectory + entites.QuestionsFileName) {
-		return _context
-	}
-
-	file, _ := json.MarshalIndent(questions, "", " ")
-	_ = ioutil.WriteFile(BaseDirectory+entites.QuestionsFileName, file, 0644)
 	return _context
 }
 
 //SaveUsers to do
-func (_context *DBContext) saveCards() *DBContext {
+func (_context *DBContext) saveCards(client *firestore.Client) *DBContext {
 	var cards []entites.Card
 
 	for _, _card := range gameengine.CardsSet {
@@ -171,7 +180,7 @@ func (_context *DBContext) saveCards() *DBContext {
 
 //LoadDB to do
 func (_context *DBContext) LoadDB(client *firestore.Client) {
-	MyDBContext.loadUsers(client).loadQuestions().loadCards()
+	MyDBContext.loadUsers(client).loadQuestions(client).loadCards()
 	defer client.Close()
 }
 
@@ -181,7 +190,7 @@ func (_context *DBContext) SaveDB() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	MyDBContext.saveUsers(client).saveQuestions().saveCards()
+	MyDBContext.saveUsers(client).saveQuestions(client).saveCards(client)
 	defer client.Close()
 }
 
