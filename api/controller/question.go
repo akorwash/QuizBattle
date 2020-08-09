@@ -6,14 +6,11 @@ import (
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
 	gameengine "github.com/akorwash/QuizBattle/gameengine"
-	"github.com/akorwash/QuizBattle/handler"
 	"github.com/gorilla/mux"
 )
 
 //QuestionController to do
 type QuestionController struct{}
-
-var responseHandler handler.WebResponseHandler
 
 //GetQuestionByID to do
 func (controller *QuestionController) GetQuestionByID(w http.ResponseWriter, r *http.Request) {

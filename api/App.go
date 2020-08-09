@@ -20,12 +20,13 @@ type App struct {
 var Server App
 
 //Initialize start project
-func (a *App) Initialize(user, password, dbname string) {
+func (a *App) Initialize() {
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
 }
 
 var questionController controller.QuestionController
+var userController controller.UserController
 
 //Run the project
 func (a *App) Run(port string) {
@@ -34,4 +35,5 @@ func (a *App) Run(port string) {
 
 func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/question/{id:[0-9]+}", questionController.GetQuestionByID).Methods("GET")
+	a.Router.HandleFunc("/user/createuser", userController.CreateUser).Methods("POST")
 }

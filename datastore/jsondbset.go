@@ -115,7 +115,7 @@ func (_context *DBContext) loadCards() *DBContext {
 }
 
 //SaveUsers to do
-func (_context *DBContext) saveUsers() *DBContext {
+func (_context *DBContext) SaveUsers() *DBContext {
 	iter := mongoContext.Collection("users")
 	cursor, err := iter.Find(context.Background(), bson.M{})
 	if err != nil {
@@ -230,7 +230,7 @@ func (_context *DBContext) LoadDB() {
 
 //SaveDB to do
 func (_context *DBContext) SaveDB() {
-	MyDBContext.saveUsers().saveQuestions().saveCards()
+	MyDBContext.SaveUsers().saveQuestions().saveCards()
 }
 
 func removeFile(path string) bool {
