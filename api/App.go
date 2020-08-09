@@ -36,4 +36,5 @@ func (a *App) Run(port string) {
 func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/question/{id:[0-9]+}", questionController.GetQuestionByID).Methods("GET")
 	a.Router.HandleFunc("/user/createuser", userController.CreateUser).Methods("POST")
+	a.Router.HandleFunc("/user/login", userController.Login).Methods("POST")
 }
