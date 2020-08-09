@@ -65,6 +65,7 @@ func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Requ
 	gameengine.CardsSet.GetRandomCard().AssignToUser(user)
 	gameengine.CardsSet.GetRandomCard().AssignToUser(user)
 	datastore.MyDBContext.SaveUsers()
+	datastore.MyDBContext.SaveCards()
 	token, err := loginservice.CreateToken(user)
 	if err != nil {
 		responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())

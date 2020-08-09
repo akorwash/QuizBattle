@@ -27,6 +27,7 @@ func (a *App) Initialize() {
 
 var questionController controller.QuestionController
 var userController controller.UserController
+var homeController controller.HomeController
 
 //Run the project
 func (a *App) Run(port string) {
@@ -37,4 +38,5 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/question/{id:[0-9]+}", questionController.GetQuestionByID).Methods("GET")
 	a.Router.HandleFunc("/user/createuser", userController.CreateUser).Methods("POST")
 	a.Router.HandleFunc("/user/login", userController.Login).Methods("POST")
+	a.Router.HandleFunc("/", homeController.HomePage).Methods("GET")
 }
