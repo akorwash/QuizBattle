@@ -7,6 +7,11 @@ import (
 	"unicode"
 )
 
+//IValidateInput to do
+type IValidateInput interface {
+	Validate(data string) bool
+}
+
 var emailRegex = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 var mobileRegex = regexp.MustCompile(`^[0-9 ]+$`)
 
