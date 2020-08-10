@@ -9,18 +9,20 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-//ILoginServices to do
+//ILoginServices interface for login service
 type ILoginServices interface {
 	Login() (bool, *entites.User, error)
 	GetUser(_id string) (*entites.User, error)
 }
 
-//Login to do
+//Login here user can login
 func Login(loginservice ILoginServices) (bool, *entites.User, error) {
 	return loginservice.Login()
 }
 
-//LoginFactory to do
+//LoginFactory identity the user login using email or username or mobile number
+//There are 3 factory Username, Email, Mobile Login Factory
+//Each factory will represent differnent way to login using differnent implmention
 func LoginFactory(_id string, _pass string) ILoginServices {
 	var loginModel ILoginServices
 
@@ -38,7 +40,7 @@ func LoginFactory(_id string, _pass string) ILoginServices {
 	return loginModel
 }
 
-//CreateToken to do
+//CreateToken generate jwt token for the user
 func CreateToken(user entites.User) (string, error) {
 	var err error
 	//Creating Access Token

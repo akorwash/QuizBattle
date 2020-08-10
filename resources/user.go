@@ -1,12 +1,12 @@
 package resources
 
-//UserLogin to do
+//UserLogin user login model consumed by REST api
 type UserLogin struct {
 	Identifier string
 	Password   string
 }
 
-//UserAccount to do
+//UserAccount login or create account response
 type UserAccount struct {
 	Username     string
 	MobileNumber string

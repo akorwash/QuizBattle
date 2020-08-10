@@ -8,10 +8,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-//QuestionRepository to do
+//QuestionRepository repo to query the question collection at database
 type QuestionRepository struct{}
 
-//GetQuestionByID to do
+//GetQuestionByID query the database and find question by id
 func (repos *QuestionRepository) GetQuestionByID(_id int) (*entites.Question, error) {
 	dbcontext, cancelContext, err := datastore.GetContext()
 	if err != nil {

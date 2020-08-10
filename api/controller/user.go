@@ -12,13 +12,13 @@ import (
 	"github.com/akorwash/QuizBattle/datastore/entites"
 )
 
-//UserController to do
+//UserController user controller
 type UserController struct{}
 
 var userRepo repository.UserRepository
 var createAccountService createaccount.CreateAccountServices
 
-//CreateUser to do
+//CreateUser handle create user http request
 func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 	var _user entites.User
 	decoder := json.NewDecoder(r.Body)
@@ -37,7 +37,7 @@ func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Requ
 	responseHandler.RespondWithJSON(w, http.StatusCreated, *userentity)
 }
 
-//Login to do
+//Login  handle user login http request
 func (controller *UserController) Login(w http.ResponseWriter, r *http.Request) {
 	var _userLogin resources.UserLogin
 	decoder := json.NewDecoder(r.Body)

@@ -8,10 +8,10 @@ import (
 	"github.com/gorilla/mux"
 )
 
-//QuestionController to do
+//QuestionController question controller
 type QuestionController struct{}
 
-//GetQuestionByID to do
+//GetQuestionByID  handle get question by id http request
 func (controller *QuestionController) GetQuestionByID(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
