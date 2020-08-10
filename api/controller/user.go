@@ -5,17 +5,18 @@ import (
 	"net/http"
 
 	"github.com/akorwash/QuizBattle/handler"
+	"github.com/akorwash/QuizBattle/repository"
 	"github.com/akorwash/QuizBattle/resources"
 	"github.com/akorwash/QuizBattle/service/loginservice"
 
-	"github.com/akorwash/QuizBattle/actor"
 	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
-	gameengine "github.com/akorwash/QuizBattle/gameengine"
 )
 
 //UserController to do
 type UserController struct{}
+
+var userRepo repository.UserRepository
 
 //CreateUser to do
 func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -27,19 +28,34 @@ func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Requ
 	}
 	defer r.Body.Close()
 
-	user := actor.GetUserByName(_user.Username)
+	user, errRepo := userRepo.GetUserByName(_user.Username)
+	if errRepo != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, errRepo.Error())
+		return
+	}
+
 	if user != nil {
 		responseHandler.RespondWithError(w, http.StatusBadRequest, "Username found")
 		return
 	}
 
-	user = actor.GetUserByEmail(_user.Email)
+	user, errRepo = userRepo.GetUserByEmail(_user.Email)
+	if errRepo != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, errRepo.Error())
+		return
+	}
+
 	if user != nil {
 		responseHandler.RespondWithError(w, http.StatusBadRequest, "Email found")
 		return
 	}
 
-	user = actor.GetUserByMobile(_user.MobileNumber)
+	user, errRepo = userRepo.GetUserByMobile(_user.MobileNumber)
+	if errRepo != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, errRepo.Error())
+		return
+	}
+
 	if user != nil {
 		responseHandler.RespondWithError(w, http.StatusBadRequest, "MobileNumber found")
 		return
@@ -58,20 +74,19 @@ func (controller *UserController) CreateUser(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	user = actor.NewUser(_user.Username, _user.Password, _user.Email, _user.MobileNumber)
-	actor.UserSet = append(actor.UserSet, *user)
-
-	gameengine.CardsSet.GetRandomCard().AssignToUser(user)
-	gameengine.CardsSet.GetRandomCard().AssignToUser(user)
-	gameengine.CardsSet.GetRandomCard().AssignToUser(user)
-	datastore.MyDBContext.SaveUsers()
-	datastore.MyDBContext.SaveCards()
-	token, err := loginservice.CreateToken(user)
+	userentity := entites.User{Username: _user.Username, Password: _user.Password, Email: _user.Email, MobileNumber: _user.MobileNumber}
+	err := datastore.MyDBContext.AddUser(userentity)
 	if err != nil {
 		responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	response := resources.UserAccount{Username: user.GetUserName(), MobileNumber: user.GetMobileNumber(), Email: user.GetEmail(), Token: token}
+
+	token, err := loginservice.CreateToken(userentity)
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	response := resources.UserAccount{Username: userentity.Username, MobileNumber: userentity.MobileNumber, Email: userentity.Email, Token: token}
 	responseHandler.RespondWithJSON(w, http.StatusCreated, response)
 }
 
@@ -95,15 +110,19 @@ func (controller *UserController) Login(w http.ResponseWriter, r *http.Request) 
 	}
 
 	loginModel := loginservice.LoginFactory(_userLogin.Identifier, _userLogin.Password)
-	switch loginservice.Login(loginModel) {
+	loginres, user, err := loginservice.Login(loginModel)
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
+	}
+	switch loginres {
 	case true:
-		user := loginModel.GetUser(_userLogin.Identifier)
-		token, err := loginservice.CreateToken(user)
+		token, err := loginservice.CreateToken(*user)
 		if err != nil {
 			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		response := resources.UserAccount{Username: user.GetUserName(), MobileNumber: user.GetMobileNumber(), Email: user.GetEmail(), Token: token}
+
+		response := resources.UserAccount{Username: user.Username, MobileNumber: user.Password, Email: user.Email, Token: token}
 		responseHandler.RespondWithJSON(w, http.StatusCreated, response)
 		return
 	case false:

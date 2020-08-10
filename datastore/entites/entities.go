@@ -45,3 +45,15 @@ type User struct {
 	Email        string
 	MobileNumber string
 }
+
+//ValidatePassword get name of Bot
+func (userAccount *User) ValidatePassword(_pass string) bool {
+	return (userAccount.Password == _pass)
+}
+
+//Bot is class represent Player User account with login data
+type Bot struct {
+	ID      int
+	BotName string
+	Level   int
+}

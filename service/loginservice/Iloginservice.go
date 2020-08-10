@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/akorwash/QuizBattle/actor"
+	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/dgrijalva/jwt-go"
 
 	"github.com/akorwash/QuizBattle/handler"
@@ -12,12 +12,12 @@ import (
 
 //ILoginServices to do
 type ILoginServices interface {
-	Login() bool
-	GetUser(_id string) *actor.User
+	Login() (bool, *entites.User, error)
+	GetUser(_id string) (*entites.User, error)
 }
 
 //Login to do
-func Login(loginservice ILoginServices) bool {
+func Login(loginservice ILoginServices) (bool, *entites.User, error) {
 	return loginservice.Login()
 }
 
@@ -40,15 +40,14 @@ func LoginFactory(_id string, _pass string) ILoginServices {
 }
 
 //CreateToken to do
-func CreateToken(user *actor.User) (string, error) {
+func CreateToken(user entites.User) (string, error) {
 	var err error
 	//Creating Access Token
-	os.Setenv("ACCESS_SECRET", "KMN3KIJnj32iN3KNh6952ub34NGF3J2H4HU32B4Cr43d3FVG") //this should be in an env file
 	atClaims := jwt.MapClaims{}
 	atClaims["authorized"] = true
-	atClaims["username"] = user.GetUserName()
-	atClaims["mobileNumber"] = user.GetMobileNumber()
-	atClaims["Email"] = user.GetEmail()
+	atClaims["username"] = user.Username
+	atClaims["mobileNumber"] = user.MobileNumber
+	atClaims["Email"] = user.Email
 	atClaims["exp"] = time.Now().Add(time.Hour * 336).Unix()
 	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
 	token, err := at.SignedString([]byte(os.Getenv("ACCESS_SECRET")))
