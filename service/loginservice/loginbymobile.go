@@ -1,7 +1,8 @@
 package loginservice
 
 import (
-	"github.com/akorwash/QuizBattle/actor"
+	"github.com/akorwash/QuizBattle/datastore/entites"
+	"github.com/akorwash/QuizBattle/repository"
 )
 
 //MobileLoginModel to do
@@ -17,16 +18,23 @@ func NewMobileLogin(_identifier string, _pass string) *MobileLoginModel {
 }
 
 //Login to do
-func (loginModel MobileLoginModel) Login() bool {
-	user := actor.GetUserByMobile(loginModel.mobileNumber)
-	if user != nil {
-		return user.ValidatePassword(loginModel.password)
+func (loginModel MobileLoginModel) Login() (bool, *entites.User, error) {
+	var userRepo repository.UserRepository
+	user, err := userRepo.GetUserByMobile(loginModel.mobileNumber)
+	if err == nil {
+		if user != nil {
+			return user.ValidatePassword(loginModel.password), user, nil
+		}
 	}
-	return false
+	return false, user, nil
 }
 
 //GetUser to do
-func (loginModel MobileLoginModel) GetUser(_id string) *actor.User {
-	user := actor.GetUserByMobile(loginModel.mobileNumber)
-	return user
+func (loginModel MobileLoginModel) GetUser(_id string) (*entites.User, error) {
+	var userRepo repository.UserRepository
+	user, err := userRepo.GetUserByMobile(loginModel.mobileNumber)
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
 }

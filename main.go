@@ -10,7 +10,7 @@ import (
 
 func main() {
 	//Intaite the Game
-	gameEngine := *handler.StartUp().LoadBots().LoadQuestions().LoadCards().AssignQuestionsToCards()
+	gameEngine := *handler.StartUp()
 	if gameEngine.Errors != nil {
 		fmt.Println("unexpected error: \nerr:", gameEngine.Errors)
 		return

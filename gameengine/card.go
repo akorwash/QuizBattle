@@ -2,8 +2,6 @@ package engine
 
 import (
 	"math/rand"
-
-	"github.com/akorwash/QuizBattle/actor"
 )
 
 //Card to do
@@ -70,12 +68,6 @@ func NewCard(_id int) *Card {
 func NewLoadCard(_id int, _power float32, _owner string, _likes int, _hits int) *Card {
 	card := Card{id: _id, power: _power, owner: _owner, likes: _likes, hits: _hits}
 	return &card
-}
-
-//AssignToUser ctor for User Account
-func (card *Card) AssignToUser(owner *actor.User) *Card {
-	card.owner = owner.GetUserName()
-	return card
 }
 
 //AssignQuestion ctor for User Account
