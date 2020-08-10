@@ -1,4 +1,4 @@
-package loginservice
+package login
 
 import (
 	"github.com/akorwash/QuizBattle/datastore/entites"
