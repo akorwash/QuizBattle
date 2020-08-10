@@ -8,10 +8,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-//UserRepository to do
+//UserRepository repo to query the users collection at database
 type UserRepository struct{}
 
-//GetUserByName to do
+//GetUserByName query the database and find user by their username
 func (repos *UserRepository) GetUserByName(_name string) (*entites.User, error) {
 	dbcontext, cancelContext, err := datastore.GetContext()
 	if err != nil {
@@ -40,7 +40,7 @@ func (repos *UserRepository) GetUserByName(_name string) (*entites.User, error) 
 	return &_user, nil
 }
 
-//GetUserByMobile to do
+//GetUserByMobile query the database and find user by their mobile number
 func (repos *UserRepository) GetUserByMobile(_mobile string) (*entites.User, error) {
 	dbcontext, cancelContext, err := datastore.GetContext()
 	if err != nil {
@@ -69,7 +69,7 @@ func (repos *UserRepository) GetUserByMobile(_mobile string) (*entites.User, err
 	return &_user, nil
 }
 
-//GetUserByEmail to do
+//GetUserByEmail query the database and find user by their email
 func (repos *UserRepository) GetUserByEmail(_email string) (*entites.User, error) {
 	dbcontext, cancelContext, err := datastore.GetContext()
 	if err != nil {
@@ -96,4 +96,20 @@ func (repos *UserRepository) GetUserByEmail(_email string) (*entites.User, error
 		return nil, nil
 	}
 	return &_user, nil
+}
+
+//AddUser to do
+func (repos *UserRepository) AddUser(user entites.User) error {
+	dbcontext, cancelContext, err := datastore.GetContext()
+	if err != nil {
+		println("Error while get database context: %v\n", err)
+		defer cancelContext()
+		return err
+	}
+
+	iter := dbcontext.Collection("users")
+	//create the bot account
+	iter.InsertOne(context.Background(), user)
+	defer cancelContext()
+	return nil
 }

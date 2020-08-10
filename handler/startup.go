@@ -29,9 +29,11 @@ const (
 	MaxNubOfCards = 250
 )
 
-//StartUp to do
+//StartUp responsible for intiate the database, randmoize with UNIX Nano
 func StartUp() *Startup {
+	//Intialize the database, to prepare the context and run the seed mthods
 	datastore.MyDBContext.InitializingDB()
+	//somtimes we need to generate randome numbers, we use this to seed the randome numbers
 	rand.Seed(time.Now().UnixNano())
 	return &Startup{}
 }

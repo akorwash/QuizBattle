@@ -2,10 +2,10 @@ package controller
 
 import "net/http"
 
-//HomeController to do
+//HomeController home page controller
 type HomeController struct{}
 
-//HomePage to do
+//HomePage home page http requst handler
 func (controller *HomeController) HomePage(w http.ResponseWriter, r *http.Request) {
 
 	strHTML := `<!DOCTYPE html>

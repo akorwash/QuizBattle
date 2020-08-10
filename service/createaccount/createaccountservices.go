@@ -3,7 +3,6 @@ package createaccount
 import (
 	"fmt"
 
-	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/akorwash/QuizBattle/handler"
 	"github.com/akorwash/QuizBattle/repository"
@@ -11,16 +10,18 @@ import (
 	"github.com/akorwash/QuizBattle/service/login"
 )
 
-//ICreateAccountServices to do
+//ICreateAccountServices services interface to create account
 type ICreateAccountServices interface {
 	CrateUser(user entites.User) (*resources.UserAccount, error)
 }
 
-//CreateAccountServices to do
+//CreateAccountServices busniess of how to create account
 type CreateAccountServices struct {
 }
 
-//CrateUser to do
+var userRepo repository.UserRepository
+
+//CrateUser apply busniess of validation and create user if passed or return error
 func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.UserAccount, error) {
 	err := validateInutes(_user)
 	if err != nil {
@@ -28,7 +29,7 @@ func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.
 	}
 
 	userentity := entites.User{Username: _user.Username, Password: _user.Password, Email: _user.Email, MobileNumber: _user.MobileNumber}
-	err = datastore.MyDBContext.AddUser(userentity)
+	err = userRepo.AddUser(userentity)
 	if err != nil {
 		return nil, err
 	}
@@ -42,8 +43,10 @@ func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.
 	return &response, nil
 }
 
+//validate models that comes from the body when the user hit the apis
+//also validate if the user inputes exist before by another users
+//return detailed error
 func validateInutes(_user entites.User) error {
-	var userRepo repository.UserRepository
 
 	var usernameValidation handler.ValidateUsername
 	if !usernameValidation.Validate(_user.Username) {

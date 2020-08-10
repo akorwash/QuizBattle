@@ -5,19 +5,19 @@ import (
 	"github.com/akorwash/QuizBattle/repository"
 )
 
-//EmailLoginModel to do
+//EmailLoginModel email login factory
 type EmailLoginModel struct {
 	email    string
 	password string
 }
 
-//NewEmailLogin to do
+//NewEmailLogin create factory for email login
 func NewEmailLogin(_identifier string, _pass string) *EmailLoginModel {
 	loginModel := EmailLoginModel{email: _identifier, password: _pass}
 	return &loginModel
 }
 
-//Login to do
+//Login login using email and password
 func (loginModel EmailLoginModel) Login() (bool, *entites.User, error) {
 	var userRepo repository.UserRepository
 	user, err := userRepo.GetUserByEmail(loginModel.email)
@@ -29,7 +29,7 @@ func (loginModel EmailLoginModel) Login() (bool, *entites.User, error) {
 	return false, user, nil
 }
 
-//GetUser to do
+//GetUser get the user using the user email
 func (loginModel EmailLoginModel) GetUser(_id string) (*entites.User, error) {
 	var userRepo repository.UserRepository
 	user, err := userRepo.GetUserByEmail(loginModel.email)

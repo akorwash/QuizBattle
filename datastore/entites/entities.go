@@ -1,19 +1,13 @@
 package entites
 
-//AnswerFileName to do
-var AnswerFileName = "answers.json"
-
-//Answer to do
+//Answer answer entity, eacg question will have 4 answers one of them will be is correct
 type Answer struct {
 	ID        int
 	Text      string
 	IsCorrect bool
 }
 
-//CardFileName to do
-var CardFileName = "cards.json"
-
-//Card to do
+//Card card entity, tradable object between players also main object when the battle start.
 type Card struct {
 	ID    int
 	Power float32
@@ -25,20 +19,14 @@ type Card struct {
 	Questions Question
 }
 
-//QuestionsFileName to do
-var QuestionsFileName = "questions.json"
-
-//Question to do
+//Question question entity
 type Question struct {
 	ID      int
 	Header  string
 	Answers []Answer
 }
 
-//UsersFileName to do
-var UsersFileName = "users.json"
-
-//User to do
+//User user entity contains personal information
 type User struct {
 	Username     string
 	Password     string

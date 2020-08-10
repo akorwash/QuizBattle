@@ -28,11 +28,11 @@ const (
 	MaxNubOfCards = 250
 )
 
-//SeedInitializer to do
+//SeedInitializer represent seed initializer
 type SeedInitializer struct {
 }
 
-//Seed to do
+//Seed to seed the database with admin user, also bots and questions
 func (seed *SeedInitializer) Seed() {
 	seedUsers()
 	seedBots()
