@@ -4,8 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/akorwash/QuizBattle/datastore/entites"
-	gameengine "github.com/akorwash/QuizBattle/gameengine"
+	"github.com/akorwash/QuizBattle/repository"
 	"github.com/gorilla/mux"
 )
 
@@ -21,14 +20,16 @@ func (controller *QuestionController) GetQuestionByID(w http.ResponseWriter, r *
 		return
 	}
 
-	_question := gameengine.CardsSet.GetRandomCard().GetQuestionByID(id)
-	var _answers []entites.Answer
-	var answers []gameengine.Answer = *_question.GetAnswers()
-	for i := 0; i < len(answers); i++ {
-		_answers = append(_answers, entites.Answer{ID: answers[i].GetID(), Text: answers[i].GetText(), IsCorrect: answers[i].GetIsCorrect()})
+	var questionRepo repository.QuestionRepository
+	question, err := questionRepo.GetQuestionByID(id)
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't retrive question data")
+		return
 	}
-	question := entites.Question{ID: *_question.GetID(), Header: *_question.GetHeader(), Answers: _answers}
-
+	if question == nil {
+		responseHandler.RespondWithError(w, http.StatusNotFound, "This question not found")
+		return
+	}
 	//respondWithJSON(w, http.StatusOK, "payload")
-	responseHandler.RespondWithJSON(w, http.StatusOK, question)
+	responseHandler.RespondWithJSON(w, http.StatusOK, *question)
 }
