@@ -3,7 +3,7 @@
 Quiz Battle is a cognitive game something like "Saif Almarifa", In our game players own their questions as "Card" and they can trade their "cards " with others or challenge them in "public/private" battles.
 
 # You can play the game!
-**sooner** the website game will be available.
+**Here you can Find the Website of Quiz Battle: <a href="https://quizbattletest.herokuapp.com/">QuizBattle Game</a>**
 
 # Story?
 - each player can join a quiz battle with other online players or **bots**
