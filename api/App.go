@@ -20,9 +20,10 @@ type App struct {
 var Server App
 
 //Initialize start project
-func (a *App) Initialize() {
+func (a *App) Initialize() *App {
 	a.Router = mux.NewRouter()
 	a.initializeRoutes()
+	return a
 }
 
 var questionController controller.QuestionController
