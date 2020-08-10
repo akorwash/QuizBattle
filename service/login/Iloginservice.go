@@ -1,13 +1,12 @@
-package loginservice
+package login
 
 import (
 	"os"
 	"time"
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
-	"github.com/dgrijalva/jwt-go"
-
 	"github.com/akorwash/QuizBattle/handler"
+	"github.com/dgrijalva/jwt-go"
 )
 
 //ILoginServices to do
