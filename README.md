@@ -1,4 +1,5 @@
 # Welcome to Quiz Battle!
+![Go](https://github.com/akorwash/QuizBattle/workflows/Go/badge.svg?branch=master)
 
 Quiz Battle is a cognitive game something like "Saif Almarifa", In our game players own their questions as "Card" and they can trade their "cards " with others or challenge them in "public/private" battles.
 
