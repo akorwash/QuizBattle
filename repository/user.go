@@ -49,7 +49,7 @@ func (repos *UserRepository) GetUserByMobile(_mobile string) (*entites.User, err
 		return nil, err
 	}
 
-	filter := bson.M{"mobileNumber": _mobile}
+	filter := bson.M{"mobilenumber": _mobile}
 	iter := dbcontext.Collection("users")
 	cursor, err := iter.Find(context.Background(), filter)
 	if err != nil {

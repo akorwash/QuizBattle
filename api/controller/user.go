@@ -70,7 +70,7 @@ func (controller *UserController) Login(w http.ResponseWriter, r *http.Request) 
 		}
 
 		response := resources.UserAccount{Username: (user).Username, MobileNumber: user.Password, Email: user.Email, Token: token}
-		responseHandler.RespondWithJSON(w, http.StatusCreated, response)
+		responseHandler.RespondWithJSON(w, http.StatusOK, response)
 		return
 	case false:
 		responseHandler.RespondWithError(w, http.StatusBadRequest, "Password Invalid")

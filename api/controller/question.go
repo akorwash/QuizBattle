@@ -16,7 +16,7 @@ func (controller *QuestionController) GetQuestionByID(w http.ResponseWriter, r *
 	vars := mux.Vars(r)
 	id, err := strconv.Atoi(vars["id"])
 	if err != nil {
-		responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid product ID")
+		responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid question ID")
 		return
 	}
 
