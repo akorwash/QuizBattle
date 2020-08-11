@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/akorwash/QuizBattle/datastore"
+	"github.com/akorwash/QuizBattle/datastore/entites"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -35,4 +37,35 @@ func Database() {
 	}
 
 	fmt.Println("Success to connect to database")
+}
+
+func seedtestUser() (*entites.User, error) {
+	user := entites.User{Username: "testuser", Password: "TestPass#2010", Email: "test@test.com", MobileNumber: "01585285285"}
+	dbcontext, cancelContext, err := datastore.GetContext()
+	if err != nil {
+		log.Fatal("Error while get database context: \n", err)
+		defer cancelContext()
+		return nil, err
+	}
+
+	iter := dbcontext.Collection("users")
+	//create the bot account
+	iter.InsertOne(context.Background(), user)
+	defer cancelContext()
+	return &user, nil
+}
+
+func deletetestUser(user *entites.User) error {
+	dbcontext, cancelContext, err := datastore.GetContext()
+	if err != nil {
+		log.Fatal("Error while get database context: \n", err)
+		defer cancelContext()
+		return err
+	}
+
+	iter := dbcontext.Collection("users")
+	//create the bot account
+	iter.DeleteOne(context.Background(), *user)
+	defer cancelContext()
+	return nil
 }
