@@ -21,3 +21,5 @@ Quiz Battle is a cognitive game something like "Saif Almarifa", In our game play
 
 # For Developer
 Check Documention page <a href="https://github.com/akorwash/QuizBattle/wiki">Wiki</a>
+
+![Go](https://github.com/akorwash/QuizBattle/workflows/Go/badge.svg)
