@@ -69,3 +69,34 @@ func deletetestUser(user *entites.User) error {
 	defer cancelContext()
 	return nil
 }
+
+func seedtestQuestion() (*entites.Question, error) {
+	question := entites.Question{ID: 5525525, Header: "Header"}
+	dbcontext, cancelContext, err := datastore.GetContext()
+	if err != nil {
+		log.Fatal("Error while get database context: \n", err)
+		defer cancelContext()
+		return nil, err
+	}
+
+	iter := dbcontext.Collection("Question")
+	//create the bot account
+	iter.InsertOne(context.Background(), question)
+	defer cancelContext()
+	return &question, nil
+}
+
+func deletetestQuestion(question *entites.Question) error {
+	dbcontext, cancelContext, err := datastore.GetContext()
+	if err != nil {
+		log.Fatal("Error while get database context: \n", err)
+		defer cancelContext()
+		return err
+	}
+
+	iter := dbcontext.Collection("Question")
+	//create the bot account
+	iter.DeleteOne(context.Background(), *question)
+	defer cancelContext()
+	return nil
+}
