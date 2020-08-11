@@ -40,4 +40,4 @@ jobs:
        MongoPassword: ${{ secrets.MONGOUSERNAME }}
 
     - name: Test
-      run: go test -v ./... .
+      run: go test -v .
