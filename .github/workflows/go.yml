@@ -32,12 +32,13 @@ jobs:
 
     - name: Build
       run: go build -v .
-
-    - name: set-env
-      uses: allenevans/set-env@v1.1.0
-      with:
-       MongoUsername: ${{ secrets.MONGOPASSWORD }}
-       MongoPassword: ${{ secrets.MONGOUSERNAME }}
+      env:
+       MongoUsername: '${{secrets.MONGOUSERNAME}}'
+       MongoPassword: '${{secrets.MONGOPASSWORD}}'
 
     - name: Test
-      run: go test -v .
+      run: go test -v ./... .
+      env:
+       MongoUsername: '${{secrets.MONGOUSERNAME}}'
+       MongoPassword: '${{secrets.MONGOPASSWORD}}'
+
