@@ -14,11 +14,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-//ICreateAccountServices services interface to create account
-type ICreateAccountServices interface {
-	CrateUser(user entites.User) (*resources.UserAccount, error)
-}
-
 //CreateAccountServices busniess of how to create account
 type CreateAccountServices struct {
 	userRepo repository.IUserRepository

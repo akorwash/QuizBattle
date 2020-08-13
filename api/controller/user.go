@@ -6,7 +6,7 @@ import (
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/akorwash/QuizBattle/resources"
-	"github.com/akorwash/QuizBattle/service/createaccount"
+	"github.com/akorwash/QuizBattle/service"
 	"github.com/akorwash/QuizBattle/service/login"
 )
 
@@ -14,7 +14,7 @@ import (
 type UserController struct{}
 
 //CreateUser handle create user http request
-func (controller *UserController) CreateUser(createAccountService createaccount.ICreateAccountServices) func(w http.ResponseWriter, r *http.Request) {
+func (controller *UserController) CreateUser(createAccountService service.ICreateAccountServices) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var _user entites.User
 		decoder := json.NewDecoder(r.Body)
