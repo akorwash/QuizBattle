@@ -6,35 +6,40 @@ import (
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/akorwash/QuizBattle/handler"
+	"github.com/akorwash/QuizBattle/repository"
+	"github.com/akorwash/QuizBattle/service"
 	"github.com/dgrijalva/jwt-go"
 )
 
-//ILoginServices interface for login service
-type ILoginServices interface {
-	Login() (bool, *entites.User, error)
-	GetUser(_id string) (*entites.User, error)
+//LoginService login services
+type LoginService struct {
+	userRepo repository.IUserRepository
+}
+
+//New create instance for Login services
+func New(repository repository.IUserRepository) *LoginService {
+	return &LoginService{userRepo: repository}
 }
 
 //Login here user can login
-func Login(loginservice ILoginServices) (bool, *entites.User, error) {
+func Login(loginservice service.ILoginServices) (bool, *entites.User, error) {
 	return loginservice.Login()
 }
 
 //LoginFactory identity the user login using email or username or mobile number
 //There are 3 factory Username, Email, Mobile Login Factory
 //Each factory will represent differnent way to login using differnent implmention
-func LoginFactory(_id string, _pass string) ILoginServices {
-	var loginModel ILoginServices
-
+func LoginFactory(svc *LoginService, _id string, _pass string) service.ILoginServices {
+	var loginModel service.ILoginServices
 	switch {
 	case handler.IsEmailValid(_id):
-		loginModel = NewEmailLogin(_id, _pass)
+		loginModel = NewEmailLogin(svc, _id, _pass)
 		break
 	case handler.IsMobileNumberValid(_id):
-		loginModel = NewMobileLogin(_id, _pass)
+		loginModel = NewMobileLogin(svc, _id, _pass)
 		break
 	default:
-		loginModel = NewUsernameLogin(_id, _pass)
+		loginModel = NewUsernameLogin(svc, _id, _pass)
 		break
 	}
 	return loginModel

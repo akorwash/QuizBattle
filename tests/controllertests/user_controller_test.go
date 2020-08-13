@@ -11,6 +11,9 @@ import (
 
 	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
+	"github.com/akorwash/QuizBattle/repository"
+	"github.com/akorwash/QuizBattle/service/createaccount"
+	"github.com/akorwash/QuizBattle/service/login"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -53,7 +56,7 @@ func TestLogin(t *testing.T) {
 			t.Errorf("this is the error: %v", err)
 		}
 		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(userController.Login)
+		handler := http.HandlerFunc(userController.Login(login.New(repository.NewMongoUserRepository())))
 		handler.ServeHTTP(rr, req)
 
 		if !assert.Equal(t, rr.Code, v.statusCode) {
@@ -86,7 +89,7 @@ func TestCreateUser(t *testing.T) {
 		return
 	}
 
-	fakeUser := entites.User{ID: userCount + 1, Username: "selemi", Email: "xts@email.com", Password: "Mido#R2010", MobileNumber: "01597532225"}
+	fakeUser := entites.User{ID: userCount + 1, Username: "selemiTestFunc", Email: "xts@email.com", Password: "Mido#R2010", MobileNumber: "01597532225"}
 	samples := []struct {
 		inputJSON  string
 		statusCode int
@@ -115,7 +118,7 @@ func TestCreateUser(t *testing.T) {
 			t.Errorf("this is the error: %v", err)
 		}
 		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(userController.CreateUser)
+		handler := http.HandlerFunc(userController.CreateUser(createaccount.NEW(repository.NewMongoUserRepository())))
 		handler.ServeHTTP(rr, req)
 
 		assert.Equal(t, rr.Code, v.statusCode)
@@ -127,6 +130,11 @@ func TestCreateUser(t *testing.T) {
 	}
 
 	err = deletetestUser(&fakeUser)
+	if err != nil {
+		fmt.Printf("This is the error %v\n", err)
+	}
+
+	err = deletetestUserByName(fakeUser.Username)
 	if err != nil {
 		fmt.Printf("This is the error %v\n", err)
 	}

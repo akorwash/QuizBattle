@@ -6,6 +6,10 @@ import (
 	"net/http"
 
 	"github.com/akorwash/QuizBattle/api/controller"
+	"github.com/akorwash/QuizBattle/repository"
+	"github.com/akorwash/QuizBattle/service"
+	"github.com/akorwash/QuizBattle/service/createaccount"
+	"github.com/akorwash/QuizBattle/service/login"
 
 	"github.com/gorilla/mux"
 )
@@ -38,8 +42,8 @@ func (a *App) Run(port string) {
 
 //initializeRoutes here we will intialize the rest apis routes and html pages
 func (a *App) initializeRoutes() {
-	a.Router.HandleFunc("/question/{id:[0-9]+}", questionController.GetQuestionByID).Methods("GET")
-	a.Router.HandleFunc("/user/createuser", userController.CreateUser).Methods("POST")
-	a.Router.HandleFunc("/user/login", userController.Login).Methods("POST")
+	a.Router.HandleFunc("/question/{id:[0-9]+}", questionController.GetQuestionByID(service.NewQuestionServices(repository.NewMongoQuestionRepository()))).Methods("GET")
+	a.Router.HandleFunc("/user/createuser", userController.CreateUser(createaccount.NEW(repository.NewMongoUserRepository()))).Methods("POST")
+	a.Router.HandleFunc("/user/login", userController.Login(login.New(repository.NewMongoUserRepository()))).Methods("POST")
 	a.Router.HandleFunc("/", homeController.HomePage).Methods("GET")
 }

@@ -21,13 +21,17 @@ type ICreateAccountServices interface {
 
 //CreateAccountServices busniess of how to create account
 type CreateAccountServices struct {
+	userRepo repository.IUserRepository
 }
 
-var userRepo repository.UserRepository
+//NEWMongo busniess of how to create account
+func NEW(_repo repository.IUserRepository) *CreateAccountServices {
+	return &CreateAccountServices{userRepo: _repo}
+}
 
 //CrateUser apply busniess of validation and create user if passed or return error
 func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.UserAccount, error) {
-	err := validateInutes(_user)
+	err := validateInutes(services.userRepo, _user)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +52,7 @@ func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.
 	}
 
 	userentity := entites.User{ID: userCount + 1, Username: _user.Username, Password: _user.Password, Email: _user.Email, MobileNumber: _user.MobileNumber}
-	err = userRepo.AddUser(userentity)
+	err = services.userRepo.AddUser(userentity)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +69,7 @@ func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.
 //validate models that comes from the body when the user hit the apis
 //also validate if the user inputes exist before by another users
 //return detailed error
-func validateInutes(_user entites.User) error {
+func validateInutes(userRepo repository.IUserRepository, _user entites.User) error {
 
 	var usernameValidation handler.ValidateUsername
 	if !usernameValidation.Validate(_user.Username) {

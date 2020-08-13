@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/akorwash/QuizBattle/repository"
+	"github.com/akorwash/QuizBattle/service"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
 )
@@ -66,7 +68,7 @@ func TestGetQuestionByID(t *testing.T) {
 
 func Router() *mux.Router {
 	r := mux.NewRouter()
-	r.HandleFunc("/question/{id}", questionController.GetQuestionByID)
+	r.HandleFunc("/question/{id}", questionController.GetQuestionByID(service.NewQuestionServices(repository.NewMongoQuestionRepository())))
 
 	return r
 }

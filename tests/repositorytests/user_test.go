@@ -12,7 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-var userRepo repository.UserRepository
+var userRepo repository.IUserRepository
 
 func TestGetUserByName(t *testing.T) {
 	fakeUser, err := seedtestUser()

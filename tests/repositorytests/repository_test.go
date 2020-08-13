@@ -10,6 +10,7 @@ import (
 
 	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
+	"github.com/akorwash/QuizBattle/repository"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -17,6 +18,8 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	questionRepo = repository.NewMongoQuestionRepository()
+	userRepo = repository.NewMongoUserRepository()
 	Database()
 	os.Exit(m.Run())
 }
