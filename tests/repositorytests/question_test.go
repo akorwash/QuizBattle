@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var questionRepo repository.QuestionRepository
+var questionRepo repository.IQuestionRepository
 
 func TestGetQuestionByID(t *testing.T) {
 	fakeQuestion, err := seedtestQuestion()

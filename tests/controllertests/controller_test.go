@@ -80,6 +80,29 @@ func deletetestUser(user *entites.User) error {
 	return nil
 }
 
+func deletetestUserByName(_name string) error {
+	dbcontext, err := datastore.GetContext()
+	if err != nil {
+		log.Fatal("Error while get database context: \n", err)
+		return err
+	}
+
+	filter := bson.M{"username": _name}
+	iter := dbcontext.Collection("users")
+	cursor, err := iter.Find(context.Background(), filter)
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return err
+	}
+
+	var _user entites.User
+	for cursor.Next(context.Background()) {
+		iter.DeleteOne(context.Background(), _user)
+	}
+	//create the bot account
+	return nil
+}
+
 func seedtestQuestions() ([]entites.Question, error) {
 	question1 := entites.Question{ID: 10, Header: "Test 10"}
 	question2 := entites.Question{ID: 20, Header: "Test 20"}

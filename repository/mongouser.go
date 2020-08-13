@@ -9,11 +9,17 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-//UserRepository repo to query the users collection at database
-type UserRepository struct{}
+//MongoUserRepository repo to query the users collection at mongo database
+type MongoUserRepository struct{}
+
+//NewMongoUserRepository ctor for MongoUserRepository
+func NewMongoUserRepository() *MongoUserRepository {
+	repo := MongoUserRepository{}
+	return &repo
+}
 
 //GetUserByName query the database and find user by their username
-func (repos *UserRepository) GetUserByName(_name string) (*entites.User, error) {
+func (repos *MongoUserRepository) GetUserByName(_name string) (*entites.User, error) {
 	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
@@ -40,7 +46,7 @@ func (repos *UserRepository) GetUserByName(_name string) (*entites.User, error) 
 }
 
 //GetUserByMobile query the database and find user by their mobile number
-func (repos *UserRepository) GetUserByMobile(_mobile string) (*entites.User, error) {
+func (repos *MongoUserRepository) GetUserByMobile(_mobile string) (*entites.User, error) {
 	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
@@ -67,7 +73,7 @@ func (repos *UserRepository) GetUserByMobile(_mobile string) (*entites.User, err
 }
 
 //GetUserByEmail query the database and find user by their email
-func (repos *UserRepository) GetUserByEmail(_email string) (*entites.User, error) {
+func (repos *MongoUserRepository) GetUserByEmail(_email string) (*entites.User, error) {
 	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
@@ -94,7 +100,7 @@ func (repos *UserRepository) GetUserByEmail(_email string) (*entites.User, error
 }
 
 //AddUser to do
-func (repos *UserRepository) AddUser(user entites.User) error {
+func (repos *MongoUserRepository) AddUser(user entites.User) error {
 	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
