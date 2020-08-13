@@ -28,6 +28,7 @@ type Question struct {
 
 //User user entity contains personal information
 type User struct {
+	ID           int64
 	Username     string
 	Password     string
 	Email        string

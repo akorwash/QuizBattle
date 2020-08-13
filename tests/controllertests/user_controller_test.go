@@ -2,13 +2,17 @@ package controllertests
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
+	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/stretchr/testify/assert"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestLogin(t *testing.T) {
@@ -69,7 +73,20 @@ func TestCreateUser(t *testing.T) {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	fakeUser := entites.User{Username: "selemi", Email: "xts@email.com", Password: "Mido#R2010", MobileNumber: "01597532225"}
+	dbcontext, err := datastore.GetContext()
+	if err != nil {
+		log.Fatal("Error while get database context: \n", err)
+		return
+	}
+
+	iter := dbcontext.Collection("users")
+	userCount, err := iter.CountDocuments(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while count users recored: %v\n", err)
+		return
+	}
+
+	fakeUser := entites.User{ID: userCount + 1, Username: "selemi", Email: "xts@email.com", Password: "Mido#R2010", MobileNumber: "01597532225"}
 	samples := []struct {
 		inputJSON  string
 		statusCode int

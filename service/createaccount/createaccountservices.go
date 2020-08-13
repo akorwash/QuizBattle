@@ -1,13 +1,17 @@
 package createaccount
 
 import (
+	"context"
 	"fmt"
+	"log"
 
+	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/akorwash/QuizBattle/handler"
 	"github.com/akorwash/QuizBattle/repository"
 	"github.com/akorwash/QuizBattle/resources"
 	"github.com/akorwash/QuizBattle/service/login"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 //ICreateAccountServices services interface to create account
@@ -28,7 +32,22 @@ func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.
 		return nil, err
 	}
 
-	userentity := entites.User{Username: _user.Username, Password: _user.Password, Email: _user.Email, MobileNumber: _user.MobileNumber}
+	dbcontext, err := datastore.GetContext()
+	if err != nil {
+		log.Fatal("Error while get database context: \n", err)
+		return nil, err
+
+	}
+
+	iter := dbcontext.Collection("users")
+	userCount, err := iter.CountDocuments(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while count users recored: %v\n", err)
+		return nil, err
+
+	}
+
+	userentity := entites.User{ID: userCount + 1, Username: _user.Username, Password: _user.Password, Email: _user.Email, MobileNumber: _user.MobileNumber}
 	err = userRepo.AddUser(userentity)
 	if err != nil {
 		return nil, err
@@ -69,7 +88,7 @@ func validateInutes(_user entites.User) error {
 	}
 
 	user, errRepo := userRepo.GetUserByName(_user.Username)
-	if errRepo != nil {
+	if errRepo != nil && errRepo.Error() != "User not found" {
 		return errRepo
 	}
 
@@ -78,7 +97,7 @@ func validateInutes(_user entites.User) error {
 	}
 
 	user, errRepo = userRepo.GetUserByEmail(_user.Email)
-	if errRepo != nil {
+	if errRepo != nil && errRepo.Error() != "User not found" {
 		return errRepo
 	}
 
@@ -87,7 +106,7 @@ func validateInutes(_user entites.User) error {
 	}
 
 	user, errRepo = userRepo.GetUserByMobile(_user.MobileNumber)
-	if errRepo != nil {
+	if errRepo != nil && errRepo.Error() != "User not found" {
 		return errRepo
 	}
 

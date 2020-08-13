@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
@@ -13,10 +14,9 @@ type UserRepository struct{}
 
 //GetUserByName query the database and find user by their username
 func (repos *UserRepository) GetUserByName(_name string) (*entites.User, error) {
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
-		defer cancelContext()
 		return nil, err
 	}
 	//
@@ -33,19 +33,17 @@ func (repos *UserRepository) GetUserByName(_name string) (*entites.User, error) 
 		cursor.Decode(&_user)
 		break
 	}
-	defer cancelContext()
 	if _user.Username == "" {
-		return nil, nil
+		return nil, fmt.Errorf("User not found")
 	}
 	return &_user, nil
 }
 
 //GetUserByMobile query the database and find user by their mobile number
 func (repos *UserRepository) GetUserByMobile(_mobile string) (*entites.User, error) {
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
-		defer cancelContext()
 		return nil, err
 	}
 
@@ -62,19 +60,17 @@ func (repos *UserRepository) GetUserByMobile(_mobile string) (*entites.User, err
 		cursor.Decode(&_user)
 		break
 	}
-	defer cancelContext()
 	if _user.Username == "" {
-		return nil, nil
+		return nil, fmt.Errorf("User not found")
 	}
 	return &_user, nil
 }
 
 //GetUserByEmail query the database and find user by their email
 func (repos *UserRepository) GetUserByEmail(_email string) (*entites.User, error) {
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
-		defer cancelContext()
 		return nil, err
 	}
 
@@ -91,25 +87,22 @@ func (repos *UserRepository) GetUserByEmail(_email string) (*entites.User, error
 		cursor.Decode(&_user)
 		break
 	}
-	defer cancelContext()
 	if _user.Username == "" {
-		return nil, nil
+		return nil, fmt.Errorf("User not found")
 	}
 	return &_user, nil
 }
 
 //AddUser to do
 func (repos *UserRepository) AddUser(user entites.User) error {
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
-		defer cancelContext()
 		return err
 	}
 
 	iter := dbcontext.Collection("users")
 	//create the bot account
 	iter.InsertOne(context.Background(), user)
-	defer cancelContext()
 	return nil
 }

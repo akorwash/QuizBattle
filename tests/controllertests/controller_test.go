@@ -12,6 +12,7 @@ import (
 	"github.com/akorwash/QuizBattle/api/controller"
 	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -46,33 +47,36 @@ func Database() {
 }
 
 func seedtestUser() (*entites.User, error) {
-	user := entites.User{Username: "testuser", Password: "TestPass#2010", Email: "test@test.com", MobileNumber: "01585285285"}
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		log.Fatal("Error while get database context: \n", err)
-		defer cancelContext()
 		return nil, err
 	}
 
 	iter := dbcontext.Collection("users")
+	userCount, err := iter.CountDocuments(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while count users recored: %v\n", err)
+		return nil, err
+	}
+
+	user := entites.User{ID: userCount + 1, Username: "testuser", Password: "TestPass#2010", Email: "test@test.com", MobileNumber: "01585285285"}
+
 	//create the bot account
 	iter.InsertOne(context.Background(), user)
-	defer cancelContext()
 	return &user, nil
 }
 
 func deletetestUser(user *entites.User) error {
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		log.Fatal("Error while get database context: \n", err)
-		defer cancelContext()
 		return err
 	}
 
 	iter := dbcontext.Collection("users")
 	//create the bot account
 	iter.DeleteOne(context.Background(), *user)
-	defer cancelContext()
 	return nil
 }
 
@@ -82,10 +86,9 @@ func seedtestQuestions() ([]entites.Question, error) {
 	question3 := entites.Question{ID: 30, Header: "Test 30"}
 	question4 := entites.Question{ID: 40, Header: "Test 40"}
 	questions := []entites.Question{question1, question2, question3, question4}
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		log.Fatal("Error while get database context: \n", err)
-		defer cancelContext()
 		return nil, err
 	}
 
@@ -94,15 +97,13 @@ func seedtestQuestions() ([]entites.Question, error) {
 	for _, _q := range questions {
 		iter.InsertOne(context.Background(), _q)
 	}
-	defer cancelContext()
 	return questions, nil
 }
 
 func deleteSeedtestQuestions(questions []entites.Question) ([]entites.Question, error) {
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		log.Fatal("Error while get database context: \n", err)
-		defer cancelContext()
 		return nil, err
 	}
 
@@ -111,6 +112,5 @@ func deleteSeedtestQuestions(questions []entites.Question) ([]entites.Question, 
 	for _, _q := range questions {
 		iter.DeleteOne(context.Background(), _q)
 	}
-	defer cancelContext()
 	return questions, nil
 }
