@@ -40,40 +40,35 @@ func (seed *SeedInitializer) Seed() {
 }
 
 func seedUsers() {
-	dbcontext, cancelContext, err := GetContext()
+	dbcontext, err := GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
-		defer cancelContext()
 		return
 	}
 	iter := dbcontext.Collection("users")
 	cursor, err := iter.CountDocuments(context.Background(), bson.M{})
 	if err != nil {
 		println("Error while count users recored: %v\n", err)
-		defer cancelContext()
 		return
 	}
 
 	if cursor <= 0 {
-		//create the bot account
-		user := entites.User{Username: os.Getenv("AdminUserAccount"), Email: "admin@hosta.care", MobileNumber: os.Getenv("AdminUserMobile"), Password: os.Getenv("AdminUserPassword")}
+
+		user := entites.User{ID: 1, Username: os.Getenv("AdminUserAccount"), Email: "admin@hosta.care", MobileNumber: os.Getenv("AdminUserMobile"), Password: os.Getenv("AdminUserPassword")}
 		iter.InsertOne(context.Background(), user)
 	}
-	defer cancelContext()
 }
 
 func seedBots() {
-	dbcontext, cancelContext, err := GetContext()
+	dbcontext, err := GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
-		defer cancelContext()
 		return
 	}
 	iter := dbcontext.Collection("bots")
 	cursor, err := iter.CountDocuments(context.Background(), bson.M{})
 	if err != nil {
 		println("Error while count bots recored: %v\n", err)
-		defer cancelContext()
 		return
 	}
 
@@ -93,21 +88,18 @@ func seedBots() {
 			iter.InsertOne(context.Background(), bot)
 		}
 	}
-	defer cancelContext()
 }
 
 func seedQuestions() {
-	dbcontext, cancelContext, err := GetContext()
+	dbcontext, err := GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
-		defer cancelContext()
 		return
 	}
 	iter := dbcontext.Collection("Question")
 	cursor, err := iter.CountDocuments(context.Background(), bson.M{})
 	if err != nil {
 		println("Error while count questions recored: %v\n", err)
-		defer cancelContext()
 		return
 	}
 
@@ -136,5 +128,4 @@ func seedQuestions() {
 		question4 := entites.Question{ID: 4, Header: "ماهو اطول جسر بحري في العالم؟", Answers: answersForQuestion4}
 		iter.InsertOne(context.Background(), question4)
 	}
-	defer cancelContext()
 }

@@ -13,10 +13,9 @@ type QuestionRepository struct{}
 
 //GetQuestionByID query the database and find question by id
 func (repos *QuestionRepository) GetQuestionByID(_id int) (*entites.Question, error) {
-	dbcontext, cancelContext, err := datastore.GetContext()
+	dbcontext, err := datastore.GetContext()
 	if err != nil {
 		println("Error while get database context: %v\n", err)
-		defer cancelContext()
 		return nil, err
 	}
 
@@ -33,7 +32,6 @@ func (repos *QuestionRepository) GetQuestionByID(_id int) (*entites.Question, er
 		cursor.Decode(&_question)
 		break
 	}
-	defer cancelContext()
 	if _question.Header == "" {
 		return nil, nil
 	}
