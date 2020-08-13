@@ -23,6 +23,7 @@ var userController = controller.UserController{}
 var questionController = controller.QuestionController{}
 
 func TestMain(m *testing.M) {
+	deletetestUserByName("selemiTestFunc")
 	Database()
 	os.Exit(m.Run())
 }
