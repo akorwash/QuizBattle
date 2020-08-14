@@ -31,7 +31,6 @@ func (h *Hub) Close() {
 }
 
 func (h *Hub) Run() {
-
 	for {
 		if !h.active {
 			for client := range h.clients {
