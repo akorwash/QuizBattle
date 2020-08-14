@@ -10,6 +10,7 @@ import (
 	"github.com/akorwash/QuizBattle/service"
 	"github.com/akorwash/QuizBattle/service/createaccount"
 	"github.com/akorwash/QuizBattle/service/login"
+	"github.com/akorwash/QuizBattle/websockets"
 
 	"github.com/gorilla/mux"
 )
@@ -34,9 +35,12 @@ func (a *App) Initialize() *App {
 var questionController controller.QuestionController
 var userController controller.UserController
 var homeController controller.HomeController
+var hub *websockets.Hub
 
 //Run the project
 func (a *App) Run(port string) {
+	hub = websockets.NewHub()
+	go hub.Run()
 	log.Fatal(http.ListenAndServe(":"+port, a.Router))
 }
 
@@ -53,4 +57,28 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/user/createuser", userController.CreateUser(createAccSvc)).Methods("POST")
 	a.Router.HandleFunc("/user/login", userController.Login(loginSvc)).Methods("POST")
 	a.Router.HandleFunc("/", homeController.HomePage).Methods("GET")
+	a.Router.HandleFunc("/home", serveHome)
+	a.Router.HandleFunc("/ws", serveWS)
+	a.Router.HandleFunc("/CloseHub", closehub).Methods("GET")
+}
+
+func serveHome(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.URL)
+	if r.URL.Path != "/home" {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	http.ServeFile(w, r, "./api/home.html")
+}
+
+func serveWS(w http.ResponseWriter, r *http.Request) {
+	websockets.ServeWs(hub, w, r)
+}
+
+func closehub(w http.ResponseWriter, r *http.Request) {
+	hub.Close()
 }
