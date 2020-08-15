@@ -56,7 +56,7 @@ func seedUsers() {
 
 	if cursor <= 0 {
 
-		user := entites.User{ID: 1, Username: os.Getenv("AdminUserAccount"), Email: "admin@hosta.care", MobileNumber: os.Getenv("AdminUserMobile"), Password: os.Getenv("AdminUserPassword")}
+		user := entites.User{ID: 1, Username: os.Getenv("AdminUserAccount"), Email: "admin@hosta.care", MobileNumber: os.Getenv("AdminUserMobile"), HashedPassword: entites.HashAndSalt([]byte(os.Getenv("AdminUserPassword")))}
 		iter.InsertOne(context.Background(), user)
 	}
 }

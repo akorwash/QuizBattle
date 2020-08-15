@@ -2,9 +2,9 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
-	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/akorwash/QuizBattle/resources"
 	"github.com/akorwash/QuizBattle/service"
 	"github.com/akorwash/QuizBattle/service/login"
@@ -16,7 +16,7 @@ type UserController struct{}
 //CreateUser handle create user http request
 func (controller *UserController) CreateUser(createAccountService service.ICreateAccountServices) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var _user entites.User
+		var _user resources.CreateAccountModel
 		decoder := json.NewDecoder(r.Body)
 		if err := decoder.Decode(&_user); err != nil {
 			responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
@@ -24,13 +24,35 @@ func (controller *UserController) CreateUser(createAccountService service.ICreat
 		}
 		defer r.Body.Close()
 
-		userentity, err := createAccountService.CrateUser(_user)
+		response, err := createAccountService.CrateUser(_user)
 		if err != nil {
 			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 
-		responseHandler.RespondWithJSON(w, http.StatusCreated, *userentity)
+		responseHandler.RespondWithJSON(w, http.StatusCreated, *response)
+	}
+}
+
+//UpdateUser handle create user http request
+func (controller *UserController) UpdateUser(updateAccountSvc service.IUpdateAccountServices) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var _user resources.UpdateAccountModel
+		decoder := json.NewDecoder(r.Body)
+		if err := decoder.Decode(&_user); err != nil {
+			fmt.Println("Invalid request payload")
+			responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+			return
+		}
+		defer r.Body.Close()
+
+		response, err := updateAccountSvc.UpdateUser(_user)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		responseHandler.RespondWithJSON(w, http.StatusOK, *response)
 	}
 }
 
@@ -67,7 +89,7 @@ func (controller *UserController) Login(loginsvc *login.LoginService) func(w htt
 				return
 			}
 
-			response := resources.UserAccount{Username: (user).Username, MobileNumber: user.Password, Email: user.Email, Token: token}
+			response := resources.UserAccount{FullName: user.Fullname, Username: user.Username, MobileNumber: user.MobileNumber, Email: user.Email, Token: token}
 			responseHandler.RespondWithJSON(w, http.StatusOK, response)
 			return
 		case false:

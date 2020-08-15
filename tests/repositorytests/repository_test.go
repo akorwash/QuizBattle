@@ -53,7 +53,7 @@ func seedtestUser() (*entites.User, error) {
 
 	}
 
-	user := entites.User{ID: userCount + 1, Username: "testuser", Password: "TestPass#2010", Email: "test@test.com", MobileNumber: "01585285285"}
+	user := entites.User{ID: userCount + 1, Username: "testuser", HashedPassword: entites.HashAndSalt([]byte("TestPass#2010")), Email: "test@test.com", MobileNumber: "01585285285"}
 
 	if err != nil {
 		log.Fatal("Error while get database context: \n", err)

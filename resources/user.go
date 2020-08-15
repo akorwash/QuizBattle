@@ -8,8 +8,27 @@ type UserLogin struct {
 
 //UserAccount login or create account response
 type UserAccount struct {
+	FullName     string
 	Username     string
 	MobileNumber string
 	Email        string
 	Token        string
+}
+
+//CreateAccountModel to do
+type CreateAccountModel struct {
+	Username     string
+	FullName     string
+	MobileNumber string
+	Email        string
+	Password     string
+}
+
+//UpdateAccountModel to do
+type UpdateAccountModel struct {
+	ID           int64
+	Fullname     string
+	YearOfBirth  int
+	MonthOfBirth int
+	DayOfBirth   int
 }

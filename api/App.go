@@ -10,6 +10,7 @@ import (
 	"github.com/akorwash/QuizBattle/service"
 	"github.com/akorwash/QuizBattle/service/createaccount"
 	"github.com/akorwash/QuizBattle/service/login"
+	"github.com/akorwash/QuizBattle/service/updateaccount"
 	"github.com/akorwash/QuizBattle/websockets"
 
 	"github.com/gorilla/mux"
@@ -51,10 +52,12 @@ func (a *App) initializeRoutes() {
 
 	questionSvc := service.NewQuestionServices(questionRepo)
 	createAccSvc := createaccount.NEW(userRepo)
+	updateAccSvc := updateaccount.NEW(userRepo)
 	loginSvc := login.New(userRepo)
 
 	a.Router.HandleFunc("/question/{id:[0-9]+}", questionController.GetQuestionByID(questionSvc)).Methods("GET")
 	a.Router.HandleFunc("/user/createuser", userController.CreateUser(createAccSvc)).Methods("POST")
+	a.Router.HandleFunc("/user/updateuser", userController.UpdateUser(updateAccSvc)).Methods("POST")
 	a.Router.HandleFunc("/user/login", userController.Login(loginSvc)).Methods("POST")
 	a.Router.HandleFunc("/", homeController.HomePage).Methods("GET")
 	a.Router.HandleFunc("/home", serveHome)

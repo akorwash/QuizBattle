@@ -25,7 +25,7 @@ func NEW(_repo repository.IUserRepository) *CreateAccountServices {
 }
 
 //CrateUser apply busniess of validation and create user if passed or return error
-func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.UserAccount, error) {
+func (services CreateAccountServices) CrateUser(_user resources.CreateAccountModel) (*resources.UserAccount, error) {
 	err := validateInutes(services.userRepo, _user)
 	if err != nil {
 		return nil, err
@@ -46,7 +46,7 @@ func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.
 
 	}
 
-	userentity := entites.User{ID: userCount + 1, Username: _user.Username, Password: _user.Password, Email: _user.Email, MobileNumber: _user.MobileNumber}
+	userentity := entites.User{ID: userCount + 1, Fullname: _user.FullName, Username: _user.Username, HashedPassword: entites.HashAndSalt([]byte(_user.Password)), Email: _user.Email, MobileNumber: _user.MobileNumber}
 	err = services.userRepo.AddUser(userentity)
 	if err != nil {
 		return nil, err
@@ -56,7 +56,7 @@ func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.
 	if err != nil {
 		return nil, err
 	}
-	response := resources.UserAccount{Username: userentity.Username, MobileNumber: userentity.MobileNumber, Email: userentity.Email, Token: token}
+	response := resources.UserAccount{FullName: userentity.Fullname, Username: userentity.Username, MobileNumber: userentity.MobileNumber, Email: userentity.Email, Token: token}
 
 	return &response, nil
 }
@@ -64,7 +64,7 @@ func (services CreateAccountServices) CrateUser(_user entites.User) (*resources.
 //validate models that comes from the body when the user hit the apis
 //also validate if the user inputes exist before by another users
 //return detailed error
-func validateInutes(userRepo repository.IUserRepository, _user entites.User) error {
+func validateInutes(userRepo repository.IUserRepository, _user resources.CreateAccountModel) error {
 
 	var usernameValidation handler.ValidateUsername
 	if !usernameValidation.Validate(_user.Username) {
