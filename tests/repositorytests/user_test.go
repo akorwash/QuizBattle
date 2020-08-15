@@ -24,7 +24,9 @@ func TestGetUserByName(t *testing.T) {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	assert.Equal(t, fakeUser, ruser)
+	assert.Equal(t, fakeUser.ID, ruser.ID)
+	assert.Equal(t, fakeUser.Username, ruser.Username)
+	assert.Equal(t, fakeUser.MobileNumber, ruser.MobileNumber)
 
 	ruser, rerr = userRepo.GetUserByName("Not Username")
 	if rerr != nil && rerr.Error() != "User not found" {
@@ -88,7 +90,9 @@ func TestGetUserByEmail(t *testing.T) {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	assert.Equal(t, fakeUser, ruser)
+	assert.Equal(t, fakeUser.ID, ruser.ID)
+	assert.Equal(t, fakeUser.Username, ruser.Username)
+	assert.Equal(t, fakeUser.MobileNumber, ruser.MobileNumber)
 
 	ruser, rerr = userRepo.GetUserByEmail("Not Username")
 	if rerr != nil && rerr.Error() != "User not found" {
