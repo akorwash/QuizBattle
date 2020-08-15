@@ -2,20 +2,18 @@ package controllertests
 
 import (
 	"bytes"
-	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
-	"github.com/akorwash/QuizBattle/datastore"
-	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/akorwash/QuizBattle/repository"
+	"github.com/akorwash/QuizBattle/resources"
 	"github.com/akorwash/QuizBattle/service/createaccount"
 	"github.com/akorwash/QuizBattle/service/login"
+	"github.com/akorwash/QuizBattle/service/updateaccount"
 	"github.com/stretchr/testify/assert"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 func TestLogin(t *testing.T) {
@@ -76,20 +74,7 @@ func TestCreateUser(t *testing.T) {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	dbcontext, err := datastore.GetContext()
-	if err != nil {
-		log.Fatal("Error while get database context: \n", err)
-		return
-	}
-
-	iter := dbcontext.Collection("users")
-	userCount, err := iter.CountDocuments(context.Background(), bson.M{})
-	if err != nil {
-		println("Error while count users recored: %v\n", err)
-		return
-	}
-
-	fakeUser := entites.User{ID: userCount + 1, Username: "selemiTestFunc", Email: "xts@email.com", Password: "Mido#R2010", MobileNumber: "01597532225"}
+	fakeUser := resources.CreateAccountModel{FullName: "selemi Test", Username: "selemiTestFunc", Email: "xts@email.com", Password: "Mido#R2010", MobileNumber: "01597532225"}
 	samples := []struct {
 		inputJSON  string
 		statusCode int
@@ -124,18 +109,78 @@ func TestCreateUser(t *testing.T) {
 		assert.Equal(t, rr.Code, v.statusCode)
 	}
 
-	err = deletetestUser(user)
+	defer func() {
+		err = deletetestUser(user)
+		if err != nil {
+			fmt.Printf("This is the error %v\n", err)
+		}
+
+		user, err = repository.NewMongoUserRepository().GetUserByName(fakeUser.Username)
+		if err != nil {
+			fmt.Printf("This is the error %v\n", err)
+		}
+		err = deletetestUser(user)
+		if err != nil {
+			fmt.Printf("This is the error %v\n", err)
+		}
+	}()
+
+}
+
+func TestUpdateUser(t *testing.T) {
+	user, err := seedtestUser()
 	if err != nil {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	err = deletetestUser(&fakeUser)
-	if err != nil {
-		fmt.Printf("This is the error %v\n", err)
+	samples := []struct {
+		inputJSON  string
+		statusCode int
+	}{
+		{
+			inputJSON:  `{"ID":10000, "Fullname": "Fullname", "YearOfBirth": 1996, "MonthOfBirth": 7, "DayOfBirth": 5}`,
+			statusCode: 400,
+		},
+		{
+			inputJSON:  `{"ID":` + strconv.Itoa(int(user.ID)) + `, "Fullname": "Fullname", "YearOfBirth": 0, "MonthOfBirth": 7, "DayOfBirth": 5}`,
+			statusCode: 400,
+		},
+		{
+			inputJSON:  `{"ID":` + strconv.Itoa(int(user.ID)) + `, "Fullname": "Fullname", "YearOfBirth": 1996, "MonthOfBirth": 0, "DayOfBirth": 5}`,
+			statusCode: 400,
+		},
+		{
+			inputJSON:  `{"ID":` + strconv.Itoa(int(user.ID)) + `, "Fullname": "Fullname", "YearOfBirth": 1996, "MonthOfBirth": 7, "DayOfBirth": 0}`,
+			statusCode: 400,
+		},
+		{
+			inputJSON:  `{"ID":` + strconv.Itoa(int(user.ID)) + `, "Fullname": "Fullname", "YearOfBirth": 1996, "MonthOfBirth": 7, "DayOfBirth": 5}`,
+			statusCode: 200,
+		},
 	}
 
-	err = deletetestUserByName(fakeUser.Username)
-	if err != nil {
-		fmt.Printf("This is the error %v\n", err)
+	for _, v := range samples {
+		req, err := http.NewRequest("POST", "/user/updateuser", bytes.NewBufferString(v.inputJSON))
+		if err != nil {
+			t.Errorf("this is the error: %v", err)
+		}
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(userController.UpdateUser(updateaccount.NEW(repository.NewMongoUserRepository())))
+		handler.ServeHTTP(rr, req)
+
+		assert.Equal(t, rr.Code, v.statusCode)
+		fmt.Println(v.inputJSON)
 	}
+
+	defer func() {
+		user, err = repository.NewMongoUserRepository().GetUserByID(user.ID)
+		if err != nil {
+			fmt.Printf("This is the error %v\n", err)
+		}
+		err = deletetestUser(user)
+		if err != nil {
+			fmt.Printf("This is the error %v\n", err)
+		}
+	}()
+
 }

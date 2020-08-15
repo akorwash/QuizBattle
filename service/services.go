@@ -18,5 +18,10 @@ type ILoginServices interface {
 
 //ICreateAccountServices services interface to create account
 type ICreateAccountServices interface {
-	CrateUser(user entites.User) (*resources.UserAccount, error)
+	CrateUser(user resources.CreateAccountModel) (*resources.UserAccount, error)
+}
+
+//ICreateAccountServices services interface to create account
+type IUpdateAccountServices interface {
+	UpdateUser(user resources.UpdateAccountModel) (*resources.UserAccount, error)
 }
