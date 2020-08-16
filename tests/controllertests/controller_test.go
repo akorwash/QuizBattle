@@ -6,54 +6,75 @@ import (
 	"log"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/akorwash/QuizBattle/api"
 	"github.com/akorwash/QuizBattle/api/controller"
 	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
+	"github.com/akorwash/QuizBattle/handler"
+	"github.com/akorwash/QuizBattle/repository"
+	"github.com/akorwash/QuizBattle/service"
+	"github.com/akorwash/QuizBattle/service/createaccount"
+	"github.com/akorwash/QuizBattle/service/login"
+	"github.com/akorwash/QuizBattle/service/updateaccount"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 var server = api.App{}
 var userController = controller.UserController{}
 var questionController = controller.QuestionController{}
 
+var qeustionRepo repository.IQuestionRepository
+var userRepo repository.IUserRepository
+var questionSvc service.IQuestionServices
+var updateAccSvc service.IUpdateAccountServices
+var createAccSvc service.ICreateAccountServices
+var loginSvc *login.LoginService
+var dbcontext *mongo.Database
+
 func TestMain(m *testing.M) {
-	deletetestUserByName("selemiTestFunc")
-	Database()
-	os.Exit(m.Run())
+	err := initTest()
+	if err == nil {
+		Database()
+		os.Exit(m.Run())
+	}
+}
+
+func initTest() error {
+	dbConfig := handler.GetTestDBConfig()
+	_questionRepo, errQuesRerpo := repository.NewMongoQuestionRepository(dbConfig)
+	if errQuesRerpo != nil {
+		println("Error while get database context For Repo: %v\n", errQuesRerpo)
+		return errQuesRerpo
+	}
+	qeustionRepo = _questionRepo
+	_userRepo, errUserRepo := repository.NewMongoUserRepository(dbConfig)
+	if errUserRepo != nil {
+		println("Error while get database context For Repo: %v\n", errUserRepo)
+		return errUserRepo
+	}
+
+	userRepo = _userRepo
+	questionSvc = service.NewQuestionServices(qeustionRepo)
+	createAccSvc = createaccount.NEW(userRepo)
+	updateAccSvc = updateaccount.NEW(userRepo)
+	loginSvc = login.New(userRepo)
+	return nil
 }
 
 func Database() {
-	// Database conection string
-	clientOptions := options.Client().ApplyURI("mongodb://" + os.Getenv("MongoUsername") + ":" + os.Getenv("MongoPassword") + "@ds029979.mlab.com:29979/heroku_9gr1xz3v?retryWrites=false")
-	client, err := mongo.NewClient(clientOptions)
-	//Set up a context required by mongo.Connect
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	err = client.Connect(ctx)
-	//Cancel context to avoid memory leak
-	defer cancel()
-
-	// Ping our db connection
-	err = client.Ping(context.Background(), readpref.Primary())
+	dbConfig := handler.GetTestDBConfig()
+	_dbcontext, err := datastore.GetContext(dbConfig)
 	if err != nil {
-		log.Fatal("Couldn't connect to the database", err)
+		log.Fatal("Error while get database context: \n", err)
+		return
 	}
-
+	dbcontext = _dbcontext
 	fmt.Println("Success to connect to database")
 }
 
 func seedtestUser() (*entites.User, error) {
-	dbcontext, err := datastore.GetContext()
-	if err != nil {
-		log.Fatal("Error while get database context: \n", err)
-		return nil, err
-	}
-
 	iter := dbcontext.Collection("users")
 	userCount, err := iter.CountDocuments(context.Background(), bson.M{})
 	if err != nil {
@@ -69,12 +90,6 @@ func seedtestUser() (*entites.User, error) {
 }
 
 func deletetestUser(user *entites.User) error {
-	dbcontext, err := datastore.GetContext()
-	if err != nil {
-		log.Fatal("Error while get database context: \n", err)
-		return err
-	}
-
 	iter := dbcontext.Collection("users")
 	//create the bot account
 	iter.DeleteOne(context.Background(), *user)
@@ -82,12 +97,6 @@ func deletetestUser(user *entites.User) error {
 }
 
 func deletetestUserByName(_name string) error {
-	dbcontext, err := datastore.GetContext()
-	if err != nil {
-		log.Fatal("Error while get database context: \n", err)
-		return err
-	}
-
 	filter := bson.M{"username": _name}
 	iter := dbcontext.Collection("users")
 	cursor, err := iter.Find(context.Background(), filter)
@@ -110,11 +119,6 @@ func seedtestQuestions() ([]entites.Question, error) {
 	question3 := entites.Question{ID: 30, Header: "Test 30"}
 	question4 := entites.Question{ID: 40, Header: "Test 40"}
 	questions := []entites.Question{question1, question2, question3, question4}
-	dbcontext, err := datastore.GetContext()
-	if err != nil {
-		log.Fatal("Error while get database context: \n", err)
-		return nil, err
-	}
 
 	iter := dbcontext.Collection("Question")
 	//create the bot account
@@ -125,12 +129,6 @@ func seedtestQuestions() ([]entites.Question, error) {
 }
 
 func deleteSeedtestQuestions(questions []entites.Question) ([]entites.Question, error) {
-	dbcontext, err := datastore.GetContext()
-	if err != nil {
-		log.Fatal("Error while get database context: \n", err)
-		return nil, err
-	}
-
 	iter := dbcontext.Collection("Question")
 	//create the bot account
 	for _, _q := range questions {
