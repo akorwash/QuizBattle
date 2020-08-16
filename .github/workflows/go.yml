@@ -35,10 +35,16 @@ jobs:
       env:
        MongoUsername: '${{secrets.MONGOUSERNAME}}'
        MongoPassword: '${{secrets.MONGOPASSWORD}}'
+       MongoDBName: '${{secrets.MONGODBNAME}}'
+       MongoHostID: '${{secrets.MONGOHOSTID}}'
+       MongoPORT: '${{secrets.MONGOPORT}}'
 
     - name: Test
       run: go test -v ./... .
       env:
-       MongoUsername: '${{secrets.MONGOUSERNAME}}'
-       MongoPassword: '${{secrets.MONGOPASSWORD}}'
+       TestMongoUsername: '${{secrets.TESTMONGOUSERNAME}}'
+       TestMongoPassword: '${{secrets.TESTMONGOPASSWORD}}'
+       TestMongoDBName: '${{secrets.TESTMONGODBNAME}}'
+       TestMongoHostID: '${{secrets.TESTMONGOHOSTID}}'
+       TestMongoPORT: '${{secrets.TESTMONGOPORT}}'
 
