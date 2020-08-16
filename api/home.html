@@ -3,33 +3,10 @@
 <head>
 <title>Chat Example</title>
 <script type="text/javascript">
-window.onload = function () {
-    var conn;
-    var msg = document.getElementById("msg");
-    var log = document.getElementById("log");
-
-    function appendLog(item) {
-        var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
-        log.appendChild(item);
-        if (doScroll) {
-            log.scrollTop = log.scrollHeight - log.clientHeight;
-        }
-    }
-
-    document.getElementById("form").onsubmit = function () {
-        if (!conn) {
-            return false;
-        }
-        if (!msg.value) {
-            return false;
-        }
-        conn.send(msg.value);
-        msg.value = "";
-        return false;
-    };
-
-    if (window["WebSocket"]) {
-        conn = new WebSocket("wss://" + document.location.host + "/ws");
+function LoadtheGame(){
+        var gameId = document.getElementById("GameID");
+        if (window["WebSocket"]) {
+        conn = new WebSocket("ws://" + document.location.host + "/ws/" + gameId.value);
         conn.onclose = function (evt) {
             var item = document.createElement("div");
             item.innerHTML = "<b>Connection closed.</b>";
@@ -48,6 +25,34 @@ window.onload = function () {
         item.innerHTML = "<b>Your browser does not support WebSockets.</b>";
         appendLog(item);
     }
+     }
+     var conn;
+  
+     
+    function appendLog(item) {
+        var doScroll = log.scrollTop > log.scrollHeight - log.clientHeight - 1;
+        log.appendChild(item);
+        if (doScroll) {
+            log.scrollTop = log.scrollHeight - log.clientHeight;
+        }
+    }
+window.onload = function () {
+    var msg = document.getElementById("msg");
+    var log = document.getElementById("log");
+
+    document.getElementById("form").onsubmit = function () {
+        if (!conn) {
+            return false;
+        }
+        if (!msg.value) {
+            return false;
+        }
+        conn.send(msg.value);
+        msg.value = "";
+        return false;
+    };
+
+    
 };
 </script>
 <style type="text/css">
@@ -89,10 +94,24 @@ body {
 </style>
 </head>
 <body>
+   
 <div id="log"></div>
 <form id="form">
     <input type="submit" value="Send" />
     <input type="text" id="msg" size="64" autofocus />
 </form>
+
+<div id="" style="
+    position: absolute;
+    padding: 0 0.5em 0 0.5em;
+    margin: 0;
+    bottom: 1em;
+    left: 531px;
+    width: 100%;
+    overflow: hidden;
+">
+        <input type="text" id="GameID">
+        <button onclick="LoadtheGame()">Connect me</button>
+    </div>
 </body>
 </html>

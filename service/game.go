@@ -24,7 +24,7 @@ func (svc GameService) CreateNewGame(model resources.CreateGameModel) (*resource
 //JoinGame to do
 func (svc GameService) JoinGame(gameID int) (*resources.Game, error) {
 	if gameID == 0 {
-		websockets.AddNew(gameID)
+		websockets.AddNew()
 		return nil, nil
 	}
 	return nil, nil
