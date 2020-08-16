@@ -50,6 +50,7 @@ func (userAccount *User) ValidatePassword(_pass string) bool {
 	return comparePasswords(userAccount.HashedPassword, []byte(_pass))
 }
 
+//compare password with hashed one
 func comparePasswords(hashedPwd string, plainPwd []byte) bool {
 	// Since we'll be getting the hashed password from the DB it
 	// will be a string so we'll need to convert it to a byte slice
@@ -63,6 +64,7 @@ func comparePasswords(hashedPwd string, plainPwd []byte) bool {
 	return true
 }
 
+//HashAndSalt hash string and salt it
 func HashAndSalt(pwd []byte) string {
 
 	// Use GenerateFromPassword to hash & salt pwd.
@@ -84,4 +86,13 @@ type Bot struct {
 	ID      int
 	BotName string
 	Level   int
+}
+
+//Game class represnt game history
+type Game struct {
+	ID          int
+	IsPublic    bool
+	UserID      int
+	TimeLine    []string
+	JoinedUsers []int
 }

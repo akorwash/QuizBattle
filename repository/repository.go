@@ -16,3 +16,7 @@ type IUserRepository interface {
 type IQuestionRepository interface {
 	GetQuestionByID(_id int) (*entites.Question, error)
 }
+
+//IGameRepository repo interface for question
+type IGameRepository interface {
+}
