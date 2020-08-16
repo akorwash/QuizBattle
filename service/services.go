@@ -5,6 +5,12 @@ import (
 	"github.com/akorwash/QuizBattle/resources"
 )
 
+//IGameServices services interface to create account
+type IGameServices interface {
+	CreateNewGame(model resources.CreateGameModel) (*resources.Game, error)
+	JoinGame(gameID int) (*resources.Game, error)
+}
+
 //IQuestionServices services interface to create account
 type IQuestionServices interface {
 	GetQuestionByID(_id int) (*entites.Question, error)

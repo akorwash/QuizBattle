@@ -32,3 +32,9 @@ type UpdateAccountModel struct {
 	MonthOfBirth int
 	DayOfBirth   int
 }
+
+//UserModel to do
+type UserModel struct {
+	ID       int64
+	Fullname string
+}
