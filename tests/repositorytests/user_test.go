@@ -5,35 +5,29 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
-	"github.com/akorwash/QuizBattle/repository"
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 )
-
-var userRepo repository.IUserRepository
 
 func TestGetUserByName(t *testing.T) {
 	fakeUser, err := seedtestUser()
 	if err != nil {
 		fmt.Printf("This is the error %v\n", err)
 	}
-	ruser, rerr := userRepo.GetUserByName(fakeUser.Username)
+	_, rerr := userRepo.GetUserByName(fakeUser.Username)
 	if rerr != nil && rerr.Error() != "User not found" {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	assert.Equal(t, fakeUser.ID, ruser.ID)
-	assert.Equal(t, fakeUser.Username, ruser.Username)
-	assert.Equal(t, fakeUser.MobileNumber, ruser.MobileNumber)
+	assert.NoError(t, rerr)
 
-	ruser, rerr = userRepo.GetUserByName("Not Username")
+	_, rerr = userRepo.GetUserByName("Not Username")
 	if rerr != nil && rerr.Error() != "User not found" {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	assert.NotEqual(t, fakeUser, ruser)
+	assert.Error(t, rerr)
 
 	err = deletetestUser(fakeUser)
 	if err != nil {
@@ -85,21 +79,19 @@ func TestGetUserByEmail(t *testing.T) {
 	if err != nil {
 		fmt.Printf("This is the error %v\n", err)
 	}
-	ruser, rerr := userRepo.GetUserByEmail(fakeUser.Email)
+	_, rerr := userRepo.GetUserByEmail(fakeUser.Email)
 	if rerr != nil && rerr.Error() != "User not found" {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	assert.Equal(t, fakeUser.ID, ruser.ID)
-	assert.Equal(t, fakeUser.Username, ruser.Username)
-	assert.Equal(t, fakeUser.MobileNumber, ruser.MobileNumber)
+	assert.NoError(t, rerr)
 
-	ruser, rerr = userRepo.GetUserByEmail("Not Username")
+	_, rerr = userRepo.GetUserByEmail("Not Username")
 	if rerr != nil && rerr.Error() != "User not found" {
 		fmt.Printf("This is the error %v\n", err)
 	}
 
-	assert.NotEqual(t, fakeUser, ruser)
+	assert.Error(t, rerr)
 
 	err = deletetestUser(fakeUser)
 	if err != nil {
@@ -108,7 +100,6 @@ func TestGetUserByEmail(t *testing.T) {
 }
 
 func TestAddUser(t *testing.T) {
-	dbcontext, err := datastore.GetContext()
 	iter := dbcontext.Collection("users")
 	userCount, err := iter.CountDocuments(context.Background(), bson.M{})
 	if err != nil {

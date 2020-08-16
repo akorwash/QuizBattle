@@ -3,7 +3,6 @@ package datastore
 import (
 	"context"
 	"log"
-	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -11,10 +10,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+//DBConfiguration config of database
+type DBConfiguration struct {
+	DBName   string
+	Username string
+	Password string
+	HostID   string
+	PORT     string
+}
+
 //GetContext each time need to connect the database must get active context
-func GetContext() (*mongo.Database, error) {
+func GetContext(dbConfig DBConfiguration) (*mongo.Database, error) {
 	// Database Config
-	clientOptions := options.Client().ApplyURI("mongodb://" + os.Getenv("MongoUsername") + ":" + os.Getenv("MongoPassword") + "@ds029979.mlab.com:29979/heroku_9gr1xz3v?retryWrites=false")
+	clientOptions := options.Client().ApplyURI("mongodb://" + dbConfig.Username + ":" + dbConfig.Password + "@" + dbConfig.HostID + ".mlab.com:" + dbConfig.PORT + "/" + dbConfig.DBName + "?retryWrites=false")
 	client, err := mongo.NewClient(clientOptions)
 	//Set up a context required by mongo.Connect
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
@@ -30,5 +38,5 @@ func GetContext() (*mongo.Database, error) {
 	}
 
 	// Connect to the database
-	return client.Database("heroku_9gr1xz3v"), nil
+	return client.Database(dbConfig.DBName), nil
 }

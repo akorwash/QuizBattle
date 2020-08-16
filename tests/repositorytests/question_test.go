@@ -4,11 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/akorwash/QuizBattle/repository"
 	"github.com/stretchr/testify/assert"
 )
-
-var questionRepo repository.IQuestionRepository
 
 func TestGetQuestionByID(t *testing.T) {
 	fakeQuestion, err := seedtestQuestion()
@@ -16,7 +13,7 @@ func TestGetQuestionByID(t *testing.T) {
 		fmt.Printf("This is the error %v\n", err)
 		assert.NoError(t, err)
 	}
-	retQuestion, rerr := questionRepo.GetQuestionByID(fakeQuestion.ID)
+	retQuestion, rerr := qeustionRepo.GetQuestionByID(fakeQuestion.ID)
 	if rerr != nil {
 		fmt.Printf("This is the error %v\n", rerr)
 		assert.NoError(t, rerr)
@@ -24,7 +21,7 @@ func TestGetQuestionByID(t *testing.T) {
 
 	assert.Equal(t, fakeQuestion, retQuestion)
 
-	retQuestion, rerr = questionRepo.GetQuestionByID(fakeQuestion.ID + 10)
+	retQuestion, rerr = qeustionRepo.GetQuestionByID(fakeQuestion.ID + 10)
 	if rerr != nil {
 		fmt.Printf("This is the error %v\n", rerr)
 		assert.NoError(t, rerr)

@@ -3,13 +3,13 @@ package datastore
 import (
 	"bytes"
 	"context"
-	"log"
 	"math/rand"
 	"os"
 	"strconv"
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
@@ -33,8 +33,16 @@ const (
 type SeedInitializer struct {
 }
 
+var dbcontext *mongo.Database
+
 //Seed to seed the database with admin user, also bots and questions
-func (seed *SeedInitializer) Seed() {
+func (seed *SeedInitializer) Seed(_dbConfig DBConfiguration) {
+	_dbcontext, err := GetContext(_dbConfig)
+	if err != nil {
+		println("Error while get database context: %v\n", err)
+		return
+	}
+	dbcontext = _dbcontext
 	deletetestUserByName("selemiTestFunc")
 	seedUsers()
 	seedBots()
@@ -42,11 +50,6 @@ func (seed *SeedInitializer) Seed() {
 }
 
 func seedUsers() {
-	dbcontext, err := GetContext()
-	if err != nil {
-		println("Error while get database context: %v\n", err)
-		return
-	}
 	iter := dbcontext.Collection("users")
 	cursor, err := iter.CountDocuments(context.Background(), bson.M{})
 	if err != nil {
@@ -62,12 +65,6 @@ func seedUsers() {
 }
 
 func deletetestUserByName(_name string) error {
-	dbcontext, err := GetContext()
-	if err != nil {
-		log.Fatal("Error while get database context: \n", err)
-		return err
-	}
-
 	filter := bson.M{"username": _name}
 	iter := dbcontext.Collection("users")
 	cursor, err := iter.Find(context.Background(), filter)
@@ -85,11 +82,6 @@ func deletetestUserByName(_name string) error {
 	return nil
 }
 func seedBots() {
-	dbcontext, err := GetContext()
-	if err != nil {
-		println("Error while get database context: %v\n", err)
-		return
-	}
 	iter := dbcontext.Collection("bots")
 	cursor, err := iter.CountDocuments(context.Background(), bson.M{})
 	if err != nil {
@@ -116,11 +108,6 @@ func seedBots() {
 }
 
 func seedQuestions() {
-	dbcontext, err := GetContext()
-	if err != nil {
-		println("Error while get database context: %v\n", err)
-		return
-	}
 	iter := dbcontext.Collection("Question")
 	cursor, err := iter.CountDocuments(context.Background(), bson.M{})
 	if err != nil {

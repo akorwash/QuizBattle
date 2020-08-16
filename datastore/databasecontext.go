@@ -17,8 +17,8 @@ var mongoContext *mongo.Database
 var BaseDirectory string
 
 //InitializingDB here we will intaite the database, also seed the database
-func (_context *DBContext) InitializingDB() *DBContext {
+func (_context *DBContext) InitializingDB(dbConfig DBConfiguration) *DBContext {
 	seedInit := SeedInitializer{}
-	seedInit.Seed()
+	seedInit.Seed(dbConfig)
 	return _context
 }

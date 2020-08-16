@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/akorwash/QuizBattle/api/controller"
+	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/repository"
 	"github.com/akorwash/QuizBattle/service"
 	"github.com/akorwash/QuizBattle/service/createaccount"
@@ -26,9 +27,12 @@ type App struct {
 var Server App
 
 //Initialize start project
-func (a *App) Initialize() *App {
+func (a *App) Initialize(dbConfig datastore.DBConfiguration) *App {
 	a.Router = mux.NewRouter()
-	a.initializeRoutes()
+	err := a.initializeRoutes(dbConfig)
+	if err != nil {
+		return nil
+	}
 	return a
 }
 
@@ -40,16 +44,27 @@ var hub *websockets.Hub
 
 //Run the project
 func (a *App) Run(port string) {
+	if a == nil {
+		return
+	}
+
 	hub = websockets.NewHub()
 	go hub.Run()
 	log.Fatal(http.ListenAndServe(":"+port, a.Router))
 }
 
 //initializeRoutes here we will intialize the rest apis routes and html pages
-func (a *App) initializeRoutes() {
-	questionRepo := repository.NewMongoQuestionRepository()
-	userRepo := repository.NewMongoUserRepository()
-
+func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
+	questionRepo, errQuesRerpo := repository.NewMongoQuestionRepository(dbConfig)
+	if errQuesRerpo != nil {
+		println("Error while get database context For Repo: %v\n", errQuesRerpo)
+		return errQuesRerpo
+	}
+	userRepo, errUserRepo := repository.NewMongoUserRepository(dbConfig)
+	if errUserRepo != nil {
+		println("Error while get database context For Repo: %v\n", errUserRepo)
+		return errUserRepo
+	}
 	questionSvc := service.NewQuestionServices(questionRepo)
 	createAccSvc := createaccount.NEW(userRepo)
 	updateAccSvc := updateaccount.NEW(userRepo)
@@ -63,6 +78,7 @@ func (a *App) initializeRoutes() {
 	a.Router.HandleFunc("/home", serveHome)
 	a.Router.HandleFunc("/ws", serveWS)
 	a.Router.HandleFunc("/CloseHub", closehub).Methods("GET")
+	return nil
 }
 
 func serveHome(w http.ResponseWriter, r *http.Request) {

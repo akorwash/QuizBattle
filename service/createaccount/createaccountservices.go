@@ -1,17 +1,13 @@
 package createaccount
 
 import (
-	"context"
 	"fmt"
-	"log"
 
-	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/akorwash/QuizBattle/handler"
 	"github.com/akorwash/QuizBattle/repository"
 	"github.com/akorwash/QuizBattle/resources"
 	"github.com/akorwash/QuizBattle/service/login"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 //CreateAccountServices busniess of how to create account
@@ -31,22 +27,7 @@ func (services CreateAccountServices) CrateUser(_user resources.CreateAccountMod
 		return nil, err
 	}
 
-	dbcontext, err := datastore.GetContext()
-	if err != nil {
-		log.Fatal("Error while get database context: \n", err)
-		return nil, err
-
-	}
-
-	iter := dbcontext.Collection("users")
-	userCount, err := iter.CountDocuments(context.Background(), bson.M{})
-	if err != nil {
-		println("Error while count users recored: %v\n", err)
-		return nil, err
-
-	}
-
-	userentity := entites.User{ID: userCount + 1, Fullname: _user.FullName, Username: _user.Username, HashedPassword: entites.HashAndSalt([]byte(_user.Password)), Email: _user.Email, MobileNumber: _user.MobileNumber}
+	userentity := entites.User{Fullname: _user.FullName, Username: _user.Username, HashedPassword: entites.HashAndSalt([]byte(_user.Password)), Email: _user.Email, MobileNumber: _user.MobileNumber}
 	err = services.userRepo.AddUser(userentity)
 	if err != nil {
 		return nil, err

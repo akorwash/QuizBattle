@@ -8,11 +8,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/akorwash/QuizBattle/repository"
 	"github.com/akorwash/QuizBattle/resources"
-	"github.com/akorwash/QuizBattle/service/createaccount"
-	"github.com/akorwash/QuizBattle/service/login"
-	"github.com/akorwash/QuizBattle/service/updateaccount"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -54,7 +50,7 @@ func TestLogin(t *testing.T) {
 			t.Errorf("this is the error: %v", err)
 		}
 		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(userController.Login(login.New(repository.NewMongoUserRepository())))
+		handler := http.HandlerFunc(userController.Login(loginSvc))
 		handler.ServeHTTP(rr, req)
 
 		if !assert.Equal(t, rr.Code, v.statusCode) {
@@ -103,7 +99,7 @@ func TestCreateUser(t *testing.T) {
 			t.Errorf("this is the error: %v", err)
 		}
 		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(userController.CreateUser(createaccount.NEW(repository.NewMongoUserRepository())))
+		handler := http.HandlerFunc(userController.CreateUser(createAccSvc))
 		handler.ServeHTTP(rr, req)
 
 		assert.Equal(t, rr.Code, v.statusCode)
@@ -115,7 +111,7 @@ func TestCreateUser(t *testing.T) {
 			fmt.Printf("This is the error %v\n", err)
 		}
 
-		user, err = repository.NewMongoUserRepository().GetUserByName(fakeUser.Username)
+		user, err = userRepo.GetUserByName(fakeUser.Username)
 		if err != nil {
 			fmt.Printf("This is the error %v\n", err)
 		}
@@ -165,15 +161,14 @@ func TestUpdateUser(t *testing.T) {
 			t.Errorf("this is the error: %v", err)
 		}
 		rr := httptest.NewRecorder()
-		handler := http.HandlerFunc(userController.UpdateUser(updateaccount.NEW(repository.NewMongoUserRepository())))
+		handler := http.HandlerFunc(userController.UpdateUser(updateAccSvc))
 		handler.ServeHTTP(rr, req)
 
 		assert.Equal(t, rr.Code, v.statusCode)
-		fmt.Println(v.inputJSON)
 	}
 
 	defer func() {
-		user, err = repository.NewMongoUserRepository().GetUserByID(user.ID)
+		user, err = userRepo.GetUserByID(user.ID)
 		if err != nil {
 			fmt.Printf("This is the error %v\n", err)
 		}
