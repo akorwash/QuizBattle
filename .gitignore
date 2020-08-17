@@ -4,3 +4,4 @@ QuizBattle.exe
 __debug_bin
 datastore/accServices.json
 tests/repositorytests/debug.test
+tests/controllertests/debug.test
