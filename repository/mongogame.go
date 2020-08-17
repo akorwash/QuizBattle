@@ -1,7 +1,12 @@
 package repository
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/akorwash/QuizBattle/datastore"
+	"github.com/akorwash/QuizBattle/datastore/entites"
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -21,4 +26,67 @@ func NewMongoGameRepository(dbConfig datastore.DBConfiguration) (*MongoGameRepos
 	repo := MongoGameRepository{}
 	repo.mongoContext = dbcontext
 	return &repo, nil
+}
+
+//Count get total count of games
+func (repos MongoGameRepository) Count() (int64, error) {
+	iter := repos.mongoContext.Collection("Game")
+
+	count, err := iter.CountDocuments(context.Background(), bson.M{})
+	if err != nil {
+		println("Error while count users recored: %v\n", err)
+		return 0, err
+
+	}
+
+	return count, err
+}
+
+//Add add new game
+func (repos MongoGameRepository) Add(game entites.Game) error {
+	iter := repos.mongoContext.Collection("Game")
+
+	iter.InsertOne(context.Background(), game)
+	return nil
+}
+
+//JoinedGame new user to join for game
+func (repos MongoGameRepository) JoinedGame(gameID int64, usreID []uint64) error {
+	iter := repos.mongoContext.Collection("Game")
+
+	filter := bson.M{"id": bson.M{"$eq": gameID}}
+	update := bson.M{
+		"$set": bson.M{
+			"joinedusers": usreID,
+		},
+	}
+
+	_, err := iter.UpdateOne(
+		context.Background(),
+		filter,
+		update,
+	)
+	return err
+}
+
+//GetGameByID query the database and find user by their email
+func (repos *MongoGameRepository) GetGameByID(_id int64) (*entites.Game, error) {
+	filter := bson.M{"id": bson.M{"$eq": _id}}
+	iter := repos.mongoContext.Collection("Game")
+	cursor, err := iter.Find(context.Background(), filter)
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return nil, err
+	}
+
+	var _entity entites.Game
+	for cursor.Next(context.Background()) {
+		cursor.Decode(&_entity)
+		break
+	}
+
+	if _entity.ID == 0 {
+		return nil, fmt.Errorf("game not found")
+	}
+	return &_entity, nil
 }

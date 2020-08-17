@@ -129,6 +129,8 @@ func (repos *MongoUserRepository) AddUser(user entites.User) error {
 
 //UpdateUser to do
 func (repos *MongoUserRepository) UpdateUser(user entites.User) error {
+	iter := repos.mongoContext.Collection("users")
+
 	filter := bson.M{"id": bson.M{"$eq": user.ID}}
 	update := bson.M{
 		"$set": bson.M{
@@ -139,7 +141,6 @@ func (repos *MongoUserRepository) UpdateUser(user entites.User) error {
 			"mobilenumber": user.MobileNumber,
 		},
 	}
-	iter := repos.mongoContext.Collection("users")
 
 	_, err := iter.UpdateOne(
 		context.Background(),

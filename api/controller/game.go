@@ -24,17 +24,29 @@ func (controller *GameController) CreateGame(svc service.IGameServices) func(w h
 		}
 		defer r.Body.Close()
 
-		question, err := svc.CreateNewGame(_gameModel)
+		userData, err := ExtractTokenMetadata(r)
 		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't retrive question data")
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
 			return
 		}
-		if question == nil {
-			responseHandler.RespondWithError(w, http.StatusNotFound, "This question not found")
+
+		if userData.UserID != _gameModel.UserID {
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "you don't have access to create game for another user")
+			return
+		}
+
+		game, err := svc.CreateNewGame(_gameModel)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't create game due err: "+err.Error())
+			return
+		}
+
+		if game == nil {
+			responseHandler.RespondWithError(w, http.StatusNotFound, "Game not created try again later")
 			return
 		}
 		//respondWithJSON(w, http.StatusOK, "payload")
-		responseHandler.RespondWithJSON(w, http.StatusOK, *question)
+		responseHandler.RespondWithJSON(w, http.StatusOK, *game)
 	}
 }
 
@@ -46,16 +58,25 @@ func (controller *GameController) JoinGame(svc service.IGameServices) func(w htt
 		if err != nil {
 			gameID = 0
 		}
-		question, err := svc.JoinGame(gameID)
+
+		userData, err := ExtractTokenMetadata(r)
 		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't retrive question data")
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
 			return
 		}
-		if question == nil {
-			responseHandler.RespondWithError(w, http.StatusNotFound, "This question not found")
+		game, err := svc.JoinGame(userData.UserID, int64(gameID))
+
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't create game due err: "+err.Error())
 			return
 		}
+
+		if game == nil {
+			responseHandler.RespondWithError(w, http.StatusNotFound, "Game not created try again later")
+			return
+		}
+
 		//respondWithJSON(w, http.StatusOK, "payload")
-		responseHandler.RespondWithJSON(w, http.StatusOK, *question)
+		responseHandler.RespondWithJSON(w, http.StatusOK, *game)
 	}
 }

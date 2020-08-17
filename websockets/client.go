@@ -117,13 +117,13 @@ func (c *Client) writePump() {
 }
 
 //ServeWs handles websocket requests from the peer
-func ServeWs(gameID int, w http.ResponseWriter, r *http.Request) {
+func ServeWs(gameID int64, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	_hub := gameConnections[gameID]
+	_hub := GameConnections[gameID]
 	client := &Client{hub: &_hub, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
 
