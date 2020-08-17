@@ -30,10 +30,13 @@ var Server App
 //Initialize start project
 func (a *App) Initialize(dbConfig datastore.DBConfiguration) *App {
 	a.Router = mux.NewRouter()
+	a.Router.Use(commonMiddleware)
+
 	err := a.initializeRoutes(dbConfig)
 	if err != nil {
 		return nil
 	}
+
 	return a
 }
 
@@ -70,21 +73,22 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 		println("Error while get database context For Repo: %v\n", errUserRepo)
 		return errUserRepo
 	}
+
 	questionSvc := service.NewQuestionServices(questionRepo)
 	gameSvc := service.NewGameService(gameRepo)
 	createAccSvc := createaccount.NEW(userRepo)
 	updateAccSvc := updateaccount.NEW(userRepo)
 	loginSvc := login.New(userRepo)
 
-	a.Router.HandleFunc("/question/{id:[0-9]+}", questionController.GetQuestionByID(questionSvc)).Methods("GET")
-	a.Router.HandleFunc("/game/join/{id:[0-9]+}", gameController.JoinGame(gameSvc)).Methods("POST")
-	a.Router.HandleFunc("/game/new", gameController.CreateGame(gameSvc)).Methods("POST")
+	a.Router.Handle("/api/v1/question/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(questionController.GetQuestionByID(questionSvc)))).Methods("GET")
+	a.Router.Handle("/api/v1/game/join/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.JoinGame(gameSvc)))).Methods("POST")
+	a.Router.Handle("/api/v1/game/new", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.CreateGame(gameSvc)))).Methods("POST")
 	a.Router.HandleFunc("/user/createuser", userController.CreateUser(createAccSvc)).Methods("POST")
-	a.Router.HandleFunc("/user/updateuser", userController.UpdateUser(updateAccSvc)).Methods("POST")
+	a.Router.Handle("/api/v1/user/updateuser", controller.TokenAuthMiddleware(http.HandlerFunc(userController.UpdateUser(updateAccSvc)))).Methods("POST")
 	a.Router.HandleFunc("/user/login", userController.Login(loginSvc)).Methods("POST")
 	a.Router.HandleFunc("/", homeController.HomePage).Methods("GET")
 	a.Router.HandleFunc("/home", serveHome)
-	a.Router.HandleFunc("/ws/{id:[0-9]+}", serveWS)
+	a.Router.Handle("/api/v1/ws/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveWS)))
 	return nil
 }
 
@@ -109,4 +113,14 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	websockets.ServeWs(id, w, r)
+}
+
+func commonMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Add("Content-Type", "application/json")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+		w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, Access-Control-Request-Headers, Access-Control-Request-Method, Connection, Host, Origin, User-Agent, Referer, Cache-Control, X-header")
+		next.ServeHTTP(w, r)
+	})
 }
