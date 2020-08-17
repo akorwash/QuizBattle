@@ -2,17 +2,8 @@ package websockets
 
 import "github.com/akorwash/QuizBattle/resources"
 
-var gameConnections map[int]Hub
-var games []resources.Game
+//GameConnections all the connection to games
+var GameConnections map[int64]Hub
 
-//AddNew to do
-func AddNew() {
-	gameID := len(games) + 1
-	if gameConnections == nil {
-		gameConnections = make(map[int]Hub)
-	}
-	hub := NewHub()
-	games = append(games, resources.Game{ID: gameID, IsActive: true, IsPublic: true})
-	gameConnections[gameID] = *hub
-	go hub.Run()
-}
+//Games all the games running by game engin
+var Games map[int64]resources.Game

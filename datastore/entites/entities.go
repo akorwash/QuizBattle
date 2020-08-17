@@ -90,9 +90,9 @@ type Bot struct {
 
 //Game class represnt game history
 type Game struct {
-	ID          int
+	ID          int64
 	IsPublic    bool
-	UserID      int
+	UserID      uint64
 	TimeLine    []string
-	JoinedUsers []int
+	JoinedUsers []uint64
 }

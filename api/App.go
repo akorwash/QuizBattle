@@ -30,7 +30,7 @@ var Server App
 //Initialize start project
 func (a *App) Initialize(dbConfig datastore.DBConfiguration) *App {
 	a.Router = mux.NewRouter()
-	a.Router.Use(commonMiddleware)
+	//a.Router.Use(commonMiddleware)
 
 	err := a.initializeRoutes(dbConfig)
 	if err != nil {
@@ -75,7 +75,7 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 	}
 
 	questionSvc := service.NewQuestionServices(questionRepo)
-	gameSvc := service.NewGameService(gameRepo)
+	gameSvc := service.NewGameService(gameRepo, userRepo)
 	createAccSvc := createaccount.NEW(userRepo)
 	updateAccSvc := updateaccount.NEW(userRepo)
 	loginSvc := login.New(userRepo)
@@ -88,7 +88,7 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 	a.Router.HandleFunc("/user/login", userController.Login(loginSvc)).Methods("POST")
 	a.Router.HandleFunc("/", homeController.HomePage).Methods("GET")
 	a.Router.HandleFunc("/home", serveHome)
-	a.Router.Handle("/api/v1/ws/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveWS)))
+	a.Router.Handle("/ws/{token}/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveWS)))
 	return nil
 }
 
@@ -112,7 +112,7 @@ func serveWS(w http.ResponseWriter, r *http.Request) {
 		responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid question ID")
 		return
 	}
-	websockets.ServeWs(id, w, r)
+	websockets.ServeWs((int64(id)), w, r)
 }
 
 func commonMiddleware(next http.Handler) http.Handler {

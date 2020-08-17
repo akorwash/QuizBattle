@@ -4,9 +4,10 @@
 <title>Chat Example</title>
 <script type="text/javascript">
 function LoadtheGame(){
-        var gameId = document.getElementById("GameID");
+    var gameId = document.getElementById("GameID");
+    var token = document.getElementById("token");
         if (window["WebSocket"]) {
-        conn = new WebSocket("ws://" + document.location.host + "/ws/" + gameId.value);
+            conn = new WebSocket("ws://" + document.location.host + "/ws/" + token.value + "/" + gameId.value);
         conn.onclose = function (evt) {
             var item = document.createElement("div");
             item.innerHTML = "<b>Connection closed.</b>";
@@ -97,11 +98,11 @@ body {
    
 <div id="log"></div>
 <form id="form">
-    <input type="submit" value="Send" />
+    <input type="submit"  value="Send" />
     <input type="text" id="msg" size="64" autofocus />
 </form>
 
-<div id="" style="
+<div style="
     position: absolute;
     padding: 0 0.5em 0 0.5em;
     margin: 0;
@@ -110,8 +111,11 @@ body {
     width: 100%;
     overflow: hidden;
 ">
-        <input type="text" id="GameID">
+        <input type="text" placeholder="Game Id" id="GameID">
+        <input type="text" placeholder="Token" id="token">
         <button onclick="LoadtheGame()">Connect me</button>
     </div>
+
+    
 </body>
 </html>

@@ -10,6 +10,7 @@ import (
 
 	"github.com/akorwash/QuizBattle/handler"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/gorilla/mux"
 )
 
 var responseHandler handler.WebResponseHandler
@@ -75,13 +76,27 @@ func ExtractTokenMetadata(r *http.Request) (*AccessDetails, error) {
 		if !ok {
 			return nil, err
 		}
+
+		email, ok := claims["Email"].(string)
+		if !ok {
+			return nil, err
+		}
+
+		mobilenumber, ok := claims["mobileNumber"].(string)
+		if !ok {
+			return nil, err
+		}
+
 		_userID, err := strconv.ParseUint(fmt.Sprintf("%.f", claims["user_id"]), 10, 64)
 		if err != nil {
 			return nil, err
 		}
+
 		return &AccessDetails{
-			Username: username,
-			UserID:   _userID,
+			Username:     username,
+			Email:        email,
+			MobileNumber: mobilenumber,
+			UserID:       _userID,
 		}, nil
 	}
 	return nil, err
@@ -89,6 +104,12 @@ func ExtractTokenMetadata(r *http.Request) (*AccessDetails, error) {
 
 //ExtractToken to do
 func ExtractToken(r *http.Request) string {
+	vars := mux.Vars(r)
+	pathtoken := vars["token"]
+	if pathtoken != "" {
+		return pathtoken
+	}
+
 	bearToken := r.Header.Get("Authorization")
 	//normally Authorization the_token_xxx
 	strArr := strings.Split(bearToken, " ")
@@ -100,6 +121,8 @@ func ExtractToken(r *http.Request) string {
 
 //AccessDetails to do
 type AccessDetails struct {
-	Username string
-	UserID   uint64
+	Username     string
+	MobileNumber string
+	UserID       uint64
+	Email        string
 }

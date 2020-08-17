@@ -51,6 +51,7 @@ func CreateToken(user entites.User) (string, error) {
 	//Creating Access Token
 	atClaims := jwt.MapClaims{}
 	atClaims["authorized"] = true
+	atClaims["user_id"] = user.ID
 	atClaims["username"] = user.Username
 	atClaims["mobileNumber"] = user.MobileNumber
 	atClaims["Email"] = user.Email
