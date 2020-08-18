@@ -37,7 +37,7 @@ func (services UpdateAccountServices) UpdateUser(_user resources.UpdateAccountMo
 	if err != nil {
 		return nil, err
 	}
-	response := resources.UserAccount{FullName: userentity.Fullname, Username: userentity.Username, MobileNumber: userentity.MobileNumber, Email: userentity.Email, Token: token}
+	response := resources.UserAccount{UserID: userentity.ID, FullName: userentity.Fullname, Username: userentity.Username, MobileNumber: userentity.MobileNumber, Email: userentity.Email, Token: token}
 
 	return &response, nil
 }

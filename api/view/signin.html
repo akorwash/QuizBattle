@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+	<html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+            <meta name="description" content="">
+            <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
+            <meta name="generator" content="Jekyll v4.1.1">
+            <title>Quiz Battle - SignIn</title>
+            <link rel="icon" href="/static/icon.png">
+
+            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+            <link rel="stylesheet" href="/static/auth.css">
+              
+            <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+            <script src="/static/auth.js"></script>
+        </head>
+        <body class="text-center">
+            <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
+          <header class="masthead mb-auto">
+            <div class="inner">
+              <h3 class="masthead-brand">Quiz Battle</h3>
+              <nav class="nav nav-masthead justify-content-center">
+                <a class="nav-link " href="/">Home</a>
+                <a class="nav-link" href="/about">About</a>
+                <a class="nav-link" href="/contact">Contact</a>
+                <a class="nav-link active" href="/auth/signin">Sign In</a>
+              </nav>
+            </div>
+          </header>
+        
+          <main role="main" class="inner cover">
+            <form class="form-signin">
+              <img class="mb-4 rounded " src="/static/icon.png" alt="Quiz battle game icon" width="72" height="72">
+              <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
+              <label for="inputEmail" class="sr-only">Email address</label>
+              <input type="text" name="inputemail" id="inputemail" class="form-control" placeholder="Email or Mobile Number" required autofocus>
+              <label for="inputPassword" class="sr-only">Password</label>
+              <input type="password" name="inputpassword" id="inputpassword" class="form-control" placeholder="Password" required>
+              <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
+
+              <span id="errorSumm" class="error text-danger"></span>
+
+            </form>
+          </main>
+        
+          <footer class="mastfoot mt-auto">
+            <div class="inner">
+              <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
+            </div>
+          </footer>
+        </div>
+        </body>
+	</html>

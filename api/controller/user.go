@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/akorwash/QuizBattle/resources"
 	"github.com/akorwash/QuizBattle/service"
@@ -60,11 +61,18 @@ func (controller *UserController) UpdateUser(updateAccountSvc service.IUpdateAcc
 func (controller *UserController) Login(loginsvc *login.LoginService) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var _userLogin resources.UserLogin
-		decoder := json.NewDecoder(r.Body)
-		if err := decoder.Decode(&_userLogin); err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-			return
+		if strings.Contains(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+			_identifer := r.FormValue("inputemail")
+			_password := r.FormValue("inputpassword")
+			_userLogin = resources.UserLogin{Identifier: _identifer, Password: _password}
+		} else {
+			decoder := json.NewDecoder(r.Body)
+			if err := decoder.Decode(&_userLogin); err != nil {
+				responseHandler.RespondWithError(w, http.StatusBadRequest, "Identifier Invalid request payload")
+				return
+			}
 		}
+
 		defer r.Body.Close()
 
 		if len(_userLogin.Identifier) <= 0 {
@@ -89,7 +97,7 @@ func (controller *UserController) Login(loginsvc *login.LoginService) func(w htt
 				return
 			}
 
-			response := resources.UserAccount{FullName: user.Fullname, Username: user.Username, MobileNumber: user.MobileNumber, Email: user.Email, Token: token}
+			response := resources.UserAccount{UserID: user.ID, FullName: user.Fullname, Username: user.Username, MobileNumber: user.MobileNumber, Email: user.Email, Token: token}
 			responseHandler.RespondWithJSON(w, http.StatusOK, response)
 			return
 		case false:
@@ -97,4 +105,14 @@ func (controller *UserController) Login(loginsvc *login.LoginService) func(w htt
 			return
 		}
 	}
+}
+
+//UserProfilePage user profile page http requst handler
+func (controller *UserController) UserProfilePage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	http.ServeFile(w, r, "./api/view/user.html")
 }
