@@ -15,6 +15,14 @@ import (
 
 var responseHandler handler.WebResponseHandler
 
+func isForm(r *http.Request) bool {
+	if err := r.ParseForm(); err != nil {
+		return false
+	}
+
+	return true
+}
+
 //GetHandler to do
 func GetHandler() handler.WebResponseHandler {
 	return responseHandler

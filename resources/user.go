@@ -8,6 +8,7 @@ type UserLogin struct {
 
 //UserAccount login or create account response
 type UserAccount struct {
+	UserID       int64
 	FullName     string
 	Username     string
 	MobileNumber string

@@ -2,6 +2,7 @@ package api
 
 import (
 	"database/sql"
+	"flag"
 	"log"
 	"net/http"
 	"strconv"
@@ -44,6 +45,7 @@ func (a *App) Initialize(dbConfig datastore.DBConfiguration) *App {
 var questionController controller.QuestionController
 var userController controller.UserController
 var homeController controller.HomeController
+var authController controller.AuthController
 var gameController controller.GameController
 
 //Run the project
@@ -80,6 +82,8 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 	updateAccSvc := updateaccount.NEW(userRepo)
 	loginSvc := login.New(userRepo)
 
+	a.Router.HandleFunc("/user/profile/{username}", userController.UserProfilePage).Methods("GET")
+
 	a.Router.Handle("/api/v1/question/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(questionController.GetQuestionByID(questionSvc)))).Methods("GET")
 	a.Router.Handle("/api/v1/game/join/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.JoinGame(gameSvc)))).Methods("POST")
 	a.Router.Handle("/api/v1/game/new", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.CreateGame(gameSvc)))).Methods("POST")
@@ -87,13 +91,23 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 	a.Router.Handle("/api/v1/user/updateuser", controller.TokenAuthMiddleware(http.HandlerFunc(userController.UpdateUser(updateAccSvc)))).Methods("POST")
 	a.Router.HandleFunc("/user/login", userController.Login(loginSvc)).Methods("POST")
 	a.Router.HandleFunc("/", homeController.HomePage).Methods("GET")
+	a.Router.HandleFunc("/about", homeController.AboutPage).Methods("GET")
+	a.Router.HandleFunc("/contact", homeController.ContactPage).Methods("GET")
+	a.Router.HandleFunc("/auth/signin", authController.SignInPage).Methods("GET")
+
 	a.Router.HandleFunc("/home", serveHome)
 	a.Router.Handle("/ws/{token}/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveWS)))
+
+	var dir string
+
+	flag.StringVar(&dir, "dir", ".", "the directory to serve files from. Defaults to the current dir")
+	flag.Parse()
+	// This will serve files under http://localhost:8000/static/<filename>
+	a.Router.PathPrefix("/static/").Handler(http.StripPrefix("/", http.FileServer(http.Dir(dir))))
 	return nil
 }
 
 func serveHome(w http.ResponseWriter, r *http.Request) {
-	log.Println(r.URL)
 	if r.URL.Path != "/home" {
 		http.Error(w, "Not found", http.StatusNotFound)
 		return
@@ -102,7 +116,7 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	http.ServeFile(w, r, "./api/home.html")
+	http.ServeFile(w, r, "./api/view/home.html")
 }
 
 func serveWS(w http.ResponseWriter, r *http.Request) {
