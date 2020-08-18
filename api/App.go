@@ -94,6 +94,7 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 	a.Router.HandleFunc("/about", homeController.AboutPage).Methods("GET")
 	a.Router.HandleFunc("/contact", homeController.ContactPage).Methods("GET")
 	a.Router.HandleFunc("/auth/signin", authController.SignInPage).Methods("GET")
+	a.Router.HandleFunc("/auth/signup", authController.SignUpPage).Methods("GET")
 
 	a.Router.HandleFunc("/home", serveHome)
 	a.Router.Handle("/ws/{token}/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveWS)))

@@ -18,11 +18,22 @@ type UserController struct{}
 func (controller *UserController) CreateUser(createAccountService service.ICreateAccountServices) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var _user resources.CreateAccountModel
-		decoder := json.NewDecoder(r.Body)
-		if err := decoder.Decode(&_user); err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-			return
+
+		if strings.Contains(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
+			inputemail := r.FormValue("inputemail")
+			inputpassword := r.FormValue("inputpassword")
+			inputmobile := r.FormValue("inputmobile")
+			inputusername := r.FormValue("inputusername")
+			inputname := r.FormValue("inputname")
+			_user = resources.CreateAccountModel{FullName: inputname, Email: inputemail, Password: inputpassword, MobileNumber: inputmobile, Username: inputusername}
+		} else {
+			decoder := json.NewDecoder(r.Body)
+			if err := decoder.Decode(&_user); err != nil {
+				responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
+				return
+			}
 		}
+
 		defer r.Body.Close()
 
 		response, err := createAccountService.CrateUser(_user)

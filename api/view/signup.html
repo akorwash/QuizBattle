@@ -6,7 +6,7 @@
             <meta name="description" content="">
             <meta name="author" content="Mark Otto, Jacob Thornton, and Bootstrap contributors">
             <meta name="generator" content="Jekyll v4.1.1">
-            <title>Quiz Battle - SignIn</title>
+            <title>Quiz Battle - SignUp</title>
             <link rel="icon" href="/static/icon.png">
 
             <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
@@ -30,15 +30,26 @@
           </header>
         
           <main role="main" class="inner cover">
-            <form id="loginform" class="form-signin">
+            <form id="signupform" class="form-signin">
               <img class="mb-4 rounded " src="/static/icon.png" alt="Quiz battle game icon" width="72" height="72">
-              <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
-              <label for="inputEmail" class="sr-only">Email address/Mobile Number</label>
-              <input type="text" name="inputemail" id="inputemail" class="form-control" placeholder="Email or Mobile Number" required autofocus>
+              <h1 class="h3 mb-3 font-weight-normal">Create new account</h1>
+              <label for="inputname" class="sr-only">Full name</label>
+              <input type="text" name="inputname" id="inputname" class="form-control" placeholder="Full name" required autofocus>
+              
+              <label for="inputemail" class="sr-only">Email address</label>
+              <input type="email" name="inputemail" id="inputemail" class="form-control" placeholder="Email Address" required autofocus>
+              
+              <label for="inputmobile" class="sr-only">Mobile number</label>
+              <input type="text" name="inputmobile" id="inputmobile" class="form-control" placeholder="Mobile Number" required >
+
+              <label for="inputusername" class="sr-only">Username</label>
+              <input type="text" name="inputusername" id="inputusername" class="form-control" placeholder="Username" required >
+
               <label for="inputPassword" class="sr-only">Password</label>
               <input type="password" name="inputpassword" id="inputpassword" class="form-control" placeholder="Password" required>
               <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
-              <a href="/auth/signup">Create new account</a>
+              <a href="/auth/signin">Login now</a>
+
               <span id="errorSumm" class="error text-danger"></span>
 
             </form>
