@@ -84,6 +84,7 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 
 	a.Router.Handle("/api/v1/question/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(questionController.GetQuestionByID(questionSvc)))).Methods("GET")
 	a.Router.Handle("/api/v1/game/join/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.JoinGame(gameSvc)))).Methods("POST")
+	a.Router.Handle("/api/v1/game/join/{id:[0-9]+}/{mod}", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.JoinGame(gameSvc)))).Methods("POST")
 	a.Router.Handle("/api/v1/game/new", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.CreateGame(gameSvc)))).Methods("POST")
 	a.Router.HandleFunc("/user/createuser", userController.CreateUser(createAccSvc)).Methods("POST")
 	a.Router.Handle("/api/v1/user/updateuser", controller.TokenAuthMiddleware(http.HandlerFunc(userController.UpdateUser(updateAccSvc)))).Methods("POST")

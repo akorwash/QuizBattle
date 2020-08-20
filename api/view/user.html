@@ -18,6 +18,8 @@
             <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
             <link rel="stylesheet" href="/static/home.css">
             <script src="/static/authvalidation.js"></script>
+            <script src="/static/userpage.js"></script>
+            <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
         </head>
         <body class="text-center">
             <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
@@ -37,11 +39,20 @@
           </header>
         
           <main role="main" class="inner cover">
-            <h1 class="cover-heading">Welcome to Quiz Battle!.</h1>
-            <p class="lead">Quiz Battle is a cognitive game, our game players own their questions as "Card" and they can trade their "cards " with others or challenge them in "public/private" battles.</p>
-            <p class="lead">
-              <a href="#" class="btn btn-lg btn-secondary">Learn more</a>
-            </p>
+            <div class="my-3 p-3 bg-white rounded shadow-sm">
+              <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">Your Battles</h6>
+              
+              <div id="games_list">
+               
+          
+              </div>
+              <span id="errorSumm" class="error text-danger"></span>
+              
+              <small style="text-decoration: none; color: black; font-size: 14px;font-weight: bold;" class="d-block text-right mt-3">
+                <input id="createdmodegame" type="checkbox" checked> Public Game
+                <button class="btn btn-sm btn-danger" id="creategame" >Create Game</button>
+              </small>
+            </div>
           </main>
         
           <footer class="mastfoot mt-auto">
