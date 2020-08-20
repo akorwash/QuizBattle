@@ -22,5 +22,6 @@ type IGameRepository interface {
 	Count() (int64, error)
 	Add(game entites.Game) error
 	GetGameByID(_id int64) (*entites.Game, error)
+	GetPublicBattle() ([]entites.Game, error)
 	JoinedGame(gameID int64, usreID []uint64) error
 }

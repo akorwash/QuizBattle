@@ -1,18 +1,20 @@
 <!DOCTYPE html>
 	<html>
         <head>
+         
             <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
             <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
             <meta name="author" content="Ahmed Korwash">
-            <title>Quiz Battle - SignIn</title>
+            <title id="pagetile">Quiz Battle - Play new game</title>
+
             <link rel="icon" href="/static/icon.png">
 
             <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-            <link rel="stylesheet" href="/static/auth.css">
-              
+            <link rel="stylesheet" href="/static/home.css">
+            <script src="/static/authvalidation.js"></script>
+            <script src="/static/game.js"></script>
             <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-            <script src="/static/auth.js"></script>
         </head>
         <body class="text-center">
             <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
@@ -20,27 +22,32 @@
             <div class="inner">
               <h3 class="masthead-brand">Quiz Battle</h3>
               <nav class="nav nav-masthead justify-content-center">
-                <a class="nav-link " href="/">Home</a>
+                <a class="nav-link active" href="/">Home</a>
                 <a class="nav-link" href="/about">About</a>
                 <a class="nav-link" href="/contact">Contact</a>
-                <a class="nav-link active" href="/auth/signin">Sign In</a>
+                <a style="display:block" id="signInNav" class="nav-link" href="/auth/signin">Sign In</a>
+                <a onclick="Logout()" href="" style="display:none" id="logout" class="nav-link">Logout</a>
+                <a style="display:none" id="useracc" class="nav-link" href="/user/profile/"></a>
+
               </nav>
             </div>
           </header>
         
           <main role="main" class="inner cover">
-            <form id="loginform" class="form-signin">
-              <img class="mb-4 rounded " src="/static/icon.png" alt="Quiz battle game icon" width="72" height="72">
-              <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
-              <label for="inputEmail" class="sr-only">Email address/Mobile Number</label>
-              <input type="text" name="inputemail" id="inputemail" class="form-control" placeholder="Email or Mobile Number" required autofocus>
-              <label for="inputPassword" class="sr-only">Password</label>
-              <input type="password" name="inputpassword" id="inputpassword" class="form-control" placeholder="Password" required>
-              <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
-              <a href="/auth/signup">Create new account</a>
+            <h1 class="cover-heading">Welcome to Quiz Battle!</h1>
+            
+            <div class="my-3 p-3 bg-white rounded shadow-sm">
+              <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">Recent Games</h6>
+              <div id="games_list">
+               
+          
+              </div>
               <span id="errorSumm" class="error text-danger"></span>
-
-            </form>
+              
+              <small class="d-block text-right mt-3">
+                <a id="creategame" style="text-decoration: none; color: black; font-size: 14px;font-weight: bold;">Create Game</a>
+              </small>
+            </div>
           </main>
         
           <footer class="mastfoot mt-auto">
@@ -50,4 +57,5 @@
           </footer>
         </div>
         </body>
+        <script type="text/javascript" src="/static/site.js"></script>
 	</html>

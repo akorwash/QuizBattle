@@ -80,3 +80,32 @@ func (controller *GameController) JoinGame(svc service.IGameServices) func(w htt
 		responseHandler.RespondWithJSON(w, http.StatusOK, *game)
 	}
 }
+
+//PlayPage SignIn page http requst handler
+func (controller *GameController) PlayPage(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/game/play" {
+		http.Error(w, "Not found", http.StatusNotFound)
+		return
+	}
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	http.ServeFile(w, r, "./api/view/gameplay.html")
+}
+
+//GetPublicBattles create new game battle
+func (controller *GameController) GetPublicBattles(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		games, err := svc.GetPublicBattles()
+
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		//respondWithJSON(w, http.StatusOK, "payload")
+		responseHandler.RespondWithJSON(w, http.StatusOK, games)
+	}
+}

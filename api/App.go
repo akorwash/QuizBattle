@@ -5,7 +5,6 @@ import (
 	"flag"
 	"log"
 	"net/http"
-	"strconv"
 
 	"github.com/akorwash/QuizBattle/api/controller"
 	"github.com/akorwash/QuizBattle/datastore"
@@ -15,7 +14,6 @@ import (
 	"github.com/akorwash/QuizBattle/service/login"
 	"github.com/akorwash/QuizBattle/service/updateaccount"
 	"github.com/akorwash/QuizBattle/websockets"
-
 	"github.com/gorilla/mux"
 )
 
@@ -95,9 +93,12 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 	a.Router.HandleFunc("/contact", homeController.ContactPage).Methods("GET")
 	a.Router.HandleFunc("/auth/signin", authController.SignInPage).Methods("GET")
 	a.Router.HandleFunc("/auth/signup", authController.SignUpPage).Methods("GET")
-
+	a.Router.HandleFunc("/game/play", gameController.PlayPage).Methods("GET")
+	a.Router.Handle("/game/publicbattles", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.GetPublicBattles(gameSvc)))).Methods("GET")
 	a.Router.HandleFunc("/home", serveHome)
-	a.Router.Handle("/ws/{token}/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveWS)))
+
+	a.Router.Handle("/ws/{token}/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveGameBattle)))
+	a.Router.Handle("/ws/{token}", controller.TokenAuthMiddleware(http.HandlerFunc(serveGameStream)))
 
 	var dir string
 
@@ -120,16 +121,13 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "./api/view/home.html")
 }
 
-func serveWS(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	id, err := strconv.Atoi(vars["id"])
-	if err != nil {
-		responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid question ID")
-		return
-	}
-	websockets.ServeWs((int64(id)), w, r)
+func serveGameBattle(w http.ResponseWriter, r *http.Request) {
+	websockets.ServeGameBattle(w, r)
 }
 
+func serveGameStream(w http.ResponseWriter, r *http.Request) {
+	websockets.ServeGameStream(w, r)
+}
 func commonMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")

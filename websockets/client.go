@@ -4,10 +4,15 @@ import (
 	"bytes"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
+	"github.com/akorwash/QuizBattle/handler"
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
+
+var responseHandler handler.WebResponseHandler
 
 const (
 	// Time allowed to write a message to the peer.
@@ -116,15 +121,46 @@ func (c *Client) writePump() {
 	}
 }
 
-//ServeWs handles websocket requests from the peer
-func ServeWs(gameID int64, w http.ResponseWriter, r *http.Request) {
+//ServeGameBattle handles websocket requests from the peer
+func ServeGameBattle(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	gameID, err := strconv.Atoi(vars["id"])
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid question ID")
+		return
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	_hub := GameConnections[gameID]
+	_hub := GameConnections[int64(gameID)]
 	client := &Client{hub: &_hub, conn: conn, send: make(chan []byte, 256)}
+	client.hub.register <- client
+
+	// Allow collection of memory referenced by the caller by doing all work in
+	// new goroutines.
+	go client.writePump()
+	go client.readPump()
+}
+
+var streamGamehub *Hub
+
+//ServeGameStream handles websocket requests from the peer
+func ServeGameStream(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	if streamGamehub == nil {
+		streamGamehub = NewHub()
+		streamGamehub.Run()
+	}
+
+	client := &Client{hub: streamGamehub, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
