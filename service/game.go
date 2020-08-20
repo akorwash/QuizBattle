@@ -59,7 +59,7 @@ func (svc GameService) CreateNewGame(model resources.CreateGameModel) (*resource
 		websockets.GameConnections = make(map[int64]websockets.Hub)
 	}
 
-	joinedUser := resources.UserModel{ID: user.ID, Fullname: user.Username}
+	joinedUser := resources.UserModel{ID: user.ID, Fullname: user.Fullname}
 	game.User = joinedUser
 	game.JoinedUser = append(game.JoinedUser, joinedUser)
 	websockets.Games[game.ID] = game
@@ -95,7 +95,7 @@ func (svc GameService) JoinGame(userID uint64, gameID int64) (*resources.Game, e
 	if err != nil {
 		return nil, err
 	}
-	owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Username}
+	owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Fullname}
 
 	//insure that player not joineed the game twice
 	alreadyExist, seed := svc.checkExistInJoinedPlayer(userID, game)
@@ -186,7 +186,7 @@ func (svc GameService) GetPublicBattles() ([]resources.Game, error) {
 			return nil, err
 		}
 
-		owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Username}
+		owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Fullname}
 		_game := resources.Game{ID: game.ID, IsActive: game.IsActive, IsPublic: game.IsPublic, User: owneruser}
 
 		for _, _juserID := range game.JoinedUsers {
@@ -195,7 +195,7 @@ func (svc GameService) GetPublicBattles() ([]resources.Game, error) {
 				continue
 			}
 
-			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Username}
+			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Fullname}
 			_game.JoinedUser = append(_game.JoinedUser, jUser)
 		}
 		response = append(response, _game)
@@ -217,7 +217,7 @@ func (svc GameService) GetMyBattles(userID uint64) ([]resources.Game, error) {
 			return nil, err
 		}
 
-		owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Username}
+		owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Fullname}
 		_game := resources.Game{ID: game.ID, IsActive: game.IsActive, IsPublic: game.IsPublic, User: owneruser}
 
 		for _, _juserID := range game.JoinedUsers {
@@ -226,7 +226,7 @@ func (svc GameService) GetMyBattles(userID uint64) ([]resources.Game, error) {
 				continue
 			}
 
-			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Username}
+			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Fullname}
 			_game.JoinedUser = append(_game.JoinedUser, jUser)
 		}
 		response = append(response, _game)
