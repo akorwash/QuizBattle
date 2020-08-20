@@ -42,6 +42,20 @@ func (repos MongoGameRepository) Count() (int64, error) {
 	return count, err
 }
 
+//CountActiveGame get total count of games that still active
+func (repos MongoGameRepository) CountActiveGame(usreID uint64) (int64, error) {
+	iter := repos.mongoContext.Collection("Game")
+
+	count, err := iter.CountDocuments(context.Background(), bson.M{"userid": bson.M{"$eq": usreID}, "isactive": bson.M{"$eq": true}})
+	if err != nil {
+		println("Error while count users recored: %v\n", err)
+		return 0, err
+
+	}
+
+	return count, err
+}
+
 //Add add new game
 func (repos MongoGameRepository) Add(game entites.Game) error {
 	iter := repos.mongoContext.Collection("Game")

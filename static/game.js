@@ -83,6 +83,7 @@ function LoadGame(id){
 }
 
 function CreateGame(){
+    $("#creategame").prop('disabled', true);
     emptyError()
     var modgame = true;
     if($("#createdmodegame").prop("checked") == true){
@@ -127,6 +128,7 @@ function CreateGame(){
         var errSpan = document.getElementById('errorSumm')
         errSpan.innerText = data.error
     });
+    $("#creategame").prop('disabled', false);
 }
 
 function processStreamCommand(command){
@@ -164,7 +166,7 @@ function UpdateJoinGame(id){
 
 function LoadStream(){
     if (window["WebSocket"]) {
-        gamestreamconn = new WebSocket("wss://" + document.location.host + "/ws/" + window.localStorage.getItem('auth_token'));
+        gamestreamconn = new WebSocket("ws://" + document.location.host + "/ws/" + window.localStorage.getItem('auth_token'));
         gamestreamconn.onclose = function (evt) {
             var errSpan = document.getElementById('errorSumm')
             errSpan.innerText = "Connection close with server"
@@ -208,7 +210,7 @@ window.onload = function () {
     LoadGames()
     LoadStream()
 
-    $("#creategame" ).click(function() {
+    $("#creategame").click(function() {
         CreateGame()
       });
 

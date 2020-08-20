@@ -31,13 +31,22 @@ func (svc GameService) CreateNewGame(model resources.CreateGameModel) (*resource
 		return nil, fmt.Errorf("User not found")
 	}
 
+	countActiveGame, err := svc.gameRepo.CountActiveGame(model.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	if countActiveGame >= 3 {
+		return nil, fmt.Errorf("Can't create another game you have 3 games active")
+	}
+
 	gamesCount, err := svc.gameRepo.Count()
 	if err != nil {
 		return nil, err
 	}
 
 	var game = resources.Game{ID: gamesCount + 1, IsActive: true, IsPublic: true}
-	err = svc.gameRepo.Add(entites.Game{ID: game.ID, UserID: model.UserID, IsPublic: true, JoinedUsers: []uint64{model.UserID}})
+	err = svc.gameRepo.Add(entites.Game{ID: game.ID, IsActive: true, UserID: model.UserID, IsPublic: true, JoinedUsers: []uint64{model.UserID}})
 	if err != nil {
 		return nil, err
 	}
