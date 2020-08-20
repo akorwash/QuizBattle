@@ -8,6 +8,7 @@ function LoadGames(){
         headers: {"Authorization": "bearer "+ window.localStorage.getItem('auth_token')}
     })
     .done(function (data) {
+        if(data)
         data.forEach(element => {
             var games_list = document.getElementById("games_list");
             var doScroll = games_list.scrollTop > games_list.scrollHeight - games_list.clientHeight - 1;
@@ -75,11 +76,18 @@ function LoadGame(id){
 
 function CreateGame(){
     emptyError()
+    var modgame = true;
+    if($("#createdmodegame").prop("checked") == true){
+        modgame = true;
+    }
+    else {
+        modgame = false;
+    }
     $.ajax({
         type: 'post',
         url: '/api/v1/game/new',
         contentType: 'application/json',
-        data: '{"IsPublic":true,"UserID": '+window.localStorage.getItem('auth_uid')+'}',
+        data: '{"IsPublic":'+modgame+',"UserID": '+window.localStorage.getItem('auth_uid')+'}',
         headers: {"Authorization": "bearer "+ window.localStorage.getItem('auth_token')}
     })
     .done(function (element) {
