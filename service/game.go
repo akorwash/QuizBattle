@@ -193,3 +193,34 @@ func (svc GameService) GetPublicBattles() ([]resources.Game, error) {
 	}
 	return response, nil
 }
+
+//GetMyBattles get my battles
+func (svc GameService) GetMyBattles(userID uint64) ([]resources.Game, error) {
+	var response []resources.Game
+	games, err := svc.gameRepo.GetMyBattle(userID)
+	if err != nil {
+		return nil, fmt.Errorf("Error we can't get data now")
+	}
+
+	for _, game := range games {
+		ownderuser, err := svc.validateUser(game.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Username}
+		_game := resources.Game{ID: game.ID, IsActive: game.IsActive, IsPublic: game.IsPublic, User: owneruser}
+
+		for _, _juserID := range game.JoinedUsers {
+			_juser, err := svc.userRepo.GetUserByID(int64(_juserID))
+			if err != nil {
+				continue
+			}
+
+			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Username}
+			_game.JoinedUser = append(_game.JoinedUser, jUser)
+		}
+		response = append(response, _game)
+	}
+	return response, nil
+}

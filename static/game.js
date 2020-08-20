@@ -1,10 +1,18 @@
 var gamestreamconn;
 var gamesLoaded = [];
 
+function getLoadGamePath() {
+   if ($('#public_game').is(':checked')) {
+       return '/game/publicbattles'
+   }else{
+       return '/game/mybattles'
+   }     
+}
+
 function LoadGames(){
     $.ajax({
         type: 'get',
-        url: '/game/publicbattles',
+        url: getLoadGamePath(),
         headers: {"Authorization": "bearer "+ window.localStorage.getItem('auth_token')}
     })
     .done(function (data) {
@@ -40,7 +48,7 @@ function LoadGame(id){
     if(!gamesLoaded.includes(id)){
         $.ajax({
             type: 'get',
-            url: '/game/publicbattles',
+            url: getLoadGamePath(),
             headers: {"Authorization": "bearer "+ window.localStorage.getItem('auth_token')}
         })
         .done(function (data) {
@@ -112,6 +120,7 @@ function CreateGame(){
             }
             
             gamestreamconn.send("newgame_"+element.ID);
+            window.location.href = "/battle/"+element.ID
     })
     .fail(function(failObj){
         var data = JSON.parse(failObj.responseText);
@@ -134,7 +143,7 @@ function UpdateJoinGame(id){
     emptyError()
     $.ajax({
         type: 'get',
-        url: '/game/publicbattles',
+        url: getLoadGamePath(),
         headers: {"Authorization": "bearer "+ window.localStorage.getItem('auth_token')}
     })
     .done(function (data) {
@@ -185,6 +194,7 @@ function JoinGame(id){
         gamestreamconn.send("newjoin_"+id);
 
         //redirct player to game page
+        window.location.href = "/battle/"+id
     })
     .fail(function(failObj){
         var data = JSON.parse(failObj.responseText);
@@ -201,5 +211,13 @@ window.onload = function () {
     $("#creategame" ).click(function() {
         CreateGame()
       });
+
+    $('input[type=radio][name=gameownder]').change(function() {
+        $('#games_list').empty()
+        emptyError()
+        LoadGames()
+    });
+
+     
 };
 

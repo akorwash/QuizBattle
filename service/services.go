@@ -10,6 +10,7 @@ type IGameServices interface {
 	CreateNewGame(model resources.CreateGameModel) (*resources.Game, error)
 	JoinGame(userID uint64, gameID int64) (*resources.Game, error)
 	GetPublicBattles() ([]resources.Game, error)
+	GetMyBattles(userID uint64) ([]resources.Game, error)
 }
 
 //IQuestionServices services interface to create account

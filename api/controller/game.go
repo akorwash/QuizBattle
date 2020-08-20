@@ -95,10 +95,42 @@ func (controller *GameController) PlayPage(w http.ResponseWriter, r *http.Reques
 	http.ServeFile(w, r, "./api/view/gameplay.html")
 }
 
+//BattlePage to do
+func (controller *GameController) BattlePage(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "GET" {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	http.ServeFile(w, r, "./api/view/battle.html")
+}
+
 //GetPublicBattles create new game battle
 func (controller *GameController) GetPublicBattles(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		games, err := svc.GetPublicBattles()
+
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		//respondWithJSON(w, http.StatusOK, "payload")
+		responseHandler.RespondWithJSON(w, http.StatusOK, games)
+	}
+}
+
+//GetMyBattles create new game battle
+func (controller *GameController) GetMyBattles(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		userData, err := ExtractTokenMetadata(r)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+			return
+		}
+
+		games, err := svc.GetMyBattles(userData.UserID)
 
 		if err != nil {
 			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())

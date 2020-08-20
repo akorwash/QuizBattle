@@ -109,3 +109,22 @@ func (repos *MongoGameRepository) GetPublicBattle() ([]entites.Game, error) {
 	}
 	return entities, nil
 }
+
+//GetMyBattle query the database and find public battles
+func (repos *MongoGameRepository) GetMyBattle(userID uint64) ([]entites.Game, error) {
+	filter := bson.M{"joinedusers": bson.M{"$in": []uint64{userID}}}
+	iter := repos.mongoContext.Collection("Game")
+	cursor, err := iter.Find(context.Background(), filter)
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return nil, err
+	}
+
+	var entities []entites.Game
+	for cursor.Next(context.Background()) {
+		var _entity entites.Game
+		cursor.Decode(&_entity)
+		entities = append(entities, _entity)
+	}
+	return entities, nil
+}
