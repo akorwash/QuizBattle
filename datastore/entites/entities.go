@@ -92,6 +92,7 @@ type Bot struct {
 type Game struct {
 	ID          int64
 	IsPublic    bool
+	IsActive    bool
 	UserID      uint64
 	TimeLine    []string
 	JoinedUsers []uint64

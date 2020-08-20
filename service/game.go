@@ -59,7 +59,7 @@ func (svc GameService) CreateNewGame(model resources.CreateGameModel) (*resource
 	go hub.Run()
 	websockets.GameConnections[game.ID] = *hub
 
-	return nil, nil
+	return &game, nil
 }
 
 //JoinGame to do
@@ -161,4 +161,35 @@ func (svc GameService) updateSocketGame(_gamesocket resources.Game, user *entite
 	userplayer := resources.UserModel{ID: user.ID, Fullname: user.Username}
 	_gamesocket.JoinedUser = append(_gamesocket.JoinedUser, userplayer)
 	websockets.Games[_gamesocket.ID] = _gamesocket
+}
+
+//GetPublicBattles get public battles
+func (svc GameService) GetPublicBattles() ([]resources.Game, error) {
+	var response []resources.Game
+	games, err := svc.gameRepo.GetPublicBattle()
+	if err != nil {
+		return nil, fmt.Errorf("Error we can't get data now")
+	}
+
+	for _, game := range games {
+		ownderuser, err := svc.validateUser(game.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Username}
+		_game := resources.Game{ID: game.ID, IsActive: game.IsActive, IsPublic: game.IsPublic, User: owneruser}
+
+		for _, _juserID := range game.JoinedUsers {
+			_juser, err := svc.userRepo.GetUserByID(int64(_juserID))
+			if err != nil {
+				continue
+			}
+
+			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Username}
+			_game.JoinedUser = append(_game.JoinedUser, jUser)
+		}
+		response = append(response, _game)
+	}
+	return response, nil
 }

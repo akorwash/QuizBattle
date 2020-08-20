@@ -90,3 +90,22 @@ func (repos *MongoGameRepository) GetGameByID(_id int64) (*entites.Game, error) 
 	}
 	return &_entity, nil
 }
+
+//GetPublicBattle query the database and find public battles
+func (repos *MongoGameRepository) GetPublicBattle() ([]entites.Game, error) {
+	filter := bson.M{"ispublic": bson.M{"$eq": true}}
+	iter := repos.mongoContext.Collection("Game")
+	cursor, err := iter.Find(context.Background(), filter)
+	if err != nil {
+		println("Error while getting all todos, Reason: %v\n", err)
+		return nil, err
+	}
+
+	var entities []entites.Game
+	for cursor.Next(context.Background()) {
+		var _entity entites.Game
+		cursor.Decode(&_entity)
+		entities = append(entities, _entity)
+	}
+	return entities, nil
+}
