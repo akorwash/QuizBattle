@@ -164,7 +164,7 @@ function UpdateJoinGame(id){
 
 function LoadStream(){
     if (window["WebSocket"]) {
-        gamestreamconn = new WebSocket("ws://" + document.location.host + "/ws/" + window.localStorage.getItem('auth_token'));
+        gamestreamconn = new WebSocket("wss://" + document.location.host + "/ws/" + window.localStorage.getItem('auth_token'));
         gamestreamconn.onclose = function (evt) {
             var errSpan = document.getElementById('errorSumm')
             errSpan.innerText = "Connection close with server"
