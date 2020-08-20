@@ -188,7 +188,7 @@ function emptyError(){
 function JoinGame(id){
     $.ajax({
         type: 'post',
-        url: '/api/v1/game/join/'+id,
+        url: '/api/v1/game/join/'+id+"/any",
         headers: {"Authorization": "bearer "+ window.localStorage.getItem('auth_token')}
     })
     .done(function (element) {

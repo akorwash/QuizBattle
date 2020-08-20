@@ -72,7 +72,7 @@ func (svc GameService) CreateNewGame(model resources.CreateGameModel) (*resource
 }
 
 //JoinGame to do
-func (svc GameService) JoinGame(userID uint64, gameID int64) (*resources.Game, error) {
+func (svc GameService) JoinGame(userID uint64, gameID int64, modAny bool) (*resources.Game, error) {
 	//check where the owner user exist in our system
 	user, err := svc.validateUser(userID)
 	if err != nil {
@@ -96,10 +96,9 @@ func (svc GameService) JoinGame(userID uint64, gameID int64) (*resources.Game, e
 		return nil, err
 	}
 	owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Fullname}
-
 	//insure that player not joineed the game twice
 	alreadyExist, seed := svc.checkExistInJoinedPlayer(userID, game)
-	if alreadyExist {
+	if alreadyExist && !modAny {
 		return nil, fmt.Errorf("User already joined this game")
 	}
 

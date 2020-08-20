@@ -58,13 +58,19 @@ func (controller *GameController) JoinGame(svc service.IGameServices) func(w htt
 		if err != nil {
 			gameID = 0
 		}
+		var joinAny bool
+		if vars["mod"] == "any" {
+			joinAny = true
+		} else {
+			joinAny = false
+		}
 
 		userData, err := ExtractTokenMetadata(r)
 		if err != nil {
 			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
 			return
 		}
-		game, err := svc.JoinGame(userData.UserID, int64(gameID))
+		game, err := svc.JoinGame(userData.UserID, int64(gameID), joinAny)
 
 		if err != nil {
 			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't create game due err: "+err.Error())

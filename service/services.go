@@ -8,7 +8,7 @@ import (
 //IGameServices services interface to create account
 type IGameServices interface {
 	CreateNewGame(model resources.CreateGameModel) (*resources.Game, error)
-	JoinGame(userID uint64, gameID int64) (*resources.Game, error)
+	JoinGame(userID uint64, gameID int64, mod bool) (*resources.Game, error)
 	GetPublicBattles() ([]resources.Game, error)
 	GetMyBattles(userID uint64) ([]resources.Game, error)
 }
@@ -29,7 +29,7 @@ type ICreateAccountServices interface {
 	CrateUser(user resources.CreateAccountModel) (*resources.UserAccount, error)
 }
 
-//ICreateAccountServices services interface to create account
+//IUpdateAccountServices services interface to create account
 type IUpdateAccountServices interface {
 	UpdateUser(user resources.UpdateAccountModel) (*resources.UserAccount, error)
 }
