@@ -3,6 +3,7 @@
         <head>
          
             <meta charset="utf-8">
+            <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
             <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
             <meta name="author" content="Ahmed Korwash">
@@ -10,7 +11,7 @@
 
             <script>
               var title = document.getElementById('pagetile')
-              title.innerText = "Quiz Battle - "+ window.location.href.split('/')[5]
+              title.innerText = "Quiz Battle - "+ decodeURI(window.location.href.split('/')[5])
             </script>
 
             <link rel="icon" href="/static/icon.png">
