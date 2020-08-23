@@ -40,8 +40,9 @@ var upgrader = websocket.Upgrader{
 
 //Client is a middleman between the websocket connection and the hub.
 type Client struct {
-	hub *Hub
-
+	hub      *Hub
+	UserID   uint64
+	Fullname string
 	// The websocket connection.
 	conn *websocket.Conn
 
@@ -122,7 +123,7 @@ func (c *Client) writePump() {
 }
 
 //ServeGameBattle handles websocket requests from the peer
-func ServeGameBattle(w http.ResponseWriter, r *http.Request) {
+func ServeGameBattle(userID uint64, fullname string, w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	gameID, err := strconv.Atoi(vars["id"])
 	if err != nil {
@@ -136,7 +137,7 @@ func ServeGameBattle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_hub := GameConnections[int64(gameID)]
-	client := &Client{hub: &_hub, conn: conn, send: make(chan []byte, 256)}
+	client := &Client{UserID: userID, Fullname: fullname, hub: &_hub, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
@@ -148,7 +149,7 @@ func ServeGameBattle(w http.ResponseWriter, r *http.Request) {
 var streamGamehub *Hub
 
 //ServeGameStream handles websocket requests from the peer
-func ServeGameStream(w http.ResponseWriter, r *http.Request) {
+func ServeGameStream(userID uint64, fullname string, w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -160,7 +161,7 @@ func ServeGameStream(w http.ResponseWriter, r *http.Request) {
 		streamGamehub.Run()
 	}
 
-	client := &Client{hub: streamGamehub, conn: conn, send: make(chan []byte, 256)}
+	client := &Client{UserID: userID, Fullname: fullname, hub: streamGamehub, conn: conn, send: make(chan []byte, 256)}
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
