@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -30,8 +29,6 @@ func GetHandler() handler.WebResponseHandler {
 
 //TokenAuthMiddleware auth by token middleware
 func TokenAuthMiddleware(next http.Handler) http.Handler {
-
-	log.Println("auth middleware registered")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		err := TokenValid(r)
