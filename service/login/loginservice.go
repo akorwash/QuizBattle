@@ -53,6 +53,7 @@ func CreateToken(user entites.User) (string, error) {
 	atClaims["authorized"] = true
 	atClaims["user_id"] = user.ID
 	atClaims["username"] = user.Username
+	atClaims["fullname"] = user.Fullname
 	atClaims["mobileNumber"] = user.MobileNumber
 	atClaims["Email"] = user.Email
 	atClaims["exp"] = time.Now().Add(time.Hour * 336).Unix()

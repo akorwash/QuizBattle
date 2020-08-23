@@ -125,11 +125,23 @@ func serveHome(w http.ResponseWriter, r *http.Request) {
 }
 
 func serveGameBattle(w http.ResponseWriter, r *http.Request) {
-	websockets.ServeGameBattle(w, r)
+	userData, err := controller.ExtractTokenMetadata(r)
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+		return
+	}
+
+	websockets.ServeGameBattle(userData.UserID, userData.Fullname, w, r)
 }
 
 func serveGameStream(w http.ResponseWriter, r *http.Request) {
-	websockets.ServeGameStream(w, r)
+	userData, err := controller.ExtractTokenMetadata(r)
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+		return
+	}
+
+	websockets.ServeGameStream(userData.UserID, userData.Fullname, w, r)
 }
 func commonMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

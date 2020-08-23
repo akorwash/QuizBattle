@@ -90,6 +90,11 @@ func ExtractTokenMetadata(r *http.Request) (*AccessDetails, error) {
 			return nil, err
 		}
 
+		fullname, ok := claims["fullname"].(string)
+		if !ok {
+			return nil, err
+		}
+
 		mobilenumber, ok := claims["mobileNumber"].(string)
 		if !ok {
 			return nil, err
@@ -105,6 +110,7 @@ func ExtractTokenMetadata(r *http.Request) (*AccessDetails, error) {
 			Email:        email,
 			MobileNumber: mobilenumber,
 			UserID:       _userID,
+			Fullname:     fullname,
 		}, nil
 	}
 	return nil, err
@@ -132,5 +138,6 @@ type AccessDetails struct {
 	Username     string
 	MobileNumber string
 	UserID       uint64
+	Fullname     string
 	Email        string
 }
