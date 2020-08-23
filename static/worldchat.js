@@ -1,7 +1,7 @@
 var worldcharStreamConn;
 function LoadChatStream(){
     if (window["WebSocket"]) {
-        worldcharStreamConn = new WebSocket("ws://" + document.location.host + "/ws/worldchat/" + window.localStorage.getItem('auth_token'));
+        worldcharStreamConn = new WebSocket("wss://" + document.location.host + "/ws/worldchat/" + window.localStorage.getItem('auth_token'));
         worldcharStreamConn.onclose = function (evt) {
             var errSpan = document.getElementById('worldchaterrorSumm')
             errSpan.innerText = "Connection close with server"
