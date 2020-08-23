@@ -80,28 +80,31 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 	updateAccSvc := updateaccount.NEW(userRepo)
 	loginSvc := login.New(userRepo)
 
-	a.Router.HandleFunc("/user/profile/{username}", userController.UserProfilePage).Methods("GET")
-
 	a.Router.Handle("/api/v1/question/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(questionController.GetQuestionByID(questionSvc)))).Methods("GET")
 	a.Router.Handle("/api/v1/game/join/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.JoinGame(gameSvc)))).Methods("POST")
 	a.Router.Handle("/api/v1/game/join/{id:[0-9]+}/{mod}", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.JoinGame(gameSvc)))).Methods("POST")
 	a.Router.Handle("/api/v1/game/new", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.CreateGame(gameSvc)))).Methods("POST")
-	a.Router.HandleFunc("/user/createuser", userController.CreateUser(createAccSvc)).Methods("POST")
 	a.Router.Handle("/api/v1/user/updateuser", controller.TokenAuthMiddleware(http.HandlerFunc(userController.UpdateUser(updateAccSvc)))).Methods("POST")
+
+	a.Router.HandleFunc("/user/createuser", userController.CreateUser(createAccSvc)).Methods("POST")
 	a.Router.HandleFunc("/user/login", userController.Login(loginSvc)).Methods("POST")
+
 	a.Router.HandleFunc("/", homeController.HomePage).Methods("GET")
+	a.Router.HandleFunc("/user/profile/{username}", userController.UserProfilePage).Methods("GET")
+
 	a.Router.HandleFunc("/about", homeController.AboutPage).Methods("GET")
 	a.Router.HandleFunc("/contact", homeController.ContactPage).Methods("GET")
 	a.Router.HandleFunc("/auth/signin", authController.SignInPage).Methods("GET")
 	a.Router.HandleFunc("/auth/signup", authController.SignUpPage).Methods("GET")
 	a.Router.HandleFunc("/game/play", gameController.PlayPage).Methods("GET")
 	a.Router.HandleFunc("/battle/{id:[0-9]+}", gameController.BattlePage).Methods("GET")
+
 	a.Router.Handle("/game/publicbattles", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.GetPublicBattles(gameSvc)))).Methods("GET")
 	a.Router.Handle("/game/mybattles", controller.TokenAuthMiddleware(http.HandlerFunc(gameController.GetMyBattles(gameSvc)))).Methods("GET")
-	a.Router.HandleFunc("/home", serveHome)
 
 	a.Router.Handle("/ws/{token}/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveGameBattle)))
 	a.Router.Handle("/ws/{token}", controller.TokenAuthMiddleware(http.HandlerFunc(serveGameStream)))
+	a.Router.Handle("/ws/worldchat/{token}", controller.TokenAuthMiddleware(http.HandlerFunc(serveWorldChatStream)))
 
 	var dir string
 
@@ -143,6 +146,17 @@ func serveGameStream(w http.ResponseWriter, r *http.Request) {
 
 	websockets.ServeGameStream(userData.UserID, userData.Fullname, w, r)
 }
+
+func serveWorldChatStream(w http.ResponseWriter, r *http.Request) {
+	userData, err := controller.ExtractTokenMetadata(r)
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+		return
+	}
+
+	websockets.ServeWorldChatStream(userData.UserID, userData.Fullname, w, r)
+}
+
 func commonMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Add("Content-Type", "application/json")

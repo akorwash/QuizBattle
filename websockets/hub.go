@@ -1,5 +1,10 @@
 package websockets
 
+type messageContainer struct {
+	Message  string
+	Fullname string
+}
+
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
@@ -9,6 +14,9 @@ type Hub struct {
 
 	// Inbound messages from the clients.
 	broadcast chan []byte
+
+	// Inbound messages from the clients.
+	broadcastJSONmessage chan messageContainer
 
 	// Register requests from the clients.
 	register chan *Client

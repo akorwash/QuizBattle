@@ -58,6 +58,7 @@ func (controller *GameController) JoinGame(svc service.IGameServices) func(w htt
 		if err != nil {
 			gameID = 0
 		}
+
 		var joinAny bool
 		if vars["mod"] == "any" {
 			joinAny = true
