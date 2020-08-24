@@ -12,14 +12,15 @@ $("#onYourMic").click(function() {
                   analyserNode = null;
 
             if(play){
-                audioContext.suspend()
-                play = false
-                $("#onYourMic").removeClass('btn-success')
-                $("#onYourMic").addClass('btn-danger')
+                audioContext.close().then(function () {
+                    play = false
+                    $("#onYourMic").removeClass('btn-success')
+                    $("#onYourMic").addClass('btn-danger')
+                });
                 return
             }
             
-            if(!audioContext){
+            if(!audioContext || !play){
                 audioContext = new AudioContext();
             }
                 
@@ -31,9 +32,10 @@ $("#onYourMic").click(function() {
               play = true
               
 
-              if (!navigator.getUserMedia)
-                      navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia ||
-                                    navigator.mozGetUserMedia || navigator.msGetUserMedia;
+            if (!navigator.getUserMedia){
+                navigator.getUserMedia = ( navigator.getUserMedia    || navigator.webkitGetUserMedia ||
+                    navigator.mozGetUserMedia ||navigator.msGetUserMedia);              
+            }
 
               if (navigator.getUserMedia){
 
