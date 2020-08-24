@@ -12,11 +12,11 @@ $("#onYourMic").click(function() {
                   analyserNode = null;
 
             if(play){
-                audioContext.close().then(function () {
-                    play = false
-                    $("#onYourMic").removeClass('btn-success')
-                    $("#onYourMic").addClass('btn-danger')
-                });
+                audioContext.close();
+                clearInterval(playInterval)
+                play = false
+                $("#onYourMic").removeClass('btn-success')
+                $("#onYourMic").addClass('btn-danger')
                 return
             }
             
@@ -24,7 +24,7 @@ $("#onYourMic").click(function() {
                 audioContext = new AudioContext();
             }
                 
-              audioContext.resume().then(() => {
+            audioContext.resume().then(() => {
               console.log('Playback resumed successfully');
 
               $("#onYourMic").addClass('btn-success')
@@ -41,7 +41,23 @@ $("#onYourMic").click(function() {
 
                   navigator.getUserMedia({audio:true}, 
                     function(stream) {
-                        start_microphone(stream);
+                        
+                        const analyser = audioContext.createAnalyser();
+                        analyser.smoothingTimeConstant = 0;
+                        analyser.fftSize = 2048;
+                        var buffer_length = analyser.frequencyBinCount;
+
+                        audioContext.createMediaStreamSource(stream).connect(analyser);
+                        var array_freq_domain = new Uint8Array(buffer_length);
+                        var array_time_domain = new Uint8Array(buffer_length);
+                        
+                       playInterval = setInterval(() => {                        
+                            analyser.getByteFrequencyData(array_freq_domain);
+                            analyser.getByteTimeDomainData(array_time_domain);
+
+                            console.log(array_freq_domain)
+                            console.log(array_time_domain)
+                          }, 1000);
                     },
                     function(e) {
                         play = false
