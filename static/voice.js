@@ -120,11 +120,14 @@ $("#onYourMic").click(function() {
                   // get the average for the first channel
                   var array = new Uint8Array(analyserNode.frequencyBinCount);
                   analyserNode.getByteFrequencyData(array);
-            
+                  
+                  //we will use this
+                  var voiceData = new Uint8Array(analyserNode.frequencyBinCount);
+                  analyserNode.getByteTimeDomainData(voiceData);
+
                   // draw the spectrogram
                   if (microphone_stream.playbackState == microphone_stream.PLAYING_STATE) {
-            
-                      //show_some_data(array, 5, "from fft");
+                      show_some_data(array, 5, "from fft");
                   }
                 };
             }
