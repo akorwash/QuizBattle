@@ -65,8 +65,41 @@
               .text-right{text-align:right !important}
               .chat_ib p{ font-size:14px; color:#989898; margin:auto}
             </style>
-
-            
+            <style type="text/css"> 
+              h1 { 
+                  color:green; 
+              } 
+              .xyz { 
+                  background-size: auto; 
+                  text-align: center; 
+                  padding-top: 100px; 
+              } 
+              .btn-circle.btn-sm { 
+                  width: 30px; 
+                  height: 30px; 
+                  padding: 6px 0px; 
+                  border-radius: 15px; 
+                  font-size: 8px; 
+                  text-align: center; 
+                  font-weight: bold;
+              } 
+              .btn-circle.btn-md { 
+                  width: 50px; 
+                  height: 50px; 
+                  padding: 7px 10px; 
+                  border-radius: 25px; 
+                  font-size: 10px; 
+                  text-align: center; 
+              } 
+              .btn-circle.btn-xl { 
+                  width: 70px; 
+                  height: 70px; 
+                  padding: 10px 16px; 
+                  border-radius: 35px; 
+                  font-size: 12px; 
+                  text-align: center; 
+              } 
+          </style> 
             <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
         </head>
         <body class="text-center">
@@ -105,14 +138,16 @@
             <div class="col-md-4">
               <div class="my-3 p-3 bg-white rounded shadow-sm">
                 <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">World wide chat</h6>
-                <div style="color: black; height: 400px; overflow-y:scroll" id="messages">
+                <div style="color: black; height: 350px; overflow-y:scroll" id="messages">
                 
                 </div>
                 <span id="worldchaterrorSumm" class="error text-danger"></span>
 
                 <small style="text-decoration: none; color: black; font-size: 14px;font-weight: bold;" class="d-block text-right mt-3">
                  <textarea required autofocus class="mb-2 form-control" id="inputmessage" placeholder="Your message"></textarea>
-                  <button class="btn btn-sm btn-primary" id="sendmessage" >Send</button>
+                 <button style="float: left;" class="btn btn-sm btn-primary" id="sendmessage" >Send</button>
+                 <button class="btn btn-sm btn-circle btn-danger" id="onYourMic" >Mic</button>
+                 <input style="position: relative; top:4px" id="volume" type="range" min="0" max="1" step="0.1" value="0.5"/> <span style="color:#464646">Volume</span>
                 </small>
               </div>
             </div>
@@ -147,5 +182,6 @@
         <script type="text/javascript" src="/static/site.js"></script>
         <script src="/static/authvalidation.js"></script>
         <script type="text/javascript" src="/static/worldchat.js"></script>
+        <script type="text/javascript" src="/static/voice.js"></script>
         <script type="text/javascript" src="/static/userpage.js"></script>
 	</html>
