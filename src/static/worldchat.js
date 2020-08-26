@@ -1,7 +1,7 @@
 var worldcharStreamConn;
 function LoadChatStream(){
     if (window["WebSocket"]) {
-        worldcharStreamConn = new WebSocket("wss://" + document.location.host + "/ws/worldchat/" + window.localStorage.getItem('auth_token'));
+        worldcharStreamConn = new WebSocket(WORLD_WS);
         worldcharStreamConn.onclose = function (evt) {
             var errSpan = document.getElementById('worldchaterrorSumm')
             errSpan.innerText = "Connection close with server"
@@ -98,9 +98,6 @@ function sendmessage(message){
       worldcharStreamConn.send(data);
 }
 
-emptyError()
-LoadChatStream()
-
 function fireClick(){
     var mess = $('#inputmessage').val()
     if(mess === ''){
@@ -112,11 +109,9 @@ function fireClick(){
     $('#inputmessage').val('')
 }
 
-
 $("#sendmessage").click(function() {
     fireClick()
 });
-
 
 $('textarea').keyup(function (event) {
     if (event.keyCode == 13 && event.shiftKey) {
@@ -152,3 +147,6 @@ if (el.selectionStart) {
 }  
 return 0; 
 }
+
+emptyError()
+LoadChatStream()

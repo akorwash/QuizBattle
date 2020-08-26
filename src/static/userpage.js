@@ -1,10 +1,9 @@
 var gamestreamconn;
 var gamesLoaded = [];
 
-
 function getLoadGamePath() {
     return '/game/mybattles'
- }
+}
  
 function emptyError(){
     var errSpan = document.getElementById('errorSumm')
@@ -43,9 +42,8 @@ function emptyError(){
          var errSpan = document.getElementById('errorSumm')
          errSpan.innerText = data.error
        });
- }
+}
 
- 
 function CreateGame(){
     $("#creategame").prop('disabled', true);
     emptyError()
@@ -98,10 +96,9 @@ function CreateGame(){
     $("#creategame").prop('disabled', false);
 }
 
-
 function LoadStream(){
     if (window["WebSocket"]) {
-        gamestreamconn = new WebSocket("wss://" + document.location.host + "/ws/" + window.localStorage.getItem('auth_token'));
+        gamestreamconn = new WebSocket(PROFILE_WS);
         gamestreamconn.onclose = function (evt) {
             var errSpan = document.getElementById('errorSumm')
             errSpan.innerText = "Connection close with server"
@@ -114,7 +111,6 @@ function LoadStream(){
         errSpan.innerText = "your browser dosn't support websokets so you have to refresh your page every time"
     }
 }
-
 
 function processStreamCommand(command){
     var prom = command.text()
