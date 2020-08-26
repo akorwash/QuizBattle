@@ -97,8 +97,10 @@ $("#onYourMic").click(function() {
                           console.log("curr_volume ", curr_volume);
                         });
                         
-                        processor.onaudioprocess = function(e) {                          
-                          voicechatStreamConn.send(bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate));
+                        processor.onaudioprocess = function(e) {     
+                          if (voicechatStreamConn.readyState === WebSocket.OPEN) {
+                            voicechatStreamConn.send(bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate));
+                          }                     
                         };
                     },
                     function(e) {
@@ -343,4 +345,10 @@ function LoadVoiceChatStream(){
 }
 
 
-LoadVoiceChatStream()
+ 
+
+setInterval(function() {
+  if (voicechatStreamConn.readyState === WebSocket.CLOSED) {
+    LoadVoiceChatStream()
+  }
+});                     
