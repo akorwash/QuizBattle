@@ -37,7 +37,7 @@ $("#onYourMic").click(function() {
           function(stream) {
               const analyser = audioContext.createAnalyser();
               analyser.smoothingTimeConstant = 0;
-              analyser.fftSize = 8192;
+              analyser.fftSize = 2048;
 
               var source = audioContext.createMediaStreamSource(stream)
               const processor = audioContext.createScriptProcessor(analyser.frequencyBinCount, 1, 1);
