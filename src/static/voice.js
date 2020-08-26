@@ -71,7 +71,7 @@ $("#onYourMic").click(function() {
                       // Stop recording after 1 second and broadcast it to server
                        setInterval(function() {
                         mediaRecorder.stop()
-                      }, 500);
+                      }, 1000);
 
                         // const analyser = audioContext.createAnalyser();
                         // analyser.smoothingTimeConstant = 0;
