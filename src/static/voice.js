@@ -77,11 +77,26 @@ $("#onYourMic").click(function() {
                         analyser.smoothingTimeConstant = 0;
                         analyser.fftSize = BUFF_SIZE;
 
+                        gain_node = audioContext.createGain();
+                        gain_node.connect( audioContext.destination );
+
+
                         var source = audioContext.createMediaStreamSource(stream)
                         const processor = audioContext.createScriptProcessor(analyser.frequencyBinCount, 1, 1);
                         source.connect(processor);
+                        source.connect(gain_node);
                         processor.connect(audioContext.destination);
 
+
+                        // --- enable volume control for output speakers
+                        document.getElementById('volume').addEventListener('change', function() {
+
+                          var curr_volume = this.value;
+                          gain_node.gain.value = curr_volume;
+
+                          console.log("curr_volume ", curr_volume);
+                        });
+                        
                         processor.onaudioprocess = function(e) {                          
                           voicechatStreamConn.send(bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate));
                         };
