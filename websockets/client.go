@@ -25,7 +25,7 @@ const (
 	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer.
-	maxMessageSize = 512
+	maxMessageSize = 4096
 )
 
 var (
@@ -34,8 +34,8 @@ var (
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
+	ReadBufferSize:  16384,
+	WriteBufferSize: 16384,
 }
 
 //Client is a middleman between the websocket connection and the hub.
@@ -60,9 +60,9 @@ func (c *Client) readPump() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
-	c.conn.SetReadLimit(maxMessageSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	//c.conn.SetReadLimit(maxMessageSize)
+	//c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	//c.conn.SetPongHandler(func(string) error { c.conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
@@ -89,7 +89,7 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			//c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				// The hub closed the channel.
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
@@ -241,7 +241,7 @@ func ServeWorldChatStream(userID uint64, fullname string, w http.ResponseWriter,
 		streamworldchathub.Run()
 	}
 
-	client := &Client{UserID: userID, Fullname: fullname, hub: streamworldchathub, conn: conn, send: make(chan []byte, 256)}
+	client := &Client{UserID: userID, Fullname: fullname, hub: streamworldchathub, conn: conn, send: make(chan []byte, 4096)}
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
