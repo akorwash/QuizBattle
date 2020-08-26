@@ -6,8 +6,11 @@ ENV GO111MODULE=on \
     GOOS=linux \
     GOARCH=amd64
 
+WORKDIR /app
+RUN git clone git@github.com:akorwash/QuizBattle.git
+
 # Move to working directory /build
-WORKDIR /src/
+WORKDIR /app/QuizBattle/src
 
 # Copy and download dependency using go mod
 COPY /src/go.mod .
