@@ -16,60 +16,69 @@ function LoadChatStream(){
     }
 }
 
+function processTextChat(mesaage){
+    var messages_list = document.getElementById("messages");
+    var doScroll = messages_list.scrollTop > messages_list.scrollHeight - messages_list.clientHeight - 1;
+    
+    if(mesaage.Fullname === window.localStorage.getItem('auth_fullname')){
+
+        var divSlic = `
+        <div class="chat_list">
+        <div class="chat_people">
+          <div class="chat_img_left"> <img src="https://ptetutorials.com/images/user-profile.png" alt="sunil"> </div>
+          <div class="chat_ib">
+            <h5>`+mesaage.Fullname+` <span class="chat_date"></span></h5>`
+            
+            for (let index = 0; index < mesaage.Message.split('\n').length; index++) {
+                const messText = mesaage.Message.split('\n')[index];
+                divSlic = divSlic+ `<p class="text-left">`+messText+`</p>                    `
+            }
+
+            divSlic = divSlic +  `
+            </div>
+          </div>
+        </div>
+          `
+        $(messages_list).append(divSlic)
+    }else{
+        var divSlic = `
+        <div class="chat_list">
+        <div class="chat_people">
+          <div class="chat_img_right"> <img src="https://ptetutorials.com/images/user-profile.png" alt="sunil"> </div>
+          <div class="chat_ib">
+            <h5>`+mesaage.Fullname+` <span class="chat_date"></span></h5>`
+            
+            for (let index = 0; index < mesaage.Message.split('\n').length; index++) {
+                const messText = mesaage.Message.split('\n')[index];
+                divSlic = divSlic+ `<p class="text-right">`+messText+`</p>                    `
+            }
+
+            divSlic = divSlic +  `
+            </div>
+          </div>
+        </div>
+          `
+        $(messages_list).append(divSlic)
+    }
+   
+    if (doScroll) {
+        messages_list.scrollTop = messages_list.scrollHeight - messages_list.clientHeight;
+    }
+}
+
 function processChatStreamCommand(command){
     emptyError()
     var prom = command.text()
     prom.then(function(mesaageStr) {
         var mesaage = JSON.parse(mesaageStr);
-        console.log(mesaage)
+        if(mesaage.Type == "text"){
+            processTextChat(mesaage)
+        }
 
-        var messages_list = document.getElementById("messages");
-        var doScroll = messages_list.scrollTop > messages_list.scrollHeight - messages_list.clientHeight - 1;
-        
-        if(mesaage.Fullname === window.localStorage.getItem('auth_fullname')){
-
-            var divSlic = `
-            <div class="chat_list">
-            <div class="chat_people">
-              <div class="chat_img_left"> <img src="https://ptetutorials.com/images/user-profile.png" alt="sunil"> </div>
-              <div class="chat_ib">
-                <h5>`+mesaage.Fullname+` <span class="chat_date"></span></h5>`
-                
-                for (let index = 0; index < mesaage.Message.split('\n').length; index++) {
-                    const messText = mesaage.Message.split('\n')[index];
-                    divSlic = divSlic+ `<p class="text-left">`+messText+`</p>                    `
-                }
-
-                divSlic = divSlic +  `
-                </div>
-              </div>
-            </div>
-              `
-            $(messages_list).append(divSlic)
-        }else{
-            var divSlic = `
-            <div class="chat_list">
-            <div class="chat_people">
-              <div class="chat_img_right"> <img src="https://ptetutorials.com/images/user-profile.png" alt="sunil"> </div>
-              <div class="chat_ib">
-                <h5>`+mesaage.Fullname+` <span class="chat_date"></span></h5>`
-                
-                for (let index = 0; index < mesaage.Message.split('\n').length; index++) {
-                    const messText = mesaage.Message.split('\n')[index];
-                    divSlic = divSlic+ `<p class="text-right">`+messText+`</p>                    `
-                }
-
-                divSlic = divSlic +  `
-                </div>
-              </div>
-            </div>
-              `
-            $(messages_list).append(divSlic)
+        if(mesaage.Type == "voice"){
+            processvoice(mesaage)
         }
        
-        if (doScroll) {
-            messages_list.scrollTop = messages_list.scrollHeight - messages_list.clientHeight;
-        }
       });
 }
 
@@ -80,6 +89,7 @@ function emptyError(){
 
 function sendmessage(message){
     var data = JSON.stringify({
+        Type: "text",
         Message: message,
         Fullname: window.localStorage.getItem('auth_fullname')
       })
