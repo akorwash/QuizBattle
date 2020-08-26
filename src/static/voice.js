@@ -1,3 +1,7 @@
+
+var voicechatStreamConn;
+
+
 var audioContext;
 var alltoHear = false;
 var play = false;
@@ -43,28 +47,50 @@ $("#onYourMic").click(function() {
 
                   navigator.getUserMedia({audio:true}, 
                     function(stream) {
-                        
-                        const analyser = audioContext.createAnalyser();
-                        analyser.smoothingTimeConstant = 0;
-                        analyser.fftSize = 2048;
-                        var buffer_length = analyser.frequencyBinCount;
+                      var mediaRecorder = new MediaRecorder(stream);
+                      mediaRecorder.onstart = function(e) {
+                        this.chunks = [];
+                      };
 
-                        var source = audioContext.createMediaStreamSource(stream)
-                        const processor = audioContext.createScriptProcessor(1024, 1, 1);
-                        source.connect(processor);
-                        processor.connect(audioContext.destination);
+                      mediaRecorder.ondataavailable = function(e) {
+                        this.chunks.push(e.data);
+                      };
 
-                        processor.onaudioprocess = function(e) {
-                          var wavBuffer = bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate)
+                      mediaRecorder.onstop = function(e) {
+                        var id = {uid: window.localStorage.getItem('auth_uid')}
+                        var blob = new Blob( this.chunks, { 'type' : 'audio/ogg; codecs=opus' });
+                        voicechatStreamConn.send(blob);
+                      };
+
+                      // Start recording
+                      mediaRecorder.start();
+
+                      // Stop recording after 5 seconds and broadcast it to server
+                      setTimeout(function() {
+                        mediaRecorder.stop()
+                      }, 5000);
+
+                        // const analyser = audioContext.createAnalyser();
+                        // analyser.smoothingTimeConstant = 0;
+                        // analyser.fftSize = 2048;
+                        // var buffer_length = analyser.frequencyBinCount;
+
+                        // var source = audioContext.createMediaStreamSource(stream)
+                        // const processor = audioContext.createScriptProcessor(1024, 1, 1);
+                        // source.connect(processor);
+                        // processor.connect(audioContext.destination);
+
+                        // processor.onaudioprocess = function(e) {
+                        //   var wavBuffer = bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate)
                           
-                          var blobData = JSON.stringify({
-                            Type: "voice",
-                            UserId: window.localStorage.getItem('auth_uid'),
-                            Blob: wavBuffer,
-                            Fullname: window.localStorage.getItem('auth_fullname')
-                          })
-                          //worldcharStreamConn.send(blobData);
-                        };
+                        //   var blobData = JSON.stringify({
+                        //     Type: "voice",
+                        //     UserId: window.localStorage.getItem('auth_uid'),
+                        //     Blob: wavBuffer,
+                        //     Fullname: window.localStorage.getItem('auth_fullname')
+                        //   })
+                        //   //voicechatStreamConn.send(blobData);
+                        // };
                     },
                     function(e) {
                         play = false
@@ -90,6 +116,7 @@ $("#hearTheWorld").click(function() {
     alltoHear = true;
   }
 });
+
 // Convert an AudioBuffer to a Blob using WAVE representation
 function bufferToWave(abuffer, len) {
   var numOfChan = abuffer.numberOfChannels,
@@ -226,25 +253,23 @@ function start_microphone(stream){
 }
 
 
-function processvoice(message){
-  if(message.UserId != window.localStorage.getItem('auth_uid')){
+function processvoice(arrayBuffer){
+  //message.UserId != window.localStorage.getItem('auth_uid')
+  if(true){
     if(alltoHear){
-      var bufView = message.Blob
-      var length = bufView.length;
-      var result = '';
-      var addition = Math.pow(2,16)-1;
 
-      for(var i = 0;i<length;i+=addition){
+      const reader = new FileReader();
+      reader.addEventListener('loadend', () => {
+        // reader.result contains the contents of blob as a typed array
+        console.log(reader.result)
 
-          if(i + addition > length){
-              addition = length - i;
-          }
-          result += String.fromCharCode.apply(null, bufView.subarray(i,i+addition));
-      }
-      var buffer = str2ab(result)
-      var blobUrl = URL.createObjectURL(new Blob([buffer], {type: "audio/wav"}));
-      const audio = new Audio(blobUrl);
-      audio.play();
+      });
+      reader.readAsArrayBuffer(arrayBuffer);
+
+    var blob = new Blob([arrayBuffer], { 'type' : 'audio/ogg; codecs=opus' });
+    var audio = document.createElement('audio');
+    audio.src = window.URL.createObjectURL(blob);
+    audio.play();
     }
   }
 }
@@ -267,8 +292,6 @@ function generateFileName() {
 
 	return no_ext + ".compressed.wav";
 }
-
-
 
 function ab2str(buffer) {
   var bufView = new Uint16Array(buffer);
@@ -294,3 +317,23 @@ function str2ab(str) {
   }
   return buf;
 }
+
+function LoadVoiceChatStream(){
+  if (window["WebSocket"]) {
+    voicechatStreamConn = new WebSocket("wss://" + document.location.host + "/ws/voice/" + window.localStorage.getItem('auth_token'));
+    voicechatStreamConn.onclose = function (evt) {
+          var errSpan = document.getElementById('worldchaterrorSumm')
+          errSpan.innerText = "Connection close with server"
+      };
+    
+      voicechatStreamConn.onmessage = function (evt) {
+          processvoice(evt.data)
+      };
+  }else{
+      var errSpan = document.getElementById('worldchaterrorSumm')
+      errSpan.innerText = "your browser dosn't support websokets so you have to refresh your page every time"
+  }
+}
+
+
+LoadVoiceChatStream()
