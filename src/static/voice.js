@@ -47,53 +47,45 @@ $("#onYourMic").click(function() {
 
                   navigator.getUserMedia({audio:true}, 
                     function(stream) {
-                      var mediaRecorder = new MediaRecorder(stream);
+                      // var mediaRecorder = new MediaRecorder(stream);
                      
-                      mediaRecorder.ondataavailable = function(e) {
-                        if(e.data.size > 0){
-                          var chunks = [];
-                          chunks.push(e.data);
-                          var id = {uid: window.localStorage.getItem('auth_uid')}
-                          var blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
-                          voicechatStreamConn.send(blob);
-                        }
-                      };
+                      // mediaRecorder.ondataavailable = function(e) {
+                      //   if(e.data.size > 0){
+                      //     var chunks = [];
+                      //     chunks.push(e.data);
+                      //     var id = {uid: window.localStorage.getItem('auth_uid')}
+                      //     var blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
+                      //     voicechatStreamConn.send(blob);
+                      //   }
+                      // };
 
                      
 
-                      playInterval = setInterval(function() {
-                        if(mediaRecorder.state != "recording"){
-                          mediaRecorder.start();
-                        }
-                      })
+                      // playInterval = setInterval(function() {
+                      //   if(mediaRecorder.state != "recording"){
+                      //     mediaRecorder.start();
+                      //   }
+                      // })
 
 
-                      // Stop recording after 1 second and broadcast it to server
-                       setInterval(function() {
-                        mediaRecorder.stop()
-                      }, 1000);
+                      // // Stop recording after 1 second and broadcast it to server
+                      //  setInterval(function() {
+                      //   mediaRecorder.stop()
+                      // }, 1000);
 
-                        // const analyser = audioContext.createAnalyser();
-                        // analyser.smoothingTimeConstant = 0;
-                        // analyser.fftSize = 2048;
-                        // var buffer_length = analyser.frequencyBinCount;
+                        const analyser = audioContext.createAnalyser();
+                        analyser.smoothingTimeConstant = 0;
+                        analyser.fftSize = 4096;
+                        var buffer_length = analyser.frequencyBinCount;
 
-                        // var source = audioContext.createMediaStreamSource(stream)
-                        // const processor = audioContext.createScriptProcessor(1024, 1, 1);
-                        // source.connect(processor);
-                        // processor.connect(audioContext.destination);
+                        var source = audioContext.createMediaStreamSource(stream)
+                        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+                        source.connect(processor);
+                        processor.connect(audioContext.destination);
 
-                        // processor.onaudioprocess = function(e) {
-                        //   var wavBuffer = bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate)
-                          
-                        //   var blobData = JSON.stringify({
-                        //     Type: "voice",
-                        //     UserId: window.localStorage.getItem('auth_uid'),
-                        //     Blob: wavBuffer,
-                        //     Fullname: window.localStorage.getItem('auth_fullname')
-                        //   })
-                        //   //voicechatStreamConn.send(blobData);
-                        // };
+                        processor.onaudioprocess = function(e) {                          
+                          voicechatStreamConn.send(bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate));
+                        };
                     },
                     function(e) {
                         play = false
@@ -162,9 +154,7 @@ function bufferToWave(abuffer, len) {
   }
 
 
-  var bufView = new Uint16Array(buffer);
-
-  return bufView
+  return  new Blob([buffer], { 'type' : 'audio/ogg; codecs=opus' });
 
   function setUint16(data) {
     view.setUint16(pos, data, true);
