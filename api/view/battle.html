@@ -11,14 +11,20 @@
             <link rel="icon" href="/static/icon.png">
 
             <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
+            <link rel="stylesheet" href="/static/loading.css">
             <link rel="stylesheet" href="/static/home.css">
+            <style>
+              *, ::after, ::before {
+              box-sizing: unset;
+              }
+            </style>
             <script src="/static/authvalidation.js"></script>
             <script src="/static/battle.js"></script>
             <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
         </head>
         <body class="text-center">
-            <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
-          <header class="masthead mb-auto">
+          <div class=" d-flex w-100 h-100 p-3 flex-column">
+            <header class="masthead mb-auto">
             <div class="inner">
               <h3 class="masthead-brand">Quiz Battle</h3>
               <nav class="nav nav-masthead justify-content-center">
@@ -32,9 +38,16 @@
               </nav>
             </div>
           </header>
-        
-          <main role="main" class="inner cover">            
-            <div class="my-3 p-3 bg-white rounded shadow-sm">
+          <div id="battlepage" class=""></div>
+          <div class="row">
+            <div style="margin-left: auto;margin-right: auto;" class="col-md-3 p-3 bg-white rounded shadow-sm">
+              <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">Joined Users</h6>
+              <div id="battle_Joined_Users_container">
+                
+              </div>
+            </div>
+
+            <div style="margin-left: auto;margin-right: auto;" class="col-md-8 p-3 bg-white rounded shadow-sm">
               <h6 id="battleTitle" class="border-bottom border-gray pb-2 mb-0" style="color: black;"></h6>
               <div id="battle_container">
                
@@ -42,8 +55,9 @@
               </div>
               <span id="errorSumm" class="error text-danger"></span>
             </div>
-          </main>
-        
+            
+          </div>
+          
           <footer class="mastfoot mt-auto">
             <div class="inner">
               <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
