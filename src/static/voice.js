@@ -349,7 +349,7 @@ function LoadVoiceChatStream(){
 
 setInterval(function() {
   if(!voicechatStreamConn){
-    LoadVoiceChatStream
+    LoadVoiceChatStream()
   }else{
     if (voicechatStreamConn.readyState === WebSocket.CLOSED) {
       LoadVoiceChatStream()
