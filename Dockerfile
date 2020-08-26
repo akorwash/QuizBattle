@@ -6,6 +6,12 @@ ENV GO111MODULE=on \
     GOOS=linux \
     GOARCH=amd64
 
+# Update aptitude with new repo
+RUN apt-get update
+
+# Install software 
+RUN apt-get install -y git
+
 WORKDIR /app
 RUN git clone git@github.com:akorwash/QuizBattle.git
 
