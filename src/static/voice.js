@@ -48,27 +48,30 @@ $("#onYourMic").click(function() {
                   navigator.getUserMedia({audio:true}, 
                     function(stream) {
                       var mediaRecorder = new MediaRecorder(stream);
-                      mediaRecorder.onstart = function(e) {
-                        this.chunks = [];
-                      };
-
+                     
                       mediaRecorder.ondataavailable = function(e) {
-                        this.chunks.push(e.data);
+                        if(e.data.size > 0){
+                          var chunks = [];
+                          chunks.push(e.data);
+                          var id = {uid: window.localStorage.getItem('auth_uid')}
+                          var blob = new Blob(chunks, { 'type' : 'audio/ogg; codecs=opus' });
+                          voicechatStreamConn.send(blob);
+                        }
                       };
 
-                      mediaRecorder.onstop = function(e) {
-                        var id = {uid: window.localStorage.getItem('auth_uid')}
-                        var blob = new Blob( this.chunks, { 'type' : 'audio/ogg; codecs=opus' });
-                        voicechatStreamConn.send(blob);
-                      };
+                     
 
-                      // Start recording
-                      mediaRecorder.start();
+                      playInterval = setInterval(function() {
+                        if(mediaRecorder.state != "recording"){
+                          mediaRecorder.start();
+                        }
+                      })
 
-                      // Stop recording after 5 seconds and broadcast it to server
-                      setTimeout(function() {
+
+                      // Stop recording after 1 second and broadcast it to server
+                       setInterval(function() {
                         mediaRecorder.stop()
-                      }, 5000);
+                      }, 500);
 
                         // const analyser = audioContext.createAnalyser();
                         // analyser.smoothingTimeConstant = 0;
