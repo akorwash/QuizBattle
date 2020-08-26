@@ -45,7 +45,7 @@ jobs:
     - name: Test
       
       run: |
-        cd "src" .
+        cd "src"
         go test -v ./... .
       env:
        TestMongoUsername: '${{secrets.TESTMONGOUSERNAME}}'
