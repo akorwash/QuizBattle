@@ -348,7 +348,11 @@ function LoadVoiceChatStream(){
  
 
 setInterval(function() {
-  if (voicechatStreamConn.readyState === WebSocket.CLOSED) {
-    LoadVoiceChatStream()
+  if(!voicechatStreamConn){
+    LoadVoiceChatStream
+  }else{
+    if (voicechatStreamConn.readyState === WebSocket.CLOSED) {
+      LoadVoiceChatStream()
+    }
   }
 });                     
