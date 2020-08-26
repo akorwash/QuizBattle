@@ -1,4 +1,18 @@
-FROM golang:alpine
+FROM alpine:3.12
+RUN apk update && apk add go gcc bash musl-dev openssl-dev ca-certificates && update-ca-certificates
+RUN apk add git
+ARG GOLANG_VERSION=1.14.3
+RUN wget https://dl.google.com/go/go$GOLANG_VERSION.src.tar.gz && tar -C /usr/local -xzf go$GOLANG_VERSION.src.tar.gz
+
+RUN cd /usr/local/go/src && ./make.bash
+
+ENV PATH=$PATH:/usr/local/go/bin
+
+RUN rm go$GOLANG_VERSION.src.tar.gz
+
+#we delete the apk installed version to avoid conflict
+RUN apk del go
+
 
 # Set necessary environmet variables needed for our image
 ENV GO111MODULE=on \
@@ -6,37 +20,19 @@ ENV GO111MODULE=on \
     GOOS=linux \
     GOARCH=amd64
 
-# Update aptitude with new repo
-RUN apt-get update
+WORKDIR /data
 
-# Install software 
-RUN apt-get install -y git
-
-WORKDIR /app
-RUN git clone git@github.com:akorwash/QuizBattle.git
-
+RUN git clone https://github.com/akorwash/QuizBattle.git /data/app
+ 
 # Move to working directory /build
-WORKDIR /app/QuizBattle/src
+WORKDIR /data/app/src
 
-# Copy and download dependency using go mod
-COPY /src/go.mod .
-COPY /src/go.sum .
-RUN go mod download
-
-# Copy the code into the container
-COPY . .
 
 # Build the application
 RUN go build -o dist
-
-# Move to /dist directory as the place for resulting binary folder
-WORKDIR /dist
-
-# Copy binary from build to main folder
-RUN cp /build/main .
-
+RUN ls  /data/app/src
 # Export necessary port
-EXPOSE 3000
+EXPOSE 8080
 
 # Command to run when starting the container
 CMD ["/dist/main"]
