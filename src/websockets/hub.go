@@ -5,6 +5,11 @@ type messageContainer struct {
 	Fullname string
 }
 
+type Message struct {
+	id   uint64
+	data []byte
+}
+
 // Hub maintains the set of active clients and broadcasts messages to the
 // clients.
 type Hub struct {
@@ -13,7 +18,7 @@ type Hub struct {
 	clients map[*Client]bool
 
 	// Inbound messages from the clients.
-	broadcast chan []byte
+	broadcast chan Message
 
 	// Inbound messages from the clients.
 	broadcastJSONmessage chan messageContainer
@@ -25,19 +30,23 @@ type Hub struct {
 	unregister chan *Client
 }
 
+//NewHub to do
 func NewHub() *Hub {
 	return &Hub{
 		active:     true,
-		broadcast:  make(chan []byte),
+		broadcast:  make(chan Message),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
 	}
 }
+
+//Close to do
 func (h *Hub) Close() {
 	h.active = false
 }
 
+//Run to do
 func (h *Hub) Run() {
 	for {
 		if !h.active {
@@ -57,12 +66,24 @@ func (h *Hub) Run() {
 			}
 		case message := <-h.broadcast:
 			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
+				if message.id == 0 {
+					select {
+					case client.send <- message.data:
+					default:
+						close(client.send)
+						delete(h.clients, client)
+					}
+				} else {
+					if client.UserID != message.id {
+						select {
+						case client.send <- message.data:
+						default:
+							close(client.send)
+							delete(h.clients, client)
+						}
+					}
 				}
+
 			}
 		}
 	}

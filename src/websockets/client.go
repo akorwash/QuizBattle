@@ -55,7 +55,7 @@ type Client struct {
 // The application runs readPump in a per-connection goroutine. The application
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
-func (c *Client) readPump() {
+func (c *Client) readPump(preventSelf bool) {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
@@ -71,7 +71,11 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		c.hub.broadcast <- message
+		if preventSelf {
+			c.hub.broadcast <- Message{id: c.UserID, data: message}
+		} else {
+			c.hub.broadcast <- Message{id: 0, data: message}
+		}
 	}
 }
 
@@ -200,7 +204,7 @@ func ServeGameBattle(userID uint64, fullname string, w http.ResponseWriter, r *h
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
-	go client.readPump()
+	go client.readPump(false)
 }
 
 var streamGamehub *Hub
@@ -226,7 +230,7 @@ func ServeGameStream(userID uint64, fullname string, w http.ResponseWriter, r *h
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
-	go client.readPump()
+	go client.readPump(false)
 }
 
 //ServeVoiceChatStream handles websocket requests from the peer
@@ -248,7 +252,7 @@ func ServeVoiceChatStream(userID uint64, fullname string, w http.ResponseWriter,
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
-	go client.readPump()
+	go client.readPump(true)
 }
 
 //ServeWorldChatStream handles websocket requests from the peer
@@ -270,5 +274,5 @@ func ServeWorldChatStream(userID uint64, fullname string, w http.ResponseWriter,
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
 	go client.writePump()
-	go client.readPump()
+	go client.readPump(false)
 }
