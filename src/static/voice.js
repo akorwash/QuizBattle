@@ -45,8 +45,9 @@ $("#onYourMic").click(function() {
               processor.connect(audioContext.destination);
               processor.onaudioprocess = function(e) {     
                 if (voicechatStreamConn.readyState === WebSocket.OPEN) {
-                  voicechatStreamConn.send(bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate));
-                }                     
+                  var b = bufferToWave(e.inputBuffer,e.inputBuffer.sampleRate)
+                  voicechatStreamConn.send(b);
+                }
               };
           },
           function(e) {
@@ -111,8 +112,8 @@ function bufferToWave(abuffer, len) {
   }
 
 
-  return  new Blob([buffer], { 'type' : 'audio/ogg; codecs=opus' });
-
+  //return  new Blob([buffer], { 'type' : 'audio/ogg; codecs=opus' });
+  return buffer;
   function setUint16(data) {
     view.setUint16(pos, data, true);
     pos += 2;
