@@ -1,4 +1,5 @@
-version: '1.0'
+FROM golang:alpine as builder
+
 steps:
   main_clone:
     title: Cloning main repository...
