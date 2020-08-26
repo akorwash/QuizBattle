@@ -105,6 +105,7 @@ func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
 	a.Router.Handle("/ws/{token}/{id:[0-9]+}", controller.TokenAuthMiddleware(http.HandlerFunc(serveGameBattle)))
 	a.Router.Handle("/ws/{token}", controller.TokenAuthMiddleware(http.HandlerFunc(serveGameStream)))
 	a.Router.Handle("/ws/worldchat/{token}", controller.TokenAuthMiddleware(http.HandlerFunc(serveWorldChatStream)))
+	a.Router.Handle("/ws/voice/{token}", controller.TokenAuthMiddleware(http.HandlerFunc(serveVoiceChatStream)))
 
 	var dir string
 
@@ -155,6 +156,16 @@ func serveWorldChatStream(w http.ResponseWriter, r *http.Request) {
 	}
 
 	websockets.ServeWorldChatStream(userData.UserID, userData.Fullname, w, r)
+}
+
+func serveVoiceChatStream(w http.ResponseWriter, r *http.Request) {
+	userData, err := controller.ExtractTokenMetadata(r)
+	if err != nil {
+		responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+		return
+	}
+
+	websockets.ServeVoiceChatStream(userData.UserID, userData.Fullname, w, r)
 }
 
 func commonMiddleware(next http.Handler) http.Handler {
