@@ -76,5 +76,5 @@ jobs:
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: quizbattle-service
-        cluster: default
+        cluster: quizbattle
         wait-for-service-stability: true
