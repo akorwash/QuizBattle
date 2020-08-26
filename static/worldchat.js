@@ -20,7 +20,7 @@ function processTextChat(mesaage){
     var messages_list = document.getElementById("messages");
     var doScroll = messages_list.scrollTop > messages_list.scrollHeight - messages_list.clientHeight - 1;
     
-    if(mesaage.Fullname === window.localStorage.getItem('auth_fullname')){
+    if(mesaage.UserId === window.localStorage.getItem('auth_uid')){
 
         var divSlic = `
         <div class="chat_list">
@@ -89,6 +89,7 @@ function emptyError(){
 
 function sendmessage(message){
     var data = JSON.stringify({
+        UserId : window.localStorage.getItem('auth_uid'),
         Type: "text",
         Message: message,
         Fullname: window.localStorage.getItem('auth_fullname')

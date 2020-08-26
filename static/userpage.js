@@ -82,8 +82,12 @@ function CreateGame(){
             if (!gamestreamconn) {
                 return false;
             }
-            
-            gamestreamconn.send("newgame_"+element.ID);
+            var data = JSON.stringify({
+                UserId : window.localStorage.getItem('auth_uid'),
+                Type: "newgame",
+                GameId: element.ID
+              })
+            gamestreamconn.send(data);
             window.location.href = "/battle/"+element.ID
     })
     .fail(function(failObj){
@@ -113,13 +117,18 @@ function LoadStream(){
 
 
 function processStreamCommand(command){
-    if(command.includes("newgame")){
-        LoadGame(command.split("_")[1])
-    }
+    var prom = command.text()
+    prom.then(function(mesaageStr){
+        var mesaage = JSON.parse(mesaageStr);
 
-    if(command.includes("newjoin")){
-        UpdateJoinGame(command.split("_")[1])
-    }
+        if(mesaage.Type === "newgame"){
+            LoadGame(mesaage.GameId)
+        }
+
+        if(mesaage.Type === "newjoin"){
+            UpdateJoinGame(mesaage.GameId)
+        }
+    });
 }
 
 function UpdateJoinGame(id){
@@ -192,7 +201,13 @@ function JoinGame(id){
     })
     .done(function (element) {
         emptyError()
-        gamestreamconn.send("newjoin_"+id);
+
+        var data = JSON.stringify({
+            UserId : window.localStorage.getItem('auth_uid'),
+            Type: "newjoin",
+            GameId: id
+          })
+        gamestreamconn.send(data);
 
         //redirct player to game page
         window.location.href = "/battle/"+id
