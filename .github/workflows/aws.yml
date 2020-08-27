@@ -61,9 +61,9 @@ jobs:
         # Build a docker container and
         # push it to ECR so that it can
         # be deployed to ECS.
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+        docker build -t 396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle:$IMAGE_TAG .
+        docker push 396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle:$IMAGE_TAG
+        echo "::set-output name=image::396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle:$IMAGE_TAG"
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
@@ -71,7 +71,7 @@ jobs:
       with:
         task-definition: ./aws/task-definition.json
         container-name: quizbattle
-        image:  ${{ github.sha }}
+        image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
