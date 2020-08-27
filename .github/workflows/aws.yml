@@ -64,9 +64,9 @@ jobs:
         echo $ECR_REGISTRY
         echo $IMAGE_TAG
         echo $ECR_REPOSITORY
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-        echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+        docker build -t 396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:$IMAGE_TAG .
+        docker push 396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:$IMAGE_TAG
+        echo "::set-output name=image::396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:$IMAGE_TAG"
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
