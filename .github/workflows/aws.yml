@@ -80,6 +80,6 @@ jobs:
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: quizbattle-app
-        cluster: default
+        service: quizbattle-service
+        cluster: quizbattle
         wait-for-service-stability: true
