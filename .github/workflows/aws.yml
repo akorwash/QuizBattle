@@ -56,7 +56,7 @@ jobs:
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         ECR_REPOSITORY: quizbattle-repo
-        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_TAG: latest
       run: |
         # Build a docker container and
         # push it to ECR so that it can
@@ -66,7 +66,7 @@ jobs:
         echo $ECR_REPOSITORY
         docker build -t 396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:$IMAGE_TAG .
         docker push 396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:$IMAGE_TAG
-        echo "::set-output name=image::396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:$IMAGE_TAG"
+        echo "::set-output name=image::396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:latest"
 
     - name: Fill in the new image ID in the Amazon ECS task definition
       id: task-def
