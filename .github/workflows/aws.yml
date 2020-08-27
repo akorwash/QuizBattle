@@ -51,6 +51,10 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
+    - name: Delete Image task
+      run:  
+           aws ecr batch-delete-image --repository-name quizbattle-repo --image-ids imageTag=latest
+           
     - name: Build, tag, and push image to Amazon ECR
       id: build-image
       env:
@@ -84,8 +88,6 @@ jobs:
         cluster: quizbattle
         wait-for-service-stability: true
         
-    - name: Delete Image task
-      run:  
-           aws ecr batch-delete-image --repository-name quizbattle-repo --image-ids imageTag=latest
+    
 
  
