@@ -35,4 +35,4 @@ RUN ls  /data/app/src
 EXPOSE 8080
 
 # Command to run when starting the container
-CMD ["/dist/main"]
+CMD ["/data/app/src/dist"]
