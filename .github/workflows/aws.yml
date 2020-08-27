@@ -83,3 +83,9 @@ jobs:
         service: quizbattle-app
         cluster: quizbattle
         wait-for-service-stability: true
+        
+    - name: Delete Image task
+      run:  
+           aws ecr batch-delete-image --repository-name quizbattle-repo --image-ids imageTag=latest
+
+ 
