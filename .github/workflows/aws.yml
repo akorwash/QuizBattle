@@ -71,7 +71,7 @@ jobs:
       with:
         task-definition: ./aws/task-definition.json
         container-name: quizbattle
-        image: ${{ steps.build-image.outputs.image }}
+        image:  ${{ github.sha }}
 
     - name: Deploy Amazon ECS task definition
       uses: aws-actions/amazon-ecs-deploy-task-definition@v1
