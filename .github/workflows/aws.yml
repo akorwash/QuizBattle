@@ -55,8 +55,8 @@ jobs:
       id: build-image
       env:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: quizbattle
-        IMAGE_TAG: latest
+        ECR_REPOSITORY: quizbattle-repo
+        IMAGE_TAG: ${{ github.sha }}
       run: |
         # Build a docker container and
         # push it to ECR so that it can
@@ -72,8 +72,8 @@ jobs:
       id: task-def
       uses: aws-actions/amazon-ecs-render-task-definition@v1
       with:
-        task-definition: ./aws/task-definition.json
-        container-name: quizbattle
+        task-definition: task-definition.json
+        container-name: quizbattle-app
         image: ${{ steps.build-image.outputs.image }}
 
     - name: Deploy Amazon ECS task definition
@@ -81,5 +81,5 @@ jobs:
       with:
         task-definition: ${{ steps.task-def.outputs.task-definition }}
         service: quizbattle-service
-        cluster: quizbattle
+        cluster: default
         wait-for-service-stability: true
