@@ -5,10 +5,12 @@ go 1.14
 require (
 	github.com/ahmetb/go-linq v3.0.0+incompatible
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/gomodule/redigo v1.8.2
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
 	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/stretchr/testify v1.4.0
+	github.com/stretchr/testify v1.5.1
 	go.mongodb.org/mongo-driver v1.4.0
 	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
 	golang.org/x/text v0.3.3
