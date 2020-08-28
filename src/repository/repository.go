@@ -1,6 +1,10 @@
 package repository
 
-import "github.com/akorwash/QuizBattle/datastore/entites"
+import (
+	"time"
+
+	"github.com/akorwash/QuizBattle/datastore/entites"
+)
 
 //IUserRepository repository interface for users
 type IUserRepository interface {
@@ -26,4 +30,11 @@ type IGameRepository interface {
 	GetPublicBattle() ([]entites.Game, error)
 	GetMyBattle(usreID uint64) ([]entites.Game, error)
 	JoinedGame(gameID int64, usreID []uint64) error
+}
+
+//ICashRepository repo interface for cashing client
+type ICashRepository interface {
+	SetString(key string, value string, expiration time.Duration) error
+	SetByte(key string, value []byte, expiration time.Duration) error
+	Get(key string) (string, error)
 }

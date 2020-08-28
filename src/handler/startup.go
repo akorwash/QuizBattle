@@ -60,3 +60,11 @@ func GetTestDBConfig() datastore.DBConfiguration {
 	config.Username = os.Getenv("TestMongoUsername")
 	return config
 }
+
+//GetRedisConfig get config for redis
+func GetRedisConfig() datastore.RedisConfiguration {
+	config := datastore.RedisConfiguration{}
+	config.EndPoint = os.Getenv("RedisEndPoint")
+	config.Password = os.Getenv("RedisPassword")
+	return config
+}

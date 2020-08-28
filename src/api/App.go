@@ -1,8 +1,8 @@
 package api
 
 import (
-	"database/sql"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -20,18 +20,17 @@ import (
 //App web
 type App struct {
 	Router *mux.Router
-	DB     *sql.DB
 }
 
 //Server app server
 var Server App
 
 //Initialize start project
-func (a *App) Initialize(dbConfig datastore.DBConfiguration) *App {
+func (a *App) Initialize(dbConfig datastore.DBConfiguration, redisConfig datastore.RedisConfiguration) *App {
 	a.Router = mux.NewRouter()
 	//a.Router.Use(commonMiddleware)
 
-	err := a.initializeRoutes(dbConfig)
+	err := a.initializeRoutes(dbConfig, redisConfig)
 	if err != nil {
 		return nil
 	}
@@ -51,27 +50,32 @@ func (a *App) Run(port string) {
 	if a == nil {
 		return
 	}
+	fmt.Println("Quiz Battle Running Now")
 	log.Fatal(http.ListenAndServe(":"+port, a.Router))
 }
 
 var responseHandler = controller.GetHandler()
 
 //initializeRoutes here we will intialize the rest apis routes and html pages
-func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration) error {
+func (a *App) initializeRoutes(dbConfig datastore.DBConfiguration, redisConfig datastore.RedisConfiguration) error {
 	questionRepo, errQuesRerpo := repository.NewMongoQuestionRepository(dbConfig)
 	if errQuesRerpo != nil {
-		println("Error while get database context For Repo: %v\n", errQuesRerpo)
 		return errQuesRerpo
 	}
 	gameRepo, errGamRerpo := repository.NewMongoGameRepository(dbConfig)
 	if errGamRerpo != nil {
-		println("Error while get database context For Repo: %v\n", errGamRerpo)
 		return errGamRerpo
 	}
+
 	userRepo, errUserRepo := repository.NewMongoUserRepository(dbConfig)
 	if errUserRepo != nil {
-		println("Error while get database context For Repo: %v\n", errUserRepo)
 		return errUserRepo
+	}
+
+	//redisRerpo
+	_, errRedisRerpo := repository.NewRedisCashingRepository(redisConfig)
+	if errRedisRerpo != nil {
+		return errRedisRerpo
 	}
 
 	questionSvc := service.NewQuestionServices(questionRepo)

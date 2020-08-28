@@ -14,6 +14,7 @@ func main() {
 	//StartUp responsible for intialize the database and game engine, any configuration...
 
 	dbConfig := handler.GetDBConfig()
+	redisConfig := handler.GetRedisConfig()
 	gameEngine := *handler.StartUp(dbConfig)
 	if gameEngine.Errors != nil {
 		fmt.Println("unexpected error: \nerr:", gameEngine.Errors)
@@ -22,5 +23,5 @@ func main() {
 
 	//here we will start the game server to activate REST apis also html...
 	fmt.Println("Starting Game Server")
-	api.Server.Initialize(dbConfig).Run(os.Getenv("PORT"))
+	api.Server.Initialize(dbConfig, redisConfig).Run(os.Getenv("PORT"))
 }
