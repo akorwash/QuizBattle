@@ -13,18 +13,16 @@
             <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
             <link rel="stylesheet" href="/static/loading.css">
             <link rel="stylesheet" href="/static/home.css">
-            <style>
-              *, ::after, ::before {
-              box-sizing: unset;
-              }
-            </style>
+            
             <script src="/static/authvalidation.js"></script>
             <script src="/static/battle.js"></script>
             <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
+            <script src="https://kit.fontawesome.com/e0bda46377.js" crossorigin="anonymous"></script>
+
         </head>
         <body class="text-center">
           <div class=" d-flex w-100 h-100 p-3 flex-column">
-            <header class="masthead mb-auto">
+            <header class="masthead">
             <div class="inner">
               <h3 class="masthead-brand">Quiz Battle</h3>
               <nav class="nav nav-masthead justify-content-center">
@@ -39,23 +37,24 @@
             </div>
           </header>
           <div id="battlepage" class=""></div>
-          <div class="row">
-            <div style="margin-left: auto;margin-right: auto;" class="col-md-3 p-3 bg-white rounded shadow-sm">
+          <div style="margin-top:30px" class="row">
+            <div id="joineduserssection" style="margin-left: auto;margin-right: auto;" class="col-md-3 p-3 bg-white rounded shadow-sm">
               <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">Joined Users</h6>
               <div id="battle_Joined_Users_container">
                 
               </div>
             </div>
 
-            <div style="margin-left: auto;margin-right: auto;" class="col-md-8 p-3 bg-white rounded shadow-sm">
+            <div id="battleviewsection" style="margin-left: auto;margin-right: auto;" class="col-md-8 p-3 bg-white rounded shadow-sm">
               <h6 id="battleTitle" class="border-bottom border-gray pb-2 mb-0" style="color: black;"></h6>
+              <button onclick="expandBattleView()" style="float: left; position: relative; bottom: 40px;right: 10px;" class="btn btn-sm btn-primary"><i class="fas fa-expand-arrows-alt"></i></button>
               <div id="battle_container">
                
           
               </div>
               <span id="errorSumm" class="error text-danger"></span>
+              <button onclick="exitBattle()" style="float: right; position: relative; top: 30px;left: 10px;" class="btn btn-sm btn-danger"><i class="fas fa-door-open"></i></button>
             </div>
-            
           </div>
           
           <footer class="mastfoot mt-auto">
@@ -66,4 +65,28 @@
         </div>
         </body>
         <script type="text/javascript" src="/static/site.js"></script>
+        <script>
+          var isExpand = false
+          var joineduserssection = $('#joineduserssection')
+          var battleviewsection = $('#battleviewsection')
+          function expandBattleView(){
+            if(isExpand){
+              // if the battle view expanded we will collabse it
+              battleviewsection.removeClass('col-md-11')
+              battleviewsection.addClass('col-md-8')
+              
+              joineduserssection.addClass('col-md-3')
+              joineduserssection.css("display","block")
+
+              isExpand = false
+            }else{
+              battleviewsection.removeClass('col-md-8')
+              battleviewsection.addClass('col-md-11')
+
+              joineduserssection.removeClass('col-md-3')
+              joineduserssection.css("display","none")
+              isExpand = true
+            }
+          }
+        </script>
 	</html>

@@ -55,3 +55,8 @@ window.onload = function () {
     loadgameinfo()
     setTimeout(titleedit,1500); // run donothing after 1.5 seconds
 };
+
+
+function exitBattle(){
+
+}
