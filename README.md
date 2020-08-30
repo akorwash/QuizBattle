@@ -21,4 +21,4 @@ Quiz Battle is a cognitive game something like "Saif Almarifa", In our game play
 - player can see leaderboard list based on **"PB"** points
 
 # For Developer
-Check Documention page <a href="https://github.com/akorwash/QuizBattle/wiki">Wiki</a>
+Check Documention page <a href="https://dev.quizzbattle.com/wiki">Wiki</a>
