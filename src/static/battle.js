@@ -36,6 +36,7 @@ function titleedit() {
         pageTitle.innerText = "Quiz Battle - "+ gameinformation.User.Fullname +" Battle"
 
         var battleTitle = document.getElementById('battleTitle')
+        var startGameButton = document.getElementById('startgameButton')
         battleTitle.innerText =  gameinformation.User.Fullname +" Battle"
 
 
@@ -49,6 +50,14 @@ function titleedit() {
         })
         $(battlepage).removeClass('loader')
         $(battlepage).css('display','none')
+        
+        if(gameinformation.User.ID != window.localStorage.getItem('auth_uid')){
+            $(startGameButton).remove()
+        }else{
+            $(startGameButton).css('display','block')
+        }
+
+        $('#battleviewsection > button.btn.btn-sm.btn-danger').css('display','block')
     }
 }
 
@@ -98,4 +107,8 @@ function exitBattle(){
         var errSpan = document.getElementById('errorSumm')
         errSpan.innerText = data.error
       });
+}
+
+function startBattle(){
+
 }

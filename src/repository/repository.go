@@ -30,6 +30,7 @@ type IGameRepository interface {
 	GetPublicBattle() ([]entites.Game, error)
 	GetMyBattle(usreID uint64) ([]entites.Game, error)
 	JoinedGame(gameID int64, usreID []uint64) error
+	CloseGame(gameID int64) error
 }
 
 //ICashRepository repo interface for cashing client

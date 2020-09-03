@@ -21,15 +21,20 @@ function LoadGames(){
             var games_list = document.getElementById("games_list");
             var doScroll = games_list.scrollTop > games_list.scrollHeight - games_list.clientHeight - 1;
             
-            $(games_list).append(`
+            var devElm = `<div class="media text-muted pt-3">
+            <p class="media-body mb-0 small lh-125">
+                <strong class="d-block text-gray-dark">Join `+element.User.Fullname+` Battle </strong>
+            </p>
+            `
 
-            <div class="media text-muted pt-3">
-                <p class="media-body pb-3 mb-0 small lh-125 border-bottom border-gray">
-                    <strong class="d-block text-gray-dark">Join `+element.User.Fullname+` Battle </strong>
-                </p>
-                <a id="game_`+element.ID+`" onclick="JoinGame(`+element.ID+`)" class="joingame btn btn-sm btn-primary">Join `+element.JoinedUser.length+` Players</a>
-                </div>
-          `)
+            if(element.IsActive){
+                devElm = devElm + `<a id="game_`+element.ID+`" onclick="JoinGame(`+element.ID+`)" class="joingame btn btn-sm btn-primary">Join `+element.JoinedUser.length+` Players</a>
+                </div>`
+            }else{
+                devElm = devElm + `<a id="game_`+element.ID+`" onclick="JoinGame(`+element.ID+`)" class="joingame btn btn-sm btn-danger">Join `+element.JoinedUser.length+` Players [CLOSED GAME]</a>
+                </div>`
+            }
+            $(games_list).append(devElm)
           gamesLoaded.push("" + element.ID)
             if (doScroll) {
                 games_list.scrollTop = games_list.scrollHeight - games_list.clientHeight;
