@@ -1,5 +1,6 @@
 
 var gameinformation = null;
+var gamestreamconn;
 
 function loadgameinfo() {
     
@@ -54,9 +55,47 @@ function titleedit() {
 window.onload = function () {
     loadgameinfo()
     setTimeout(titleedit,1500); // run donothing after 1.5 seconds
+
+    if (window["WebSocket"]) {
+        gamestreamconn = new WebSocket(GAME_WS);
+        gamestreamconn.onclose = function (evt) {
+            var errSpan = document.getElementById('errorSumm')
+            errSpan.innerText = "Connection close with server"
+        };
+
+
+    }else{
+        var errSpan = document.getElementById('errorSumm')
+        errSpan.innerText = "your browser dosn't support websokets so you have to refresh your page every time"
+    }
 };
 
+function emptyError(){
+    var errSpan = document.getElementById('errorSumm')
+    errSpan.innerText = ""
+}
 
 function exitBattle(){
-
+    var id = window.location.href.split('/')[4]
+    $.ajax({
+        type: 'post',
+        url: '/api/v1/game/exit/'+id+"",
+        headers: {"Authorization": "bearer "+ window.localStorage.getItem('auth_token')}
+    })
+    .done(function (element) {
+        emptyError()
+        var data = JSON.stringify({
+            UserId : window.localStorage.getItem('auth_uid'),
+            Type: "newjoin",
+            GameId: id
+          })
+        gamestreamconn.send(data);
+        //redirct player to home page
+        window.location.href = "/"
+    })
+    .fail(function(failObj){
+        var data = JSON.parse(failObj.responseText);
+        var errSpan = document.getElementById('errorSumm')
+        errSpan.innerText = data.error
+      });
 }

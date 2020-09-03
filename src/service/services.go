@@ -9,6 +9,7 @@ import (
 type IGameServices interface {
 	CreateNewGame(model resources.CreateGameModel) (*resources.Game, error)
 	JoinGame(userID uint64, gameID int64, mod bool) (*resources.Game, error)
+	ExitGame(userID uint64, gameID int64) (*resources.Game, error)
 	GetPublicBattles() ([]resources.Game, error)
 	GetMyBattles(userID uint64) ([]resources.Game, error)
 }
