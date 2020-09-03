@@ -135,6 +135,47 @@ func (svc GameService) JoinGame(userID uint64, gameID int64, modAny bool) (*reso
 	return &responseGameModel, nil
 }
 
+//ExitGame to do
+func (svc GameService) ExitGame(userID uint64, gameID int64) (*resources.Game, error) {
+	//check where the owner user exist in our system
+	_, err := svc.validateUser(userID)
+	if err != nil {
+		return nil, err
+	}
+
+	//check where the game already exist in our system
+	game, err := svc.gameRepo.GetGameByID(gameID)
+	if err != nil {
+		return nil, err
+	}
+
+	//insure that player not joineed the game twice
+	alreadyExist := svc.checkExistInGame(userID, game)
+	if !alreadyExist {
+		return nil, fmt.Errorf("User not joined this game yet")
+	}
+
+	//wirte to database joined players and update the document
+	err = svc.gameRepo.JoinedGame(gameID, svc.getJoinedUsers(userID, game))
+	if err != nil {
+		return nil, err
+	}
+
+	if websockets.Games == nil {
+		websockets.Games = make(map[int64]resources.Game)
+	}
+
+	if _gamesocket, ok := websockets.Games[game.ID]; ok {
+		_gamesocket.JoinedUser = svc.getJoinedUsersFromSocketGane(userID, _gamesocket)
+		websockets.Games[_gamesocket.ID] = _gamesocket
+	} else {
+		return nil, fmt.Errorf("Game not intiated by system")
+	}
+
+	responseGameModel := websockets.Games[game.ID]
+	return &responseGameModel, nil
+}
+
 func (svc GameService) validateUser(userID uint64) (*entites.User, error) {
 	user, err := svc.userRepo.GetUserByID(int64(userID))
 	if err != nil {
@@ -163,6 +204,35 @@ func (svc GameService) checkExistInJoinedPlayer(userID uint64, game *entites.Gam
 		}
 	}
 	return notExist, seed
+}
+
+func (svc GameService) checkExistInGame(userID uint64, game *entites.Game) (notExist bool) {
+	notExist = false
+	for _, uID := range game.JoinedUsers {
+		if uID == userID {
+			notExist = true
+			break
+		}
+	}
+	return notExist
+}
+
+func (svc GameService) getJoinedUsers(userID uint64, game *entites.Game) (users []uint64) {
+	for _, uID := range game.JoinedUsers {
+		if uID != userID {
+			users = append(users, uID)
+		}
+	}
+	return users
+}
+
+func (svc GameService) getJoinedUsersFromSocketGane(userID uint64, _gamesocket resources.Game) (users []resources.UserModel) {
+	for _, uID := range _gamesocket.JoinedUser {
+		if uID.ID != int64(userID) {
+			users = append(users, uID)
+		}
+	}
+	return users
 }
 
 func (svc GameService) updateSocketGame(_gamesocket resources.Game, user *entites.User) {

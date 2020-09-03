@@ -88,6 +88,37 @@ func (controller *GameController) JoinGame(svc service.IGameServices) func(w htt
 	}
 }
 
+//ExitGame leave the battle
+func (controller *GameController) ExitGame(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		gameID, err := strconv.Atoi(vars["id"])
+		if err != nil {
+			gameID = 0
+		}
+
+		userData, err := ExtractTokenMetadata(r)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+			return
+		}
+
+		game, err := svc.ExitGame(userData.UserID, int64(gameID))
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't exit game due err: "+err.Error())
+			return
+		}
+
+		if game == nil {
+			responseHandler.RespondWithError(w, http.StatusNotFound, "Error occured during leave the game, try again.")
+			return
+		}
+
+		//respondWithJSON(w, http.StatusOK, "payload")
+		responseHandler.RespondWithJSON(w, http.StatusOK, *game)
+	}
+}
+
 //PlayPage SignIn page http requst handler
 func (controller *GameController) PlayPage(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/game/play" {
