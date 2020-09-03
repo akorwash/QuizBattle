@@ -83,6 +83,25 @@ func (repos MongoGameRepository) JoinedGame(gameID int64, usreID []uint64) error
 	return err
 }
 
+//CloseGame this will end the game
+func (repos MongoGameRepository) CloseGame(gameID int64) error {
+	iter := repos.mongoContext.Collection("Game")
+
+	filter := bson.M{"id": bson.M{"$eq": gameID}}
+	update := bson.M{
+		"$set": bson.M{
+			"isactive": false,
+		},
+	}
+
+	_, err := iter.UpdateOne(
+		context.Background(),
+		filter,
+		update,
+	)
+	return err
+}
+
 //GetGameByID query the database and find user by their email
 func (repos *MongoGameRepository) GetGameByID(_id int64) (*entites.Game, error) {
 	filter := bson.M{"id": bson.M{"$eq": _id}}
@@ -119,7 +138,9 @@ func (repos *MongoGameRepository) GetPublicBattle() ([]entites.Game, error) {
 	for cursor.Next(context.Background()) {
 		var _entity entites.Game
 		cursor.Decode(&_entity)
-		entities = append(entities, _entity)
+		if _entity.IsActive {
+			entities = append(entities, _entity)
+		}
 	}
 	return entities, nil
 }

@@ -49,12 +49,12 @@
             <div id="battleviewsection" style="margin-left: auto;margin-right: auto;" class="col-md-8 p-3 bg-white rounded shadow-sm">
               <h6 id="battleTitle" class="border-bottom border-gray pb-2 mb-0" style="color: black;"></h6>
               <button onclick="expandBattleView()" style="float: left; position: relative; bottom: 40px;right: 10px;" class="btn btn-sm btn-primary"><i class="fas fa-expand-arrows-alt"></i></button>
-              <div id="battle_container">
+              <button onclick="exitBattle()" style="display: none; float: right; position: relative; bottom: 40px;left: 10px;" class="btn btn-sm btn-danger"><i class="fas fa-door-open"></i></button>
+              <button id="startgameButton" onclick="startBattle()" style="display: none; float: right;position: relative;bottom: 40px;left: 10px;margin-right: 5px;" class="btn btn-sm btn-info"><i class="fas fa-play-circle" aria-hidden="true"></i></button>              <div id="battle_container">
                
           
               </div>
               <span id="errorSumm" class="error text-danger"></span>
-              <button onclick="exitBattle()" style="float: right; position: relative; top: 30px;left: 10px;" class="btn btn-sm btn-danger"><i class="fas fa-door-open"></i></button>
             </div>
           </div>
           

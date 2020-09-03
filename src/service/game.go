@@ -90,6 +90,10 @@ func (svc GameService) JoinGame(userID uint64, gameID int64, modAny bool) (*reso
 		return nil, err
 	}
 
+	if !game.IsActive {
+		return nil, fmt.Errorf("This game is closed")
+	}
+
 	//validate the owner of the game already exist
 	ownderuser, err := svc.validateUser(game.UserID)
 	if err != nil {
@@ -156,9 +160,22 @@ func (svc GameService) ExitGame(userID uint64, gameID int64) (*resources.Game, e
 	}
 
 	//wirte to database joined players and update the document
-	err = svc.gameRepo.JoinedGame(gameID, svc.getJoinedUsers(userID, game))
-	if err != nil {
-		return nil, err
+	jusers := svc.getJoinedUsers(userID, game)
+	if len(jusers) > 1 {
+		err = svc.gameRepo.JoinedGame(gameID, jusers)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		err = svc.gameRepo.CloseGame(gameID)
+		if err != nil {
+			return nil, err
+		}
+
+		game, err = svc.gameRepo.GetGameByID(gameID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if websockets.Games == nil {
@@ -166,6 +183,7 @@ func (svc GameService) ExitGame(userID uint64, gameID int64) (*resources.Game, e
 	}
 
 	if _gamesocket, ok := websockets.Games[game.ID]; ok {
+		_gamesocket.IsActive = game.IsActive
 		_gamesocket.JoinedUser = svc.getJoinedUsersFromSocketGane(userID, _gamesocket)
 		websockets.Games[_gamesocket.ID] = _gamesocket
 	} else {
