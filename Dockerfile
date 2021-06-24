@@ -1,4 +1,4 @@
-FROM alpine:3.12
+FROM alpine:3.12 as base
 RUN apk update && apk add go gcc bash musl-dev openssl-dev ca-certificates && update-ca-certificates
 RUN apk add git
 ARG GOLANG_VERSION=1.14.3
@@ -30,9 +30,10 @@ WORKDIR /data/app/src
 
 # Build the application
 RUN go build -o dist
-RUN ls  /data/app/src
-# Export necessary port
-EXPOSE 8080
 
+FROM alpine:3.12 
+COPY --from=base /data/app/src/dist /app
+EXPOSE 8080
 # Command to run when starting the container
-CMD ["/data/app/src/dist"]
+CMD ["/app"]
+
