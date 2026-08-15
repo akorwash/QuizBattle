@@ -1,171 +1,181 @@
 # QuizBattle
 
-QuizBattle لعبة معرفة عربية تنافسية مستوحاة من روح **سيف المعرفة**: كل سؤال يتحول إلى بطاقة قابلة للجمع، ويختار كل لاعب خمس بطاقات لساحات فردية أو جماعية يصل عددها إلى 8 لاعبين.
+[Play QuizBattle](https://quizbattle.qubefyn.com)
 
-> **الحالة الحالية:** MVP قابل للنشر بإصدار إنتاجي أحادي النسخة ومؤمّن عبر Docker وGitHub Actions وCloudflare. يعمل الحساب، اللوبي العام، الدردشة، محرك الجولات الخادمي، البطاقات، العملات، السوق والتبادل، مع قيود التوسع والصوت الموضحة أدناه.
+QuizBattle is a competitive Arabic knowledge-card game inspired by **Saif Al-Ma'rifa**. Every collectible card is backed by an Arabic question, and each player brings five cards into solo or team arenas for up to eight players.
 
-## ما يعمل الآن
+> **Current status:** QuizBattle is a deployable, single-instance MVP with a hardened runtime baseline. It is delivered with Docker Compose and GitHub Actions and served behind Cloudflare. Accounts, the public lobby, persistent chat, the server-authoritative match engine, collectible cards, coins, the marketplace, and direct trades are implemented. See the production limitations below before scaling it.
 
-| المجال | التنفيذ الحالي |
+## What works today
+
+| Area | Current implementation |
 | --- | --- |
-| الحسابات | تسجيل، دخول، جلسة HttpOnly، إلغاء جلسة عند الخروج، وتحديث الاسم وتاريخ الميلاد وصورة اللاعب |
-| مجتمع اللاعبين | لوبي عام ومجلس محادثة محفوظ في MongoDB بهوية يثبتها الخادم؛ آخر 50 رسالة تعود بعد التحديث |
-| صوت الساحة | صوت WebRTC اختياري مباشر في 1 ضد 1، مع كتم ومغادرة ومن دون تسجيل الصوت؛ الجماعي يحتاج SFU قبل الإنتاج |
-| المباريات | 1 ضد 1، 2 ضد 2، 4 ضد 4، أو ساحة مفتوحة من 2 إلى 8؛ 20 ثانية للسؤال وكشف نتيجة 3 ثوانٍ |
-| بنك الأسئلة | 1,573 سؤالًا عربيًا في 9 مجالات، مع مصادر وبصمات محتوى ومدقق مستقل |
-| البطاقات | 10 بطاقات بداية لكل لاعب، ندرة وقوة وسجل لعب/فوز، وتجهيز تلقائي قابل للمراجعة، وحجز ذري أثناء المباراة |
-| العملات | 600 عملة بداية؛ البطل 120، زميل الفريق الفائز 90، والخاسر 45؛ لا مكافأة للانسحاب |
-| السوق | عرض بطاقة، شراء ذري، إلغاء، رسم 5%، ومنع البيع المزدوج |
-| التبادل | بطاقة/عملات مقابل بطاقة/عملات، قبول/رفض/إلغاء، وضمان ذري |
-| الهاتف | واجهة عربية RTL محلية بالكامل، شريط هاتف ثابت، ومقاسات تبدأ من 320px |
-| التشغيل | Docker Compose، MongoDB replica set، health/readiness، graceful shutdown وفهارس |
+| Accounts | Sign-up, sign-in, HttpOnly sessions, session revocation on logout, profile updates, date of birth, and player avatars |
+| Player community | Public lobby and a MongoDB-backed world chat whose message identity is assigned by the server; the latest 50 messages return after refresh |
+| Arena voice | Optional peer-to-peer WebRTC audio for 1v1 matches, with mute and leave controls and no server-side recording; voice is disabled in team/open arenas, which require an SFU before it can be implemented safely |
+| Matches | 1v1, 2v2, 4v4, and open arenas for 2–8 players; 20-second questions and a 3-second answer reveal |
+| Question bank | 1,573 sourced Arabic questions across nine categories, with content hashes and a standalone validator |
+| Cards | Economy state is initialized on first use with ten starter cards; cards include rarity, power metadata, play/win history, reviewable automatic deck selection, and transactional match locking |
+| Coins | Economy state is initialized on first use with 600 coins; rewards are 120 for the champion, 90 for each winning teammate, and 45 for each losing player; forfeits award nothing |
+| Marketplace | List a card, buy atomically, cancel a listing, charge a 5% fee rounded down with a one-coin minimum, and prevent double sales |
+| Direct trades | Card/coin-for-card/coin offers with accept, reject, and cancel; the sender's offered assets are escrowed transactionally, and requested assets are verified at acceptance |
+| Mobile | Fully localized Arabic, right-to-left interface, fixed mobile navigation, and layouts starting at 320 px |
+| Operations | Docker Compose, a MongoDB replica set, health/readiness endpoints, graceful shutdown, and database indexes |
 
-الساحات الخاصة، الدعوات، البوتات، الترتيب الموسمي، والمشاهدة ليست ضمن هذا الـMVP بعد.
+Private arenas, invitations, bots, seasonal rankings, and spectator mode are not part of this MVP yet.
 
-## قواعد الـMVP
+## MVP gameplay rules
 
-- الأنماط الثابتة هي `duel` (لاعبان)، `team_2v2` (4 لاعبين)، و`team_4v4` (8 لاعبين). النمط `open` يقبل من 2 إلى 8 وفق الحد الذي يختاره المالك.
-- يضغط المالك «تجهيز الساحة» بعد اكتمال العدد المطلوب؛ عندها تتجمد العضوية ولا يعود الانضمام ممكنًا.
-- يمكن لكل مالك تشغيل 3 ساحات متزامنة كحد أقصى؛ الساحات المكتملة أو المنتهية بالانسحاب تبقى في السجل ولا تُحتسب ضمن الحد.
-- يحصل كل حساب جديد على 10 بطاقات و600 عملة.
-- يثبت كل لاعب 5 بطاقات مملوكة ومتاحة؛ هذا هو إعلان الجاهزية وتدخل البطاقات في حجز المباراة.
-- يستطيع اللاعب طلب «تجهيز تلقائي» يرتب بطاقاته بالقوة ثم الندرة ونسبة الفوز؛ الاقتراح لا يُعتمد تلقائيًا، ويمكن تعديله أو استبداله يدويًا قبل التثبيت.
-- لا يستطيع إلا مالك الساحة البدء، ولا يتاح الزر حتى يصبح جميع اللاعبين جاهزين.
-- عدد الأدوار الرئيسي هو `5 × عدد اللاعبين`؛ كل لاعب مؤهل يجيب مرة واحدة خلال 20 ثانية وفق ساعة الخادم.
-- الإجابة الصحيحة تمنح 100 نقطة، وتصل مكافأة السرعة إلى 50 نقطة إضافية.
-- لا تُرسل الإجابة الصحيحة أو الشرح إلى المتصفح قبل إغلاق الدور.
-- قوة البطاقة وندرتها للهوية والتقدم، وليستا مضاعفًا للنقاط حتى لا تصبح اللعبة مدفوعة للفوز.
-- في الساحة المفتوحة يفوز أعلى لاعب نقاطًا. في 2 ضد 2 و4 ضد 4 يفوز أعلى فريق بمجموع نقاط أعضائه، ثم يُختار صاحب أعلى نقاط داخله بطلًا نهائيًا.
-- إذا تعادل المتصدرون تبدأ أسئلة حسم محايدة للمتعادلين فقط، وتتكرر حتى يظهر بطل واحد؛ لا يعلن المحرك تعادلًا نهائيًا ما دام بنك الحسم متاحًا.
-- لا تنتقل بطاقة قسرًا بسبب نتيجة مباراة؛ انتقال الملكية يحدث فقط عبر السوق أو تبادل صريح.
-- الانسحاب ينهي المباراة بلا مكافآت ويحرر جميع البطاقات المحجوزة.
+- Fixed arena modes are `duel` (2 players), `team_2v2` (4 players), and `team_4v4` (8 players). The `open` mode accepts 2–8 players, according to the owner-selected capacity.
+- In fixed modes, the owner selects **Prepare arena** after exactly 2, 4, or 8 players have joined. An open arena can be prepared with any roster from two players up to its configured capacity. Preparation freezes membership and prevents further joins.
+- Each owner may run at most three concurrent arenas. Completed and forfeited arenas remain in history but do not count toward this limit.
+- On the first collection or economy request, the server transactionally initializes the account with ten cards and 600 coins.
+- Each player commits five owned, available cards. Committing the deck marks the player ready and locks those cards to the match.
+- **Auto build** ranks cards by power, rarity, win rate, wins, and finally stable card ID. It only proposes a deck; the player can review, replace, or manually select cards before committing it.
+- Only the arena owner can start the match, and the start action is unavailable until every player is ready.
+- A normal match contains `5 × player count` turns. On each turn, every eligible player may submit at most one answer within the server-authoritative 20-second timer.
+- A correct answer awards 100 points, with a speed bonus of up to 50 additional points.
+- The correct answer and explanation are not sent to the browser until the turn closes.
+- Card power and rarity are metadata used by deck selection; they do not multiply match points, so the game is not pay-to-win.
+- In an open arena, the highest-scoring player wins. In 2v2 and 4v4, the team with the highest combined score wins, and its highest-scoring member becomes the final champion.
+- If multiple leaders are tied, the engine starts neutral tie-break questions for those contenders only. It repeats while questions are available; if the tie-break pool is exhausted, the match waits for replenishment instead of declaring a false winner.
+- Match results never transfer card ownership. Cards only change owners through the marketplace or an explicit direct trade.
+- A duel participant—or the arena owner in team/open modes—may forfeit. Forfeiting ends the match without rewards and releases every locked card.
 
-العقد التفصيلي وحدود المجالات موجودان في [docs/mvp-domain-design.md](docs/mvp-domain-design.md)، ومواصفة التصميم في [docs/card-design-spec.md](docs/card-design-spec.md).
+The detailed domain contract is documented in [docs/mvp-domain-design.md](docs/mvp-domain-design.md), and the visual card system is documented in [docs/card-design-spec.md](docs/card-design-spec.md).
 
-## بنك الأسئلة
+## Question bank
 
-الملف المعتمد هو [data/question-bank/questions.ar.jsonl](data/question-bank/questions.ar.jsonl):
+The canonical dataset is [data/question-bank/questions.ar.jsonl](data/question-bank/questions.ar.jsonl):
 
-| المجال | العدد |
+| Category | Questions |
 | --- | ---: |
-| رياضيات | 500 |
-| جغرافيا | 314 |
-| علوم | 236 |
-| مدن | 157 |
-| معرفة دينية | 114 |
-| تقنية | 86 |
-| سياسة ومدنيات | 68 |
-| ثقافة عامة | 54 |
-| تاريخ | 44 |
-| **الإجمالي** | **1,573** |
+| Mathematics | 500 |
+| Geography | 314 |
+| Science | 236 |
+| Cities | 157 |
+| Religion | 114 |
+| Technology | 86 |
+| Civics and politics | 68 |
+| General knowledge | 54 |
+| History | 44 |
+| **Total** | **1,573** |
 
-كل سجل يحتوي أربعة خيارات فريدة، إجابة، شرحًا، مصدرًا، تاريخ تحقق، وحقل `contentHash`. المدقق يرفض تكرار المعرّفات أو نصوص الأسئلة والأشكال غير الصحيحة. مصادر البيانات الأساسية موثقة في [data/question-bank/SOURCES.md](data/question-bank/SOURCES.md)، وتشمل Wikidata وIANA وBIPM وIUPAC وUN M49 وQuran Foundation. أسئلة المعرفة الدينية مقتصرة على أسماء السور وترتيبها، وتحتاج مراجعة بشرية متخصصة قبل إطلاق عام.
+Every record contains four unique options, the correct answer, an explanation, a source, a verification date, and a `contentHash`. The validator rejects duplicate IDs, duplicate prompts, and invalid record shapes. Primary data sources are listed in [data/question-bank/SOURCES.md](data/question-bank/SOURCES.md) and include Wikidata, IANA, BIPM, IUPAC, UN M49, and Quran Foundation. Religion questions are limited to Quran chapter names and ordering and should receive specialist human review before a broad public launch.
 
-للتحقق:
+Validate the bank with:
 
 ```bash
 python tools/question-bank/validate.py --minimum 1000
 python -m unittest discover -s tools/question-bank -p "test*.py"
 ```
 
-## المعمارية
+## Architecture
 
 ```text
 Browser (Arabic HTML/CSS/JavaScript)
   ├─ REST commands/queries ─> middleware ─> controllers ─> application services
   ├─ WebSocket events/chat/signaling ─> authenticated bounded registry/hubs
-  ├─ World-chat history    ─> bounded Mongo retention (100 messages / 7 days)
+  ├─ World-chat history    ─> newest 100 Mongo messages with a 7-day TTL
   ├─ Arena audio           ─> WebRTC peer-to-peer (server relays signaling only)
-  └─ safe match snapshots  <─ domain aggregates ─> transactional Mongo repositories
+  └─ Safe match snapshots  <─ domain aggregates ─> transactional Mongo repositories
 
-Domain modules: match | economy | question
+Domain modules: avatar | chat | economy | match | question
 Mongo collections: users, Game, Matches, QuestionBank, Cards, Wallets,
                    MarketListings, TradeOffers, EconomyLedger, SessionRevocation,
                    ChatMessage, UserAvatar
 ```
 
-التطبيق modular monolith بلغة Go. المعاملات التي تغيّر عملات أو ملكية بطاقات تتطلب MongoDB replica set. أحداث الوقت الحقيقي ومحددات المعدل ما زالت داخل العملية، لذلك شغّل **نسخة تطبيق واحدة فقط** حتى إضافة broker وحالة موزعة.
+The application is a modular monolith written in Go. Transactions that change coin balances or card ownership require a MongoDB replica set. Realtime events and rate-limit state are still process-local, so run **one application instance only** until a shared broker and distributed state are implemented.
 
-## التشغيل المحلي
+## Local development
 
 ### Docker Compose
 
-1. انسخ `.env.example` إلى `.env`.
-2. أنشئ قيمة عشوائية جديدة لـ`JWT_SECRET` بطول 32 حرفًا على الأقل؛ المثال يتركها فارغة عمدًا.
-3. شغّل:
+1. Copy `.env.example` to `.env`.
+2. Generate a unique random `JWT_SECRET` containing at least 32 characters. The example deliberately leaves it empty.
+3. Start the stack:
 
 ```bash
 docker compose up --build
 ```
 
-افتح `http://127.0.0.1:8080`. ينشئ Compose MongoDB replica set أحادي العقدة، ويستورد بنك الأسئلة عندما تكون `SEED_DATABASE=true`.
+Open `http://127.0.0.1:8080`. Compose creates a single-node MongoDB replica set and imports the question bank when `SEED_DATABASE=true`.
 
-### تشغيل Go مباشرة
+### Run Go directly
 
-المتطلبات: Go 1.26.6 وMongoDB replica set. من مجلد `src`:
+Requirements: Go 1.26.6 and a locally reachable MongoDB replica set. The application reads the process environment directly and does not load `.env` files. Before running from `src`, export the required local values. For example:
 
 ```bash
+export APP_ENV=development
+export MONGO_URI='mongodb://127.0.0.1:27017/?replicaSet=rs0'
+export MONGO_DATABASE=quizbattle
+export JWT_SECRET="$(openssl rand -hex 32)"
+export SEED_DATABASE=true
 go mod download
 go run .
 ```
 
-لـHTTP المحلي استخدم `APP_ENV=development` و`COOKIE_SECURE=false`. كل بيئة أخرى تفرض Secure cookie وMongoDB TLS موثوق الشهادة.
+In development, `COOKIE_SECURE` defaults to `false`. Every non-development/test environment requires a Secure session cookie and certificate-verified MongoDB TLS.
 
-## اختبار محلي كامل
+## End-to-end testing
 
-بعد تشغيل البيئة المحلية، ينشئ الأمر التالي حسابات محلية فريدة ويختبر حفظ الدردشة، وإشارات WebRTC المصادق عليها من دون تشغيل ميكروفون، ودورة 1 ضد 1 كاملة، ثم تجهيز وبدء 2 ضد 2 و4 ضد 4 وساحة مفتوحة، إضافة إلى المكافآت والسوق والتبادل وتحرير البطاقات بعد الانسحاب:
+With the local stack running, the following command creates unique local test accounts and exercises persistent chat, authenticated WebRTC signaling without activating a microphone, a complete 1v1 match, preparation and startup of 2v2, 4v4, and open arenas, rewards, the marketplace, direct trades, and card release after a forfeit:
 
 ```bash
 cd src
 go run ./cmd/e2e -base http://127.0.0.1:8080
 ```
 
-يرفض الأمر أي مضيف غير loopback افتراضيًا حتى لا ينشئ بيانات اختبار في بيئة بعيدة بالخطأ.
+The E2E command rejects non-loopback hosts by default so it cannot accidentally create test data in a remote environment.
 
-## الإعدادات
+## Configuration
 
-| المتغير | مطلوب | الافتراضي | الغرض |
+| Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `MONGO_URI` | نعم | — | MongoDB URI؛ TLS موثوق مطلوب خارج development/test |
-| `MONGO_DATABASE` | نعم | — | اسم قاعدة البيانات |
-| `JWT_SECRET` | نعم | — | مفتاح عشوائي خاص بكل نشر، 32 حرفًا على الأقل |
-| `APP_ENV` | لا | `production` | استخدم `development` أو `test` فقط محليًا |
-| `RELEASE_SHA` | في production/staging | — | رقم commit كامل: 40 حرفًا hexadecimal صغيرًا؛ يظهر في health checks لمنع نشر إصدار خاطئ |
-| `PORT` | لا | `8080` | منفذ HTTP |
-| `SESSION_TTL` | لا | `1h` | مدة الجلسة بين 15 دقيقة و24 ساعة |
-| `COOKIE_SECURE` | لا | حسب البيئة | لا يمكن تعطيله خارج development/test |
-| `ALLOWED_ORIGINS` | لا | نفس المضيف | origins إضافية لفحص write/WS؛ لا يفعّل CORS |
-| `TRUSTED_PROXY_CIDRS` | لا | فارغ | CIDRs الفعلية للـload balancer فقط |
-| `SEED_DATABASE` | لا | `false` | استيراد بنك الأسئلة idempotently عند الإقلاع |
-| `QUESTION_BANK_PATH` | لا | `../data/question-bank/questions.ar.jsonl` | مسار ملف JSONL الداخلي |
-| `REDIS_ADDRESS` | لا | فارغ | Redis اختياري قبل الأحداث الموزعة |
-| `REDIS_USERNAME` | لا | فارغ | Redis ACL username |
-| `REDIS_PASSWORD` | لا | فارغ | Redis password |
-| `REDIS_TLS` | لا | `false` | مطلوب عند استخدام Redis خارج development/test |
+| `MONGO_URI` | Yes | — | MongoDB URI; certificate-verified TLS is required outside development/test |
+| `MONGO_DATABASE` | Yes | — | MongoDB database name |
+| `JWT_SECRET` | Yes | — | Deployment-specific random secret containing at least 32 characters |
+| `APP_ENV` | No | `production` | Use `development` or `test` only for local work |
+| `RELEASE_SHA` | Outside development/test | — | Full 40-character lowercase hexadecimal commit SHA exposed by health checks to prevent deploying the wrong release |
+| `PORT` | No | `8080` | HTTP port |
+| `SESSION_TTL` | No | `1h` | Session lifetime, from 15 minutes to 24 hours |
+| `COOKIE_SECURE` | No | Environment-dependent | Cannot be disabled outside development/test |
+| `ALLOWED_ORIGINS` | No | Same origin | Additional origins accepted by write/WebSocket origin checks; does not enable CORS |
+| `TRUSTED_PROXY_CIDRS` | No | Empty | CIDRs of actual trusted load balancers only |
+| `SEED_DATABASE` | No | `false` | Idempotently import the question bank at startup |
+| `QUESTION_BANK_PATH` | No | `../data/question-bank/questions.ar.jsonl` | Path to the internal JSONL question bank |
+| `REDIS_ADDRESS` | No | Empty | Optional Redis endpoint for future distributed events |
+| `REDIS_USERNAME` | No | Empty | Redis ACL username |
+| `REDIS_PASSWORD` | No | Empty | Redis password |
+| `REDIS_TLS` | No | `false` | Required when Redis is used outside development/test |
 
-لا تدعم الشفرة fallback باسم `ACCESS_SECRET`. لا تحفظ `.env` أو مفاتيح سحابية أو JWT أو CI tokens في Git.
+The application does not support the legacy `ACCESS_SECRET` fallback. Never commit `.env`, cloud credentials, JWT secrets, or CI tokens.
 
-## واجهات HTTP وWebSocket
+## HTTP and WebSocket interfaces
 
 Public:
 
 - `GET /`, `/about`, `/contact`, `/auth/signin`, `/auth/signup`
 - `POST /user/createuser`, `POST /user/login`, `POST /user/logout`
-- `GET /healthz` — يعيد `{"status":"ok","release":"<commit-sha>"}`، و`GET /readyz`
+- `GET /healthz` — returns `{"status":"ok","release":"<commit-sha>"}` in production; `release` may be empty in development/test
+- `GET /readyz` — available on the application listener for local/orchestrator checks; production Nginx intentionally returns 404
 
-Authenticated account/lobby:
+Authenticated account and lobby:
 
+- `GET /user/profile`, `GET /game/play`, `GET /battle/{id}`
+- `GET /user/profile/{username}` — permanent redirect to the canonical profile page
 - `GET /api/v1/session`, `POST /api/v1/user`
-- `PUT /api/v1/user/avatar`, `DELETE /api/v1/user/avatar`
-- `GET /api/v1/user/avatar/{id}` — صورة JPEG معالجة، خاصة ومحمية بالجلسة
-- `GET /api/v1/chat/messages` — أحدث 50 رسالة محفوظة، تصاعديًا
+- `PUT /api/v1/user/avatar`, `DELETE /api/v1/user/avatar` — upload one JPEG/PNG `avatar` field up to 2 MiB, re-encoded as a metadata-free 512×512 JPEG
+- `GET /api/v1/user/avatar/{id}` — any authenticated user may fetch another player's processed avatar; responses use `private, no-cache`
+- `GET /api/v1/chat/messages` — returns the latest 50 stored messages in ascending order
 - `POST /api/v1/game`
 - `POST /api/v1/game/{id}/join`, `POST /api/v1/game/{id}/exit`
 - `GET /api/v1/game/{id}`, `GET /api/v1/games/public`, `GET /api/v1/games/mine`
 
 Authenticated match:
 
-- `POST /api/v1/game/{id}/prepare` — المالك يجمّد المشاركين ويفتح تجهيز البطاقات
+- `POST /api/v1/game/{id}/prepare` — the owner freezes membership and opens deck preparation
 - `PUT /api/v1/game/{id}/deck`
 - `POST /api/v1/game/{id}/start`
 - `GET /api/v1/game/{id}/match`
@@ -176,21 +186,23 @@ Authenticated economy:
 
 - `GET /api/v1/collection`
 - `GET /api/v1/market`, `POST /api/v1/market/listings`
-- `POST /api/v1/market/listings/{id}/buy|cancel`
+- `POST /api/v1/market/listings/{id}/buy`, `POST /api/v1/market/listings/{id}/cancel`
 - `GET /api/v1/trades`, `POST /api/v1/trades`
-- `POST /api/v1/trades/{id}/accept|reject|cancel`
+- `POST /api/v1/trades/{id}/accept`, `POST /api/v1/trades/{id}/reject`, `POST /api/v1/trades/{id}/cancel`
 
 Realtime:
 
-- `GET /ws/events`, `GET /ws/world-chat`, `GET /ws/game/{id}`
+- `GET /ws/events`
+- `GET /ws/world-chat`
+- `GET /ws/game/{id}`
 
-رسالة المجلس تُحفظ قبل بثها، ويحتفظ الخادم بآخر 100 رسالة لمدة أقصاها سبعة أيام. قناة الساحة تقبل أحداث WebRTC المحددة فقط (`voice_ready`, `voice_leave`, `voice_offer`, `voice_answer`, `voice_ice`) وتعيد كتابة هوية المرسل من الجلسة؛ الصوت نفسه لا يمر بالخادم ولا يُسجل. طلب الميكروفون لا يحدث إلا بعد ضغط اللاعب على زر الانضمام.
+A world-chat message is persisted before it is broadcast. The server keeps the newest 100 messages with a seven-day MongoDB TTL; TTL deletion is eventual. The arena channel accepts only the supported WebRTC signaling events (`voice_ready`, `voice_leave`, `voice_offer`, `voice_answer`, and `voice_ice`) and overwrites the sender identity with the authenticated session identity. Audio never passes through the application server and is not recorded. Microphone access is requested only after the player explicitly joins voice chat.
 
-لا يوجد raw question endpoint. الخادم يختار السؤال من البطاقة المثبتة، ويعيد snapshot مختلفًا لكل لاعب. المعرّفات العامة ذات 64 بت تُرسل كسلاسل JSON حتى لا تفقد JavaScript دقتها.
+There is no raw-question endpoint. Normal-round questions come from committed cards, while tie-break questions are selected neutrally from the bank. The server returns player-specific safe snapshots, and public 64-bit identifiers are serialized as JSON strings to preserve JavaScript precision.
 
-## الجودة والأمان
+## Quality and security
 
-من `src`:
+From `src`:
 
 ```bash
 go fmt ./...
@@ -200,14 +212,27 @@ go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
 go run github.com/securego/gosec/v2/cmd/gosec@v2.28.0 -quiet ./...
 ```
 
-راجع [SECURITY.md](SECURITY.md)، [تقرير المراجعة](docs/review-report-2026-08-15.md)، و[ملاحظات الهجرة](docs/migration-notes.md) قبل أي نشر.
+Review [SECURITY.md](SECURITY.md), the [2026 security review](docs/review-report-2026-08-15.md), and the [migration notes](docs/migration-notes.md) before changing production infrastructure.
 
-## حدود التشغيل الإنتاجي
+## Production deployment
 
-- أُلغيت مفاتيح Firebase وCoveralls التاريخية، ويُولّد النشر JWT secret جديدًا. أُعيدت كتابة الفروع القابلة للتعديل وفحص التاريخ الكامل (206 commits) بلا تسريبات؛ يظل طلب إزالة مراجع PR والنسخ المخبأة القديمة لدى GitHub Support إجراء تنظيف متابعة.
-- أبقِ نسخة تطبيق واحدة؛ لا autoscaling ولا zero-downtime overlap قبل توزيع WebSocket state/events/rate limits عبر broker مشترك.
-- تحفظ أسرار التشغيل في ملفات root-only على الخادم، وMongoDB داخلي مع TLS ومصادقة، وتُشفّر النسخ الاحتياطية. انقل النسخ المشفرة ومفتاح الاستعادة إلى موقع منفصل واختبر الاستعادة دوريًا.
-- خط الإنتاج يفحص الاختبارات وrace detector و`govulncheck` و`gosec` وتاريخ الأسرار، ويبني image ثابتة بالـdigest مع SBOM واختبار topology إنتاجي قبل النشر.
-- جهّز TURN بإعتمادات قصيرة العمر صادرة من الخادم قبل اعتبار الصوت مضمونًا على كل الشبكات؛ STUN وحده لا يضمن الاتصال عبر الشبكات المقيدة.
+The production service is available at [quizbattle.qubefyn.com](https://quizbattle.qubefyn.com). The production deployment and recovery procedure is documented in [docs/production-deployment.md](docs/production-deployment.md).
 
-Licensed under the [MIT License](LICENSE).
+Current production constraints:
+
+- Historical Firebase and Coveralls credentials have been revoked. Production's JWT secret is generated once during the one-time secret bootstrap and is reused across deployments. Rewritten branch/tag history passes full-history secret scanning; removing old pull-request refs and cached objects through GitHub Support remains a follow-up cleanup step.
+- Run one application instance only. Do not enable autoscaling or zero-downtime overlap until WebSocket state, events, membership revocation, and rate limits use shared infrastructure.
+- Runtime secrets are stored in root-only server files. MongoDB is internal, TLS-authenticated, and backed up in encrypted form. Copy encrypted backups and the recovery key off-host and test restoration regularly.
+- The production pipeline runs tests, the race detector, `govulncheck`, `gosec`, and full-history secret scanning. It builds an immutable image by digest, emits an SBOM, and validates the production topology before deployment.
+- Configure TURN with short-lived server-issued credentials before considering arena voice reliable on all networks; STUN alone cannot traverse every restricted NAT.
+
+## Contributing
+
+The `master` branch is protected from direct pushes, force pushes, and deletion. Create a feature branch, open a pull request, resolve review conversations, keep the branch up to date, and wait for both required GitHub Actions checks to pass before merging:
+
+- `Test and validate release inputs`
+- `Test, vet, and security checks`
+
+## License
+
+QuizBattle is released under the [MIT License](LICENSE).
