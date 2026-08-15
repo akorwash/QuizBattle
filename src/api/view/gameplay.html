@@ -9,10 +9,10 @@
     <title id="pagetile">QuizBattle — ساحة اللاعبين</title>
     <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
     <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
-    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.15">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.16">
     <script defer src="/static/api.js?v=20260815.9"></script>
     <script defer src="/static/site.js?v=20260815.9"></script>
-    <script defer src="/static/game.js?v=20260815.10"></script>
+    <script defer src="/static/game.js?v=20260815.11"></script>
     <script defer src="/static/worldchat.js?v=20260815.11"></script>
   </head>
   <body class="qb-body qb-page-lobby">
@@ -40,7 +40,7 @@
         <div class="qb-container">
           <p class="qb-eyebrow">المجتمع واللوبي</p>
           <h1 class="qb-page-heading">اختر ساحة أو ابدأ تجمعًا جديدًا</h1>
-          <p class="qb-page-lead">اختر مواجهة فردية أو فريقية أو افتح ساحة مرنة حتى 8 لاعبين، ثم جهّز بطاقاتك وتنافس على أعلى النقاط.</p>
+          <p class="qb-page-lead">واجه لاعبًا أو بوت المعرفة، أو افتح ساحة فريقية مرنة حتى 8 لاعبين، ثم جهّز بطاقاتك وتنافس على أعلى النقاط.</p>
 
           <div class="qb-lobby-layout">
             <section class="qb-panel" aria-labelledby="lobbyTitle">
@@ -86,6 +86,12 @@
                     <strong>ساحة مفتوحة</strong>
                     <small>ابدأ بعد جاهزية الموجودين</small>
                   </label>
+                  <label class="qb-arena-mode-option qb-arena-mode-option--bot">
+                    <input id="gameModeBot" type="radio" name="gameMode" value="bot" aria-controls="botStrategyControl" aria-expanded="false">
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">BOT</span>
+                    <strong>ضد البوت</strong>
+                    <small>مواجهة خاصة بلا انتظار لاعبين</small>
+                  </label>
                 </fieldset>
 
                 <div id="openCapacityControl" class="qb-open-capacity" hidden>
@@ -94,8 +100,23 @@
                   <small id="openCapacityHint">يمكن للمالك تجهيز الساحة من لاعبين، وبحد أقصى 8.</small>
                 </div>
 
+                <fieldset id="botStrategyControl" class="qb-bot-strategy" aria-describedby="botStrategyHint" hidden>
+                  <legend>اختر أسلوب بوت المعرفة</legend>
+                  <label class="qb-bot-strategy__option">
+                    <input id="botStrategyRandom" type="radio" name="botStrategy" value="random">
+                    <span class="qb-bot-strategy__icon" aria-hidden="true">؟</span>
+                    <span><strong>عشوائي</strong><small>يختار إجاباته عشوائيًا؛ مناسب لجولة خفيفة.</small></span>
+                  </label>
+                  <label class="qb-bot-strategy__option">
+                    <input id="botStrategySmart" type="radio" name="botStrategy" value="smart" checked>
+                    <span class="qb-bot-strategy__icon" aria-hidden="true">◆</span>
+                    <span><strong>ذكي</strong><small>يتخذ قرارات محسوبة ويمنحك تحديًا أقوى.</small></span>
+                  </label>
+                  <small id="botStrategyHint" class="qb-bot-strategy__hint">المواجهة ضد البوت خاصة دائمًا ولا يمكن للاعبين الآخرين الانضمام إليها.</small>
+                </fieldset>
+
                 <div class="qb-lobby-controls">
-                  <p class="qb-help">كل الساحات عامة حاليًا. يوزّع الخادم اللاعبين على الفرق تلقائيًا.</p>
+                  <p id="arenaPrivacyHint" class="qb-help" role="status" aria-live="polite">ساحات اللاعبين عامة، ويوزّع الخادم اللاعبين على الفرق تلقائيًا.</p>
                   <button id="creategame" class="qb-button qb-button--primary" type="submit">إنشاء ساحة 1 ضد 1</button>
                 </div>
               </form>

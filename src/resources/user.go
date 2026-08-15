@@ -37,7 +37,9 @@ type UpdateAccountModel struct {
 
 // UserModel to do
 type UserModel struct {
-	ID       int64  `json:"id,string"`
-	FullName string `json:"fullName"`
-	Team     int    `json:"team,omitempty"`
+	ID          int64  `json:"id,string"`
+	FullName    string `json:"fullName"`
+	Team        int    `json:"team,omitempty"`
+	IsBot       bool   `json:"isBot,omitempty"`
+	BotStrategy string `json:"botStrategy,omitempty"`
 }

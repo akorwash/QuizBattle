@@ -6,6 +6,7 @@
     team_2v2: { label: "2 ضد 2", minPlayers: 4, maxPlayers: 4 },
     team_4v4: { label: "4 ضد 4", minPlayers: 8, maxPlayers: 8 },
     open: { label: "مفتوحة", minPlayers: 2, maxPlayers: 8 },
+    bot: { label: "ضد البوت", minPlayers: 2, maxPlayers: 2 },
   });
   const TERMINAL_STATES = new Set(["completed", "forfeited"]);
   let eventsSocket = null;
@@ -36,6 +37,19 @@
     const config = MODE_CONFIG[mode];
     if (mode !== "open") return config.maxPlayers;
     return integerBetween(game && game.maxPlayers, 2, 8, config.maxPlayers);
+  }
+
+  function isBotGame(game) {
+    return Boolean(game && (game.mode === "bot" || game.opponentType === "bot" ||
+      (Array.isArray(game.joinedUsers) && game.joinedUsers.some(function (user) { return user && user.isBot; }))));
+  }
+
+  function normalizeBotStrategy(value) {
+    return value === "random" ? "random" : "smart";
+  }
+
+  function botStrategyLabel(value) {
+    return normalizeBotStrategy(value) === "random" ? "عشوائي" : "ذكي";
   }
 
   function modeLabel(mode) {
@@ -73,9 +87,9 @@
     members.slice(0, capacity).forEach(function (user) {
       const avatar = document.createElement("span");
       const team = Number(user && user.team);
-      avatar.className = "qb-player-avatar" + (team > 0 ? " team--" + team : "");
-      avatar.textContent = initialFor(user);
-      avatar.title = (user.fullName || "لاعب") + (team > 0 ? " · الفريق " + team : "");
+      avatar.className = "qb-player-avatar" + (user && user.isBot ? " is-bot" : "") + (team > 0 ? " team--" + team : "");
+      avatar.textContent = user && user.isBot ? "◆" : initialFor(user);
+      avatar.title = (user.fullName || "لاعب") + (user && user.isBot ? " · بوت " + botStrategyLabel(user.botStrategy || game.botStrategy) : "") + (team > 0 ? " · الفريق " + team : "");
       visual.appendChild(avatar);
     });
 
@@ -97,11 +111,13 @@
     const members = joinedUsers.length;
     const capacity = gameCapacity(game);
     const state = game.state || "lobby";
-    const joinable = Boolean(game.isActive && state === "lobby" && members < capacity);
+    const botGame = isBotGame(game);
+    const joinable = Boolean(!botGame && game.isActive && state === "lobby" && members < capacity);
     const wrapper = document.createElement("article");
     wrapper.className = "media qb-lobby-item state--" + String(state).replace(/_/g, "-");
     wrapper.dataset.gameId = String(game.id);
     wrapper.dataset.mode = normalizeMode(game.mode);
+    wrapper.dataset.opponentType = botGame ? "bot" : "human";
 
     const description = document.createElement("div");
     description.className = "qb-lobby-item__content";
@@ -114,13 +130,21 @@
     mode.className = "qb-lobby-mode";
     mode.textContent = modeLabel(game.mode);
     badges.append(status, mode);
+    if (botGame) {
+      const botBadge = document.createElement("span");
+      botBadge.className = "qb-lobby-bot-badge";
+      botBadge.textContent = "بوت " + botStrategyLabel(game.botStrategy);
+      badges.appendChild(botBadge);
+    }
 
     const title = document.createElement("strong");
     title.textContent = "ساحة " + game.owner.fullName;
     const details = document.createElement("p");
-    details.textContent = stateDescription(state, members, capacity);
+    details.textContent = botGame && state === "lobby"
+      ? "مواجهة خاصة ضد بوت المعرفة؛ اختر بطاقاتك وابدأ التحدي."
+      : stateDescription(state, members, capacity);
     const identifier = document.createElement("small");
-    identifier.textContent = "#" + game.id + " · " + members + "/" + capacity + " لاعبين";
+    identifier.textContent = "#" + game.id + " · " + members + "/" + capacity + (botGame ? " مقعدين · خاصة" : " لاعبين");
     description.append(badges, title, details, identifier);
 
     const button = document.createElement("button");
@@ -151,7 +175,7 @@
     const copy = document.createElement("p");
     copy.textContent = isMine
       ? "اختر نوع المنافسة وأنشئ ساحة جديدة؛ ستظهر هنا مع حالتها ونتيجتها."
-      : "أنشئ ساحة فردية أو فريقية أو مفتوحة ليتمكن اللاعبون من الانضمام.";
+      : "أنشئ ساحة فردية أو فريقية أو مفتوحة، أو ابدأ مواجهة خاصة ضد البوت.";
     empty.append(title, copy);
     list.appendChild(empty);
   }
@@ -203,15 +227,48 @@
     return capacity;
   }
 
+  function selectedBotStrategy() {
+    const selected = document.querySelector("input[name='botStrategy']:checked");
+    return normalizeBotStrategy(selected && selected.value);
+  }
+
+  function creationPayload(mode, botStrategy) {
+    const normalizedMode = normalizeMode(mode);
+    if (normalizedMode === "bot") {
+      return {
+        mode: "bot",
+        maxPlayers: 2,
+        isPublic: false,
+        opponentType: "bot",
+        botStrategy: normalizeBotStrategy(botStrategy),
+      };
+    }
+    return {
+      isPublic: true,
+      mode: normalizedMode,
+      maxPlayers: selectedCapacity(normalizedMode),
+    };
+  }
+
   function syncCreateControls() {
     const mode = selectedMode();
     const openControl = document.getElementById("openCapacityControl");
     const openRadio = document.getElementById("gameModeOpen");
-    const isOpen = mode === "open";
+    const botControl = document.getElementById("botStrategyControl");
+    const botRadio = document.getElementById("gameModeBot");
+    const isBot = mode === "bot";
+    const isOpen = mode === "open" && !isBot;
     if (openControl) openControl.hidden = !isOpen;
     if (openRadio) openRadio.setAttribute("aria-expanded", isOpen ? "true" : "false");
+    if (botControl) botControl.hidden = !isBot;
+    if (botRadio) botRadio.setAttribute("aria-expanded", isBot ? "true" : "false");
+    document.querySelectorAll("input[name='botStrategy']").forEach(function (input) { input.disabled = !isBot; });
+    const privacyHint = document.getElementById("arenaPrivacyHint");
+    if (privacyHint) privacyHint.textContent = isBot
+      ? "هذه مواجهة خاصة ضد البوت؛ لا تظهر في الساحات العامة ولا يمكن للاعب آخر الانضمام إليها."
+      : "ساحات اللاعبين عامة، ويوزّع الخادم اللاعبين على الفرق تلقائيًا.";
     const button = document.getElementById("creategame");
-    if (button) button.textContent = "إنشاء ساحة " + modeLabel(mode);
+    if (button) button.textContent = isBot ? "ابدأ مواجهة البوت" : "إنشاء ساحة " + modeLabel(mode);
   }
 
   async function createBattle(event) {
@@ -225,7 +282,7 @@
       const mode = selectedMode();
       const game = await QuizBattle.request("/api/v1/game", {
         method: "POST",
-        body: { isPublic: true, mode: mode, maxPlayers: selectedCapacity(mode) },
+        body: creationPayload(mode, selectedBotStrategy()),
       });
       window.location.assign("/battle/" + encodeURIComponent(game.id));
     } catch (error) {
@@ -291,6 +348,11 @@
     if (eventsSocket) eventsSocket.close();
   }
 
+  const testAPI = Object.freeze({ normalizeMode, normalizeBotStrategy, creationPayload, isBotGame });
+  if (typeof module !== "undefined" && module.exports) module.exports = testAPI;
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  window.QuizBattleGameUI = testAPI;
   window.addEventListener("quizbattle:logout", stopRealtime);
   window.addEventListener("quizbattle:session-invalid", function () {
     stopRealtime();

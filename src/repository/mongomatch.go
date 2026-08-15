@@ -32,21 +32,96 @@ func NewMongoMatchRepository(database *mongo.Database) *MongoMatchRepository {
 }
 
 func (repository *MongoMatchRepository) CreateForGame(ctx context.Context, aggregate *matchdomain.Aggregate) error {
-	if aggregate == nil || aggregate.ID <= 0 || aggregate.GameID <= 0 || len(aggregate.Players) < 2 || len(aggregate.Players) > maximumBattleMembers {
+	if aggregate == nil || aggregate.ID <= 0 || aggregate.GameID <= 0 || aggregate.OwnerID <= 0 ||
+		aggregate.Status != matchdomain.StatusCollectingDecks || aggregate.CurrentTurn != -1 || len(aggregate.Turns) != 0 ||
+		len(aggregate.Players) < 2 || len(aggregate.Players) > maximumBattleMembers {
 		return matchdomain.ErrInvalidMatch
 	}
-	playerIDs := make([]int64, 0, len(aggregate.Players))
-	for _, player := range aggregate.Players {
-		playerIDs = append(playerIDs, player.UserID)
+	mode, err := matchdomain.NormalizeMode(string(aggregate.Mode))
+	if err != nil {
+		return matchdomain.ErrInvalidMatch
 	}
+	playerCount := len(aggregate.Players)
+	if playerCount < matchdomain.MinPlayers(mode) || playerCount > matchdomain.MaxPlayers(mode) ||
+		(mode != matchdomain.ModeOpen && playerCount != matchdomain.MaxPlayers(mode)) {
+		return matchdomain.ErrInvalidMatch
+	}
+	humanPlayerIDs := make([]int64, 0, len(aggregate.Players))
+	seenHumans := make(map[int64]struct{}, len(aggregate.Players))
+	ownerPresent := false
+	var botPlayer *matchdomain.Player
+	for index := range aggregate.Players {
+		player := &aggregate.Players[index]
+		if player.IsBot() {
+			if botPlayer != nil || player.Bot == nil {
+				return matchdomain.ErrInvalidMatch
+			}
+			botPlayer = player
+			continue
+		}
+		if player.UserID <= 0 || player.Bot != nil {
+			return matchdomain.ErrInvalidMatch
+		}
+		if _, duplicate := seenHumans[player.UserID]; duplicate {
+			return matchdomain.ErrInvalidMatch
+		}
+		seenHumans[player.UserID] = struct{}{}
+		ownerPresent = ownerPresent || player.UserID == aggregate.OwnerID
+		humanPlayerIDs = append(humanPlayerIDs, player.UserID)
+	}
+	if !ownerPresent {
+		return matchdomain.ErrInvalidMatch
+	}
+	lobbyStateClause := bson.M{"$or": bson.A{
+		bson.M{"state": "lobby"},
+		bson.M{"state": ""},
+		bson.M{"state": bson.M{"$exists": false}},
+	}}
+	unattachedMatchClause := bson.M{"$or": bson.A{
+		bson.M{"matchid": 0},
+		bson.M{"matchid": bson.M{"$exists": false}},
+	}}
+	gameClauses := bson.A{lobbyStateClause, unattachedMatchClause}
+	gameFilter := bson.M{
+		"id": aggregate.GameID, "userid": aggregate.OwnerID, "isactive": true,
+		"joinedusers": bson.M{"$size": len(humanPlayerIDs), "$all": humanPlayerIDs},
+	}
+	if mode == matchdomain.ModeBot {
+		if botPlayer == nil || botPlayer.UserID != matchdomain.BotActorID || len(humanPlayerIDs) != 1 ||
+			humanPlayerIDs[0] != aggregate.OwnerID || len(botPlayer.Deck) != matchdomain.DeckSize ||
+			len(botPlayer.Bot.Seed) != matchdomain.BotSeedSize || botPlayer.Bot.DecisionVersion != matchdomain.BotDecisionVersion {
+			return matchdomain.ErrInvalidMatch
+		}
+		strategy, strategyErr := matchdomain.NormalizeBotStrategy(string(botPlayer.Bot.Strategy))
+		if strategyErr != nil || strategy != botPlayer.Bot.Strategy {
+			return matchdomain.ErrInvalidMatch
+		}
+		gameFilter["mode"] = string(matchdomain.ModeBot)
+		gameFilter["ispublic"] = false
+		gameFilter["maxplayers"] = matchdomain.MaxPlayers(matchdomain.ModeBot)
+		gameFilter["bot.actorId"] = botPlayer.UserID
+		gameFilter["bot.strategy"] = string(strategy)
+	} else {
+		if botPlayer != nil {
+			return matchdomain.ErrInvalidMatch
+		}
+		gameFilter["bot"] = bson.M{"$exists": false}
+		if mode == matchdomain.ModeDuel {
+			gameClauses = append(gameClauses, bson.M{"$or": bson.A{
+				bson.M{"mode": string(matchdomain.ModeDuel)},
+				bson.M{"mode": "1v1"},
+				bson.M{"mode": ""},
+				bson.M{"mode": bson.M{"$exists": false}},
+			}})
+		} else {
+			gameFilter["mode"] = string(mode)
+		}
+	}
+	gameFilter["$and"] = gameClauses
 	return repository.withTransaction(ctx, func(tx context.Context) error {
 		result, err := repository.games.UpdateOne(
 			tx,
-			bson.M{
-				"id": aggregate.GameID, "isactive": true, "joinedusers": bson.M{"$size": len(playerIDs), "$all": playerIDs},
-				"$or":  bson.A{bson.M{"state": "lobby"}, bson.M{"state": ""}, bson.M{"state": bson.M{"$exists": false}}},
-				"$and": bson.A{bson.M{"$or": bson.A{bson.M{"matchid": 0}, bson.M{"matchid": bson.M{"$exists": false}}}}},
-			},
+			gameFilter,
 			bson.M{"$set": bson.M{"state": string(matchdomain.StatusCollectingDecks), "matchid": aggregate.ID}},
 		)
 		if err != nil {
@@ -99,6 +174,16 @@ func (repository *MongoMatchRepository) CommitDeck(
 	newCardIDs, previousCardIDs []int64,
 ) error {
 	if aggregate == nil || expectedVersion <= 0 || userID <= 0 || len(newCardIDs) != matchdomain.DeckSize {
+		return economy.ErrInvalidEconomyState
+	}
+	playerFound := false
+	for index := range aggregate.Players {
+		if aggregate.Players[index].UserID == userID && !aggregate.Players[index].IsBot() {
+			playerFound = true
+			break
+		}
+	}
+	if !playerFound {
 		return economy.ErrInvalidEconomyState
 	}
 	lockRef := fmt.Sprintf("match:%d", aggregate.ID)

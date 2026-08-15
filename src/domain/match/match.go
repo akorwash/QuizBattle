@@ -24,6 +24,7 @@ type Mode string
 
 const (
 	ModeDuel    Mode = "duel"
+	ModeBot     Mode = "bot"
 	ModeTeam2v2 Mode = "team_2v2"
 	ModeTeam4v4 Mode = "team_4v4"
 	ModeOpen    Mode = "open"
@@ -33,6 +34,8 @@ func NormalizeMode(value string) (Mode, error) {
 	switch strings.ToLower(strings.TrimSpace(value)) {
 	case "", "duel", "1v1":
 		return ModeDuel, nil
+	case "bot":
+		return ModeBot, nil
 	case "team_2v2", "2v2":
 		return ModeTeam2v2, nil
 	case "team_4v4", "4v4":
@@ -50,7 +53,7 @@ func MaxPlayers(mode Mode) int {
 		return 0
 	}
 	switch mode {
-	case ModeDuel:
+	case ModeDuel, ModeBot:
 		return 2
 	case ModeTeam2v2:
 		return 4
@@ -67,7 +70,7 @@ func MinPlayers(mode Mode) int {
 		return 0
 	}
 	switch mode {
-	case ModeDuel, ModeOpen:
+	case ModeDuel, ModeBot, ModeOpen:
 		return 2
 	case ModeTeam2v2:
 		return 4
@@ -84,7 +87,7 @@ func TeamSize(mode Mode) int {
 		return 0
 	}
 	switch mode {
-	case ModeDuel:
+	case ModeDuel, ModeBot:
 		return 1
 	case ModeTeam2v2:
 		return 2
@@ -196,6 +199,8 @@ type Turn struct {
 
 type Player struct {
 	UserID int64          `bson:"userId" json:"userId,string"`
+	Kind   PlayerKind     `bson:"kind,omitempty" json:"kind,omitempty"`
+	Bot    *BotConfig     `bson:"bot,omitempty" json:"-"`
 	Team   int            `bson:"team,omitempty" json:"team,omitempty"`
 	Deck   []CardSnapshot `bson:"deck" json:"-"`
 	Score  int            `bson:"score" json:"score"`
@@ -224,25 +229,28 @@ type TieBreakState struct {
 }
 
 type Aggregate struct {
-	ID                int64              `bson:"id" json:"id,string"`
-	GameID            int64              `bson:"gameId" json:"gameId,string"`
-	OwnerID           int64              `bson:"ownerId" json:"ownerId,string"`
-	Mode              Mode               `bson:"mode,omitempty" json:"mode,omitempty"`
-	Players           []Player           `bson:"players" json:"players"`
-	Status            Status             `bson:"status" json:"status"`
-	Turns             []Turn             `bson:"turns" json:"-"`
-	CurrentTurn       int                `bson:"currentTurn" json:"currentTurn"`
-	WinnerID          int64              `bson:"winnerId,omitempty" json:"winnerId,omitempty,string"`
-	WinnerTeam        int                `bson:"winnerTeam,omitempty" json:"winnerTeam,omitempty"`
-	WinnerIDs         []int64            `bson:"winnerIds,omitempty" json:"-"`
-	IsTie             bool               `bson:"isTie" json:"isTie"`
-	TieBreak          TieBreakState      `bson:"tieBreak,omitempty" json:"-"`
-	Version           int64              `bson:"version" json:"version"`
-	CreatedAt         time.Time          `bson:"createdAt" json:"createdAt"`
-	StartedAt         time.Time          `bson:"startedAt,omitempty" json:"startedAt,omitempty"`
-	CompletedAt       time.Time          `bson:"completedAt,omitempty" json:"completedAt,omitempty"`
-	RewardsSettled    bool               `bson:"rewardsSettled" json:"rewardsSettled"`
-	ProcessedCommands []ProcessedCommand `bson:"processedCommands" json:"-"`
+	ID                  int64              `bson:"id" json:"id,string"`
+	GameID              int64              `bson:"gameId" json:"gameId,string"`
+	OwnerID             int64              `bson:"ownerId" json:"ownerId,string"`
+	Mode                Mode               `bson:"mode,omitempty" json:"mode,omitempty"`
+	Players             []Player           `bson:"players" json:"players"`
+	Status              Status             `bson:"status" json:"status"`
+	Turns               []Turn             `bson:"turns" json:"-"`
+	CurrentTurn         int                `bson:"currentTurn" json:"currentTurn"`
+	WinnerID            int64              `bson:"winnerId,omitempty" json:"winnerId,omitempty,string"`
+	WinnerTeam          int                `bson:"winnerTeam,omitempty" json:"winnerTeam,omitempty"`
+	WinnerIDs           []int64            `bson:"winnerIds,omitempty" json:"-"`
+	IsTie               bool               `bson:"isTie" json:"isTie"`
+	TieBreak            TieBreakState      `bson:"tieBreak,omitempty" json:"-"`
+	Version             int64              `bson:"version" json:"version"`
+	CreatedAt           time.Time          `bson:"createdAt" json:"createdAt"`
+	StartedAt           time.Time          `bson:"startedAt,omitempty" json:"startedAt,omitempty"`
+	CompletedAt         time.Time          `bson:"completedAt,omitempty" json:"completedAt,omitempty"`
+	RewardPolicyVersion string             `bson:"rewardPolicyVersion,omitempty" json:"rewardPolicyVersion,omitempty"`
+	RewardNonce         []byte             `bson:"rewardNonce,omitempty" json:"-"`
+	RewardReceipts      []RewardReceipt    `bson:"rewardReceipts,omitempty" json:"-"`
+	RewardsSettled      bool               `bson:"rewardsSettled" json:"rewardsSettled"`
+	ProcessedCommands   []ProcessedCommand `bson:"processedCommands" json:"-"`
 }
 
 // New preserves the original two-player construction contract.
@@ -256,6 +264,12 @@ func NewArena(id, gameID, ownerID int64, mode Mode, playerIDs []int64, now time.
 	mode, err := NormalizeMode(string(mode))
 	if err != nil {
 		return nil, err
+	}
+	// Bot arenas need explicit system-player metadata and a private decision
+	// seed. They must be built through NewBotDuel rather than treating a bot as
+	// an authenticated user account.
+	if mode == ModeBot {
+		return nil, ErrInvalidMatch
 	}
 	if id <= 0 || gameID <= 0 || ownerID <= 0 || now.IsZero() {
 		return nil, ErrInvalidMatch
@@ -290,7 +304,26 @@ func NewArena(id, gameID, ownerID int64, mode Mode, playerIDs []int64, now time.
 }
 
 func (aggregate *Aggregate) CommitDeck(userID int64, cards []CardSnapshot, commandID string, now time.Time) (bool, error) {
-	if aggregate.commandSeen(commandID, userID, "commit_deck") {
+	player := aggregate.player(userID)
+	if player == nil || player.IsBot() {
+		return false, ErrNotPlayer
+	}
+	return aggregate.commitDeck(player, cards, "commit_deck", commandID, now)
+}
+
+// CommitBotDeck freezes the system-owned question snapshots used by a bot.
+// Bot cards deliberately have no economy records and are therefore persisted
+// only inside this aggregate by the service/repository match boundary.
+func (aggregate *Aggregate) CommitBotDeck(cards []CardSnapshot, commandID string, now time.Time) (bool, error) {
+	player := aggregate.botPlayer()
+	if player == nil {
+		return false, ErrNotPlayer
+	}
+	return aggregate.commitDeck(player, cards, "commit_bot_deck", commandID, now)
+}
+
+func (aggregate *Aggregate) commitDeck(player *Player, cards []CardSnapshot, action, commandID string, now time.Time) (bool, error) {
+	if aggregate.commandSeen(commandID, player.UserID, action) {
 		return false, nil
 	}
 	if err := validateCommandID(commandID); err != nil {
@@ -299,16 +332,12 @@ func (aggregate *Aggregate) CommitDeck(userID int64, cards []CardSnapshot, comma
 	if aggregate.Status != StatusCollectingDecks {
 		return false, ErrInvalidState
 	}
-	player := aggregate.player(userID)
-	if player == nil {
-		return false, ErrNotPlayer
-	}
-	if err := validateDeck(userID, cards); err != nil {
+	if err := validateDeck(player.UserID, cards); err != nil {
 		return false, err
 	}
 	for _, candidate := range cards {
 		for index := range aggregate.Players {
-			if aggregate.Players[index].UserID == userID {
+			if aggregate.Players[index].UserID == player.UserID {
 				continue
 			}
 			for _, committed := range aggregate.Players[index].Deck {
@@ -319,7 +348,7 @@ func (aggregate *Aggregate) CommitDeck(userID int64, cards []CardSnapshot, comma
 		}
 	}
 	player.Deck = cloneCards(cards)
-	aggregate.recordCommand(commandID, userID, "commit_deck", now)
+	aggregate.recordCommand(commandID, player.UserID, action, now)
 	aggregate.Version++
 	return true, nil
 }
@@ -422,7 +451,8 @@ func (aggregate *Aggregate) Forfeit(userID int64, commandID string, now time.Tim
 	if err := validateCommandID(commandID); err != nil {
 		return false, err
 	}
-	if now.IsZero() || aggregate.player(userID) == nil {
+	player := aggregate.player(userID)
+	if now.IsZero() || player == nil || player.IsBot() {
 		return false, ErrNotPlayer
 	}
 	if aggregate.effectiveMode() != ModeDuel && userID != aggregate.OwnerID {
@@ -454,14 +484,29 @@ func (aggregate *Aggregate) Forfeit(userID int64, commandID string, now time.Tim
 }
 
 func (aggregate *Aggregate) SubmitAnswer(userID int64, turnID string, option int, commandID string, now time.Time) (bool, error) {
-	if aggregate.commandSeen(commandID, userID, "answer") {
+	player := aggregate.player(userID)
+	if player == nil || player.IsBot() {
+		return false, ErrNotPlayer
+	}
+	return aggregate.submitAnswer(player, turnID, option, "answer", commandID, now)
+}
+
+// SubmitBotAnswer is the server-only counterpart of SubmitAnswer. HTTP
+// controllers must never expose a caller-selected bot actor ID.
+func (aggregate *Aggregate) SubmitBotAnswer(botID int64, turnID string, option int, commandID string, now time.Time) (bool, error) {
+	player := aggregate.player(botID)
+	if player == nil || !player.IsBot() {
+		return false, ErrNotPlayer
+	}
+	return aggregate.submitAnswer(player, turnID, option, "bot_answer", commandID, now)
+}
+
+func (aggregate *Aggregate) submitAnswer(player *Player, turnID string, option int, action, commandID string, now time.Time) (bool, error) {
+	if aggregate.commandSeen(commandID, player.UserID, action) {
 		return false, nil
 	}
 	if err := validateCommandID(commandID); err != nil {
 		return false, err
-	}
-	if aggregate.player(userID) == nil {
-		return false, ErrNotPlayer
 	}
 	if option < 0 || option > 3 {
 		return false, ErrInvalidOption
@@ -480,14 +525,17 @@ func (aggregate *Aggregate) SubmitAnswer(userID int64, turnID string, option int
 	if turn.ID != turnID || turn.Status != TurnActive {
 		return false, ErrInvalidTurn
 	}
-	if !containsID(aggregate.eligibleFor(turn), userID) {
+	if now.Before(turn.StartedAt) {
+		return false, ErrInvalidTurn
+	}
+	if !containsID(aggregate.eligibleFor(turn), player.UserID) {
 		return false, ErrNotEligible
 	}
 	if !now.Before(turn.Deadline) {
 		aggregate.Tick(now)
 		return false, ErrTurnClosed
 	}
-	if _, exists := answerFor(turn.Answers, userID); exists {
+	if _, exists := answerFor(turn.Answers, player.UserID); exists {
 		return false, ErrAlreadyAnswered
 	}
 	question := aggregate.questionFor(turn)
@@ -504,16 +552,14 @@ func (aggregate *Aggregate) SubmitAnswer(userID int64, turnID string, option int
 		points = 100 + int((50*remaining)/TurnDuration)
 	}
 	turn.Answers = append(turn.Answers, Answer{
-		UserID:      userID,
+		UserID:      player.UserID,
 		Option:      option,
 		SubmittedAt: now.UTC(),
 		Correct:     correct,
 		Points:      points,
 	})
-	if player := aggregate.player(userID); player != nil {
-		player.Score += points
-	}
-	aggregate.recordCommand(commandID, userID, "answer", now)
+	player.Score += points
+	aggregate.recordCommand(commandID, player.UserID, action, now)
 	if len(turn.Answers) == len(aggregate.eligibleFor(turn)) {
 		aggregate.resolveTurn(turn, now.UTC())
 	}
@@ -588,6 +634,20 @@ func (aggregate *Aggregate) Rewards() map[int64]int64 {
 	}
 	if aggregate.Status != StatusCompleted {
 		return nil
+	}
+	if aggregate.effectiveMode() == ModeBot {
+		for _, player := range aggregate.Players {
+			result[player.UserID] = 0
+		}
+		if aggregate.IsTie {
+			return result
+		}
+		for _, player := range aggregate.Players {
+			if !player.IsBot() && (player.UserID == aggregate.WinnerID || containsID(aggregate.WinnerIDs, player.UserID)) {
+				result[player.UserID] = 80
+			}
+		}
+		return result
 	}
 	if aggregate.IsTie {
 		for _, player := range aggregate.Players {
@@ -867,8 +927,18 @@ func (aggregate *Aggregate) validRoster() bool {
 		return false
 	}
 	seen := make(map[int64]struct{}, count)
+	botCount := 0
 	for _, player := range aggregate.Players {
-		if player.UserID <= 0 {
+		if player.IsBot() {
+			botCount++
+			if mode != ModeBot || player.UserID != BotActorID || player.Bot == nil || len(player.Bot.Seed) != BotSeedSize ||
+				player.Bot.DecisionVersion != BotDecisionVersion {
+				return false
+			}
+			if _, err := NormalizeBotStrategy(string(player.Bot.Strategy)); err != nil {
+				return false
+			}
+		} else if (player.Kind != "" && player.Kind != PlayerHuman) || player.UserID <= 0 || player.Bot != nil {
 			return false
 		}
 		if _, exists := seen[player.UserID]; exists {
@@ -877,6 +947,16 @@ func (aggregate *Aggregate) validRoster() bool {
 		seen[player.UserID] = struct{}{}
 	}
 	if _, exists := seen[aggregate.OwnerID]; !exists {
+		return false
+	}
+	owner := aggregate.player(aggregate.OwnerID)
+	if owner == nil || owner.IsBot() {
+		return false
+	}
+	if mode == ModeBot {
+		return botCount == 1 && count == 2
+	}
+	if botCount != 0 {
 		return false
 	}
 	if isTeamMode(mode) {
@@ -895,6 +975,12 @@ func (aggregate *Aggregate) effectiveMode() Mode {
 		return ModeDuel
 	}
 	return mode
+}
+
+// EffectiveMode returns the normalized persisted mode for repository and
+// service policies while preserving legacy empty-mode duels.
+func (aggregate *Aggregate) EffectiveMode() Mode {
+	return aggregate.effectiveMode()
 }
 
 func (aggregate *Aggregate) playing() bool {
@@ -1120,7 +1206,9 @@ func uniqueSortedIDs(ids []int64) []int64 {
 	seen := make(map[int64]struct{}, len(ids))
 	result := make([]int64, 0, len(ids))
 	for _, id := range ids {
-		if id <= 0 {
+		// Zero is never an actor. Negative IDs are reserved for match-scoped
+		// system participants such as the bot.
+		if id == 0 {
 			continue
 		}
 		if _, exists := seen[id]; exists {

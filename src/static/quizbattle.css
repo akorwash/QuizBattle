@@ -4362,6 +4362,34 @@ body.qb-body::before {
   outline-offset: 0.18rem;
 }
 
+.qb-arena-mode-option--bot {
+  min-height: 5.5rem;
+  grid-column: 1 / -1;
+  color: var(--qb-paper);
+  background:
+    radial-gradient(circle at 12% 15%, rgba(239, 199, 111, 0.18), transparent 8rem),
+    linear-gradient(145deg, #123e3d, #071719);
+  border-color: rgba(229, 188, 101, 0.34);
+}
+
+.qb-arena-mode-option--bot small {
+  color: rgba(247, 235, 209, 0.72);
+}
+
+.qb-arena-mode-option--bot .qb-arena-mode-option__mark {
+  color: #071719;
+  background: linear-gradient(145deg, #efc76f, #c08a2b);
+}
+
+.qb-arena-mode-option--bot:has(input:checked) {
+  color: var(--qb-paper);
+  background:
+    radial-gradient(circle at 14% 10%, rgba(239, 199, 111, 0.24), transparent 10rem),
+    linear-gradient(145deg, #16665f, #092b2c);
+  border-color: #efc76f;
+  box-shadow: inset 0 0 0 1px rgba(239, 199, 111, 0.66), 0 0.7rem 1.35rem rgba(7, 23, 25, 0.16);
+}
+
 .qb-open-capacity {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 6.2rem;
@@ -4388,6 +4416,96 @@ body.qb-body::before {
 .qb-open-capacity small {
   color: #6d675d;
   font-size: 0.66rem;
+}
+
+.qb-bot-strategy {
+  display: grid;
+  min-width: 0;
+  margin: 0;
+  padding: 0.9rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  color: #0a2023;
+  background: linear-gradient(145deg, rgba(22, 137, 119, 0.1), rgba(212, 164, 72, 0.09));
+  border: 1px dashed rgba(22, 137, 119, 0.42);
+  border-radius: 0.9rem;
+}
+
+.qb-bot-strategy legend,
+.qb-bot-strategy__hint {
+  grid-column: 1 / -1;
+}
+
+.qb-bot-strategy legend {
+  padding-inline: 0.25rem;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.qb-bot-strategy__option {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 4.6rem;
+  grid-template-columns: 2.35rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.65rem;
+  background: rgba(255, 253, 247, 0.76);
+  border: 1px solid rgba(7, 23, 25, 0.14);
+  border-radius: 0.78rem;
+  cursor: pointer;
+}
+
+.qb-bot-strategy__option > input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.qb-bot-strategy__option:has(input:checked) {
+  background: #f7eedb;
+  border-color: #168977;
+  box-shadow: inset 0 0 0 1px rgba(22, 137, 119, 0.55);
+}
+
+.qb-bot-strategy__option:has(input:focus-visible) {
+  outline: 0.18rem solid #0d796a;
+  outline-offset: 0.16rem;
+}
+
+.qb-bot-strategy__icon {
+  display: grid;
+  width: 2.35rem;
+  height: 2.35rem;
+  place-items: center;
+  color: #f7eedb;
+  background: #0d514a;
+  border-radius: 0.68rem;
+  font-weight: 950;
+}
+
+.qb-bot-strategy__option:has(input:checked) .qb-bot-strategy__icon {
+  color: #071719;
+  background: #d4a448;
+}
+
+.qb-bot-strategy__option strong,
+.qb-bot-strategy__option small {
+  display: block;
+  min-width: 0;
+}
+
+.qb-bot-strategy__option strong {
+  font-size: 0.78rem;
+}
+
+.qb-bot-strategy__option small,
+.qb-bot-strategy__hint {
+  color: #6d675d;
+  font-size: 0.63rem;
+  line-height: 1.55;
 }
 
 .qb-arena-creator .qb-lobby-controls {
@@ -4451,6 +4569,31 @@ body.qb-body::before {
   border-radius: 999px;
   font-size: 0.64rem;
   font-weight: 850;
+}
+
+.qb-lobby-bot-badge,
+.qb-bot-badge {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 1.8rem;
+  align-items: center;
+  padding: 0.18rem 0.55rem;
+  color: #f7eedb;
+  background: #0d514a;
+  border: 1px solid rgba(229, 188, 101, 0.44);
+  border-radius: 999px;
+  font-size: 0.64rem;
+  font-weight: 850;
+}
+
+.qb-player-avatar.is-bot,
+.qb-scoreboard-player__avatar.is-bot,
+.qb-participant-avatar.is-bot,
+.qb-deck-status-chip > span:first-child.is-bot,
+.qb-tiebreak-player > span:first-child.is-bot {
+  color: #071719;
+  background: linear-gradient(145deg, #efc76f, #c08a2b);
+  border-color: rgba(7, 23, 25, 0.28);
 }
 
 .qb-lobby-item.state--tie-break {
@@ -4987,6 +5130,247 @@ body.qb-body::before {
   text-align: start;
 }
 
+.qb-battle-heading-row {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem 0.8rem;
+}
+
+.qb-battle-heading-row .qb-page-heading {
+  margin: 0;
+}
+
+.qb-bot-activity {
+  display: flex;
+  width: fit-content;
+  min-height: 2.25rem;
+  align-items: center;
+  gap: 0.55rem;
+  margin: 0.75rem 0 0;
+  padding: 0.4rem 0.7rem;
+  color: #f7eedb;
+  background: rgba(7, 23, 25, 0.62);
+  border: 1px solid rgba(229, 188, 101, 0.24);
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 750;
+}
+
+.qb-bot-activity::before {
+  width: 0.55rem;
+  height: 0.55rem;
+  flex: none;
+  background: #55d6ad;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0.22rem rgba(85, 214, 173, 0.13);
+  content: "";
+}
+
+.qb-bot-activity[data-state="thinking"]::before {
+  background: #efc76f;
+  animation: qb-bot-thinking 1.3s ease-in-out infinite;
+}
+
+.qb-bot-activity[data-state="answered"]::before {
+  background: #55d6ad;
+}
+
+@keyframes qb-bot-thinking {
+  50% {
+    opacity: 0.42;
+    transform: scale(0.72);
+  }
+}
+
+.qb-match-result {
+  width: min(100%, 52rem);
+  margin-inline: auto;
+  padding: clamp(1rem, 3vw, 1.6rem);
+  color: #0a2023;
+  background:
+    radial-gradient(circle at 8% 0, rgba(212, 164, 72, 0.2), transparent 13rem),
+    linear-gradient(150deg, #fffaf0, #efe0bd);
+  border: 1px solid rgba(229, 188, 101, 0.72);
+  border-radius: 1.15rem;
+  box-shadow: 0 1rem 2.4rem rgba(3, 14, 17, 0.28);
+  animation: qb-result-enter 220ms ease-out both;
+}
+
+.qb-match-result:focus-visible {
+  outline: 0.2rem solid #efc76f;
+  outline-offset: 0.2rem;
+}
+
+.qb-match-result__header {
+  max-width: 42rem;
+}
+
+.qb-match-result__header h2,
+.qb-match-result__header p {
+  margin-block: 0;
+}
+
+.qb-match-result__header h2 {
+  margin-block: 0.2rem 0.4rem;
+  font-family: var(--qb-font-display);
+  font-size: clamp(1.35rem, 4vw, 2rem);
+}
+
+.qb-match-result__eyebrow,
+.qb-reward-receipt__kicker {
+  color: #0d796a;
+  font-size: 0.65rem;
+  font-weight: 900;
+}
+
+.qb-match-result__scores {
+  display: grid;
+  margin-block: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.qb-match-result__score {
+  display: flex;
+  min-width: 0;
+  min-height: 3.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  padding: 0.55rem 0.7rem;
+  background: rgba(255, 253, 247, 0.72);
+  border: 1px solid rgba(7, 23, 25, 0.12);
+  border-radius: 0.75rem;
+}
+
+.qb-match-result__score > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.qb-match-result__score strong {
+  overflow-wrap: anywhere;
+  font-size: 0.72rem;
+}
+
+.qb-match-result__score > strong {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.qb-match-result__avatar {
+  display: grid;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex: none;
+  place-items: center;
+  color: #f7eedb;
+  background: #0d514a;
+  border-radius: 0.62rem;
+  font-size: 0.7rem;
+}
+
+.qb-match-result__avatar.is-bot {
+  color: #071719;
+  background: #d4a448;
+}
+
+.qb-reward-receipt {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, 13rem);
+  align-items: center;
+  gap: 1rem;
+  padding: 0.9rem;
+  background: #102f32;
+  border: 1px solid rgba(229, 188, 101, 0.3);
+  border-radius: 0.9rem;
+  color: #f7eedb;
+}
+
+.qb-reward-receipt__copy h3,
+.qb-reward-receipt__copy p {
+  margin-block: 0;
+}
+
+.qb-reward-receipt__copy h3 {
+  margin-block: 0.15rem 0.45rem;
+  font-size: 1rem;
+}
+
+.qb-reward-receipt__copy .qb-help {
+  color: rgba(247, 238, 219, 0.7);
+}
+
+.qb-reward-coins {
+  display: block;
+  margin-block-end: 0.35rem;
+  color: #efc76f;
+  font-size: clamp(1.25rem, 4vw, 1.75rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.qb-reward-card {
+  position: relative;
+  display: grid;
+  width: min(100%, 13rem);
+  min-width: 0;
+  justify-self: center;
+  gap: 0.35rem;
+  padding: 0.6rem;
+  color: #0a2023;
+  background: #fffaf0;
+  border: 1px solid #d4a448;
+  border-radius: 0.78rem;
+  box-shadow: 0 0.55rem 1.2rem rgba(0, 0, 0, 0.2);
+}
+
+.qb-reward-card__art {
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border-radius: 0.55rem;
+}
+
+.qb-reward-card__art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.qb-reward-card > strong {
+  font-size: 0.72rem;
+  overflow-wrap: anywhere;
+}
+
+.qb-reward-card > small {
+  color: #6d6759;
+  font-size: 0.56rem;
+}
+
+.qb-match-result__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-block-start: 1rem;
+}
+
+.qb-match-result__actions .qb-button {
+  flex: 1 1 11rem;
+  text-decoration: none;
+}
+
+@keyframes qb-result-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
 @media (hover: hover) {
   .qb-arena-mode-option:hover {
     border-color: rgba(22, 137, 119, 0.55);
@@ -5051,6 +5435,15 @@ body.qb-body::before {
     box-shadow: 0 -0.55rem 1.2rem rgba(0, 0, 0, 0.2);
     backdrop-filter: blur(12px);
   }
+
+  .qb-match-result__scores,
+  .qb-reward-receipt {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qb-reward-card {
+    width: min(100%, 12rem);
+  }
 }
 
 @media (max-width: 31rem) {
@@ -5060,6 +5453,15 @@ body.qb-body::before {
 
   .qb-open-capacity {
     grid-template-columns: minmax(0, 1fr) 5rem;
+  }
+
+  .qb-bot-strategy {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .qb-bot-strategy legend,
+  .qb-bot-strategy__hint {
+    grid-column: 1;
   }
 
   .qb-lobby-avatar-stack {
@@ -5103,6 +5505,11 @@ body.qb-body::before {
     grid-column: 2;
     text-align: start;
   }
+
+  .qb-match-result__actions {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -5113,6 +5520,11 @@ body.qb-body::before {
   .qb-arena-mode-option:hover {
     transform: none;
   }
+
+  .qb-bot-activity[data-state="thinking"]::before,
+  .qb-match-result {
+    animation: none;
+  }
 }
 
 @media (forced-colors: active) {
@@ -5120,6 +5532,12 @@ body.qb-body::before {
   .qb-scoreboard-player.is-contender,
   .qb-scoreboard-player.is-winner,
   .qb-tiebreak-banner {
+    border: 2px solid Highlight;
+  }
+
+  .qb-bot-strategy__option:has(input:checked),
+  .qb-match-result,
+  .qb-reward-receipt {
     border: 2px solid Highlight;
   }
 }

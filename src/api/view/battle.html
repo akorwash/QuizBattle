@@ -10,12 +10,12 @@
     <title id="pagetile">QuizBattle — ساحة المواجهة</title>
     <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
     <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
-    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.14">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.16">
     <script defer src="/static/api.js?v=20260815.9"></script>
     <script defer src="/static/site.js?v=20260815.9"></script>
     <script defer src="/static/card-visuals.js?v=20260815.9"></script>
     <script defer src="/static/deck-ranking.js?v=20260815.1"></script>
-    <script defer src="/static/battle.js?v=20260815.11"></script>
+    <script defer src="/static/battle.js?v=20260815.12"></script>
   </head>
   <body class="qb-body qb-page-battle">
     <div class="qb-app-shell">
@@ -41,8 +41,12 @@
         <div class="qb-container qb-battle-shell">
           <header>
             <p class="qb-eyebrow">ساحة المواجهة</p>
-            <h1 id="battleTitle" class="qb-page-heading">جاري تحميل الساحة…</h1>
+            <div class="qb-battle-heading-row">
+              <h1 id="battleTitle" class="qb-page-heading">جاري تحميل الساحة…</h1>
+              <span id="botBattleBadge" class="qb-bot-badge" hidden>ضد البوت</span>
+            </div>
             <p id="battleLead" class="qb-page-lead">ثبّت خمس بطاقات واستعد. بعد اكتمال المقاعد يجهّز المالك الساحة، ثم يبدأ عندما يصبح الجميع جاهزًا.</p>
+            <p id="botActivity" class="qb-bot-activity" role="status" aria-live="polite" hidden></p>
           </header>
 
           <section id="scoreboard" class="qb-match-status" aria-label="حالة المباراة">
@@ -127,6 +131,34 @@
                   </div>
                   <p id="questionResult" class="qb-help" role="status" aria-live="polite">ستظهر حالة الإجابة هنا.</p>
                 </article>
+
+                <section id="matchResult" class="qb-match-result" tabindex="-1" aria-labelledby="matchResultTitle" hidden>
+                  <header class="qb-match-result__header">
+                    <p id="matchResultEyebrow" class="qb-match-result__eyebrow">انتهت المواجهة</p>
+                    <h2 id="matchResultTitle">النتيجة النهائية</h2>
+                    <p id="matchResultSummary"></p>
+                  </header>
+                  <div id="resultScores" class="qb-match-result__scores" aria-label="النتيجة النهائية"></div>
+                  <section id="rewardReceipt" class="qb-reward-receipt" aria-labelledby="rewardReceiptTitle">
+                    <div class="qb-reward-receipt__copy">
+                      <p class="qb-reward-receipt__kicker">إيصال المكافأة</p>
+                      <h3 id="rewardReceiptTitle">مكافأة المواجهة</h3>
+                      <strong id="rewardCoinsGranted" class="qb-reward-coins">0 عملة</strong>
+                      <p id="rewardStatus" role="status"></p>
+                      <p id="rewardReason" class="qb-help" hidden></p>
+                    </div>
+                    <article id="rewardCard" class="qb-reward-card" aria-labelledby="rewardCardTitle" hidden>
+                      <div id="rewardCardArt" class="qb-card-art qb-reward-card__art category--general-knowledge" aria-hidden="true"></div>
+                      <span id="rewardCardRarity" class="qb-card__rarity">بطاقة جديدة</span>
+                      <strong id="rewardCardTitle">بطاقة معرفة</strong>
+                      <small id="rewardCardMeta"></small>
+                    </article>
+                  </section>
+                  <div class="qb-match-result__actions">
+                    <a class="qb-button qb-button--primary" href="/user/profile#collection">عرض مجموعتي</a>
+                    <a class="qb-button qb-button--brass" href="/game/play">ابدأ مواجهة جديدة</a>
+                  </div>
+                </section>
               </div>
 
               <section id="deckSetup" class="qb-deck-setup" aria-labelledby="playerDeckTitle">

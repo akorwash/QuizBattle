@@ -7,11 +7,13 @@ import (
 )
 
 type PlayerSnapshot struct {
-	UserID      int64    `json:"userId,string"`
-	Team        int      `json:"team,omitempty"`
-	Score       int      `json:"score"`
-	DeckReady   bool     `json:"deckReady"`
-	DeckCardIDs []string `json:"deckCardIds,omitempty"`
+	UserID      int64       `json:"userId,string"`
+	Team        int         `json:"team,omitempty"`
+	IsBot       bool        `json:"isBot"`
+	BotStrategy BotStrategy `json:"botStrategy,omitempty"`
+	Score       int         `json:"score"`
+	DeckReady   bool        `json:"deckReady"`
+	DeckCardIDs []string    `json:"deckCardIds,omitempty"`
 }
 
 type TeamScoreSnapshot struct {
@@ -88,6 +90,7 @@ type Snapshot struct {
 	StartedAt      time.Time           `json:"startedAt,omitempty"`
 	CompletedAt    time.Time           `json:"completedAt,omitempty"`
 	RewardCoins    int64               `json:"rewardCoins,omitempty"`
+	Reward         *RewardReceipt      `json:"reward,omitempty"`
 	RewardsSettled bool                `json:"rewardsSettled"`
 }
 
@@ -95,7 +98,8 @@ type Snapshot struct {
 // Correct answers, explanations, and submitted options from other contestants
 // remain hidden until the current turn is resolved.
 func (aggregate *Aggregate) SafeSnapshot(viewerID int64) (Snapshot, error) {
-	if aggregate.player(viewerID) == nil {
+	viewer := aggregate.player(viewerID)
+	if viewer == nil || viewer.IsBot() {
 		return Snapshot{}, ErrNotPlayer
 	}
 	blockers := aggregate.StartBlockers(viewerID)
@@ -136,7 +140,10 @@ func (aggregate *Aggregate) SafeSnapshot(viewerID int64) (Snapshot, error) {
 	}
 	for _, player := range aggregate.Players {
 		playerView := PlayerSnapshot{
-			UserID: player.UserID, Team: player.Team, Score: player.Score, DeckReady: len(player.Deck) == DeckSize,
+			UserID: player.UserID, Team: player.Team, IsBot: player.IsBot(), Score: player.Score, DeckReady: len(player.Deck) == DeckSize,
+		}
+		if player.IsBot() && player.Bot != nil {
+			playerView.BotStrategy = player.Bot.Strategy
 		}
 		if player.UserID == viewerID {
 			for _, card := range player.Deck {
@@ -154,8 +161,15 @@ func (aggregate *Aggregate) SafeSnapshot(viewerID int64) (Snapshot, error) {
 	for _, team := range teams {
 		result.TeamScores = append(result.TeamScores, TeamScoreSnapshot{Team: team, Score: teamScores[team]})
 	}
-	if rewards := aggregate.Rewards(); rewards != nil {
-		result.RewardCoins = rewards[viewerID]
+	if receipt := aggregate.RewardFor(viewerID); receipt != nil {
+		result.Reward = receipt
+		result.RewardCoins = receipt.CoinsGranted
+	} else if aggregate.RewardPolicyVersion == "" {
+		// Old persisted matches predate durable receipts and keep their original
+		// coin-only projection. New policies never expose an uncommitted estimate.
+		if rewards := aggregate.Rewards(); rewards != nil {
+			result.RewardCoins = rewards[viewerID]
+		}
 	}
 	if aggregate.CurrentTurn < 0 || aggregate.CurrentTurn >= len(aggregate.Turns) {
 		return result, nil

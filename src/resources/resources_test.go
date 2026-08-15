@@ -55,3 +55,21 @@ func TestLargeIdentifiersAreEncodedAsJSONStrings(t *testing.T) {
 		t.Fatalf("account identifier would lose precision in JavaScript: %s", account)
 	}
 }
+
+func TestBotActorIdentifierIsAnOpaqueJSONString(t *testing.T) {
+	payload, err := json.Marshal(UserModel{ID: -1, FullName: "System Bot", IsBot: true, BotStrategy: "smart"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var decoded struct {
+		ID          string `json:"id"`
+		IsBot       bool   `json:"isBot"`
+		BotStrategy string `json:"botStrategy"`
+	}
+	if err := json.Unmarshal(payload, &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if decoded.ID != "-1" || !decoded.IsBot || decoded.BotStrategy != "smart" {
+		t.Fatalf("unexpected bot resource: %s", payload)
+	}
+}
