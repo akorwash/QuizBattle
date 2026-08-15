@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
+	matchdomain "github.com/akorwash/QuizBattle/domain/match"
 	"github.com/akorwash/QuizBattle/resources"
 )
 
@@ -68,6 +69,86 @@ func TestCreateGameNormalizesSupportedArenaModes(t *testing.T) {
 				t.Fatalf("normalized mode was not persisted: %+v", stored)
 			}
 		})
+	}
+}
+
+func TestCreateBotArenaIsPrivateSystemOwnedAndCannotBeJoined(t *testing.T) {
+	users := gameModesTestUsers(2)
+	games := &fakeGameRepository{games: make(map[int64]entites.Game), nextID: 120}
+	gameService := NewGameService(games, users, nil)
+
+	created, err := gameService.CreateNewGame(1, resources.CreateGameModel{
+		Mode: "bot", OpponentType: "bot", BotStrategy: "smart", MaxPlayers: 2,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if created.IsPublic || created.Mode != "bot" || created.OpponentType != "bot" || created.BotStrategy != "smart" {
+		t.Fatalf("unexpected bot arena: %+v", created)
+	}
+	if len(created.JoinedUsers) != 2 || created.JoinedUsers[0].ID != 1 || !created.JoinedUsers[1].IsBot ||
+		created.JoinedUsers[1].ID != matchdomain.BotActorID {
+		t.Fatalf("unexpected bot roster: %+v", created.JoinedUsers)
+	}
+	stored := games.games[created.ID]
+	if stored.Bot == nil || stored.Bot.ActorID != matchdomain.BotActorID || stored.Bot.Strategy != "smart" || len(stored.JoinedUsers) != 1 {
+		t.Fatalf("bot was persisted as a user instead of a system seat: %+v", stored)
+	}
+	if _, err := gameService.JoinGame(2, created.ID); !errors.Is(err, ErrForbidden) {
+		t.Fatalf("bot arena accepted a human join: %v", err)
+	}
+}
+
+func TestCreateBotArenaRejectsSpoofedOrIncompatibleOptions(t *testing.T) {
+	tests := []resources.CreateGameModel{
+		{IsPublic: true, Mode: "bot", OpponentType: "bot", BotStrategy: "random"},
+		{IsPublic: true, Mode: "bot", OpponentType: "human", BotStrategy: "smart"},
+		{Mode: "team_2v2", OpponentType: "bot", BotStrategy: "smart"},
+		{Mode: "bot", OpponentType: "bot", BotStrategy: "impossible"},
+		{IsPublic: true, Mode: "duel", OpponentType: "human", BotStrategy: "smart"},
+	}
+	for _, input := range tests {
+		games := &fakeGameRepository{games: make(map[int64]entites.Game), nextID: 130}
+		if _, err := NewGameService(games, gameModesTestUsers(1), nil).CreateNewGame(1, input); !errors.Is(err, ErrInvalidInput) {
+			t.Fatalf("input %+v returned %v", input, err)
+		}
+		if len(games.games) != 0 {
+			t.Fatalf("invalid bot arena was stored: %+v", games.games)
+		}
+	}
+}
+
+func TestBotArenaProjectionAndMembershipRejectCorruptConfigurations(t *testing.T) {
+	users := gameModesTestUsers(2)
+	invalid := []entites.Game{
+		{
+			ID: 201, UserID: 1, IsPublic: true, IsActive: true, Mode: "bot", MaxPlayers: 2,
+			JoinedUsers: []int64{1}, State: "lobby",
+			Bot: &entites.BotSeat{ActorID: matchdomain.BotActorID, Name: "Bot", Strategy: "smart"},
+		},
+		{
+			ID: 202, UserID: 1, IsPublic: false, IsActive: true, Mode: "bot", MaxPlayers: 2,
+			JoinedUsers: []int64{1}, State: "lobby",
+		},
+		{
+			ID: 203, UserID: 1, IsPublic: true, IsActive: true, Mode: "duel", MaxPlayers: 2,
+			JoinedUsers: []int64{1}, State: "lobby",
+			Bot: &entites.BotSeat{ActorID: matchdomain.BotActorID, Name: "Bot", Strategy: "random"},
+		},
+	}
+	games := make(map[int64]entites.Game, len(invalid))
+	for index := range invalid {
+		game := invalid[index]
+		games[game.ID] = game
+		if _, ok := resourceFromUsers(&game, users.users); ok {
+			t.Fatalf("corrupt bot arena %d was projected", game.ID)
+		}
+	}
+	service := NewGameService(&fakeGameRepository{games: games}, users, nil)
+	for _, game := range invalid {
+		if _, err := service.JoinGame(2, game.ID); !errors.Is(err, ErrForbidden) {
+			t.Fatalf("corrupt bot arena %d accepted membership: %v", game.ID, err)
+		}
 	}
 }
 

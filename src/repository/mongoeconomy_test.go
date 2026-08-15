@@ -1,9 +1,12 @@
 package repository
 
 import (
+	"bytes"
 	"testing"
 
 	"github.com/akorwash/QuizBattle/domain/economy"
+	matchdomain "github.com/akorwash/QuizBattle/domain/match"
+	"github.com/akorwash/QuizBattle/domain/question"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -67,5 +70,48 @@ func TestBoundedSweepLimit(t *testing.T) {
 		if got := boundedSweepLimit(input); got != want {
 			t.Fatalf("limit %d: got %d want %d", input, got, want)
 		}
+	}
+}
+
+func TestSelectRewardQuestionPrefersAnyUnownedCardOverDuplicateRarity(t *testing.T) {
+	questions := []question.Question{
+		{ID: "reward-medium-001", Difficulty: question.DifficultyMedium},
+		{ID: "reward-easy-001", Difficulty: question.DifficultyEasy},
+	}
+	selected, err := selectRewardQuestion(
+		questions,
+		map[string]int{"reward-medium-001": 1},
+		"rare",
+		bytes.Repeat([]byte{1}, matchdomain.RewardNonceSize),
+		101,
+		11,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected.ID != "reward-easy-001" {
+		t.Fatalf("selected owned rarity duplicate before an unseen card: %s", selected.ID)
+	}
+}
+
+func TestSelectRewardQuestionFallsBackToDuplicateOnlyWhenPoolOwned(t *testing.T) {
+	questions := []question.Question{
+		{ID: "reward-medium-001", Difficulty: question.DifficultyMedium},
+		{ID: "reward-easy-001", Difficulty: question.DifficultyEasy},
+	}
+	owned := map[string]int{"reward-medium-001": 2, "reward-easy-001": 1}
+	selected, err := selectRewardQuestion(
+		questions,
+		owned,
+		"rare",
+		bytes.Repeat([]byte{2}, matchdomain.RewardNonceSize),
+		102,
+		12,
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if selected.ID != "reward-medium-001" {
+		t.Fatalf("did not preserve desired rarity after the complete pool was owned: %s", selected.ID)
 	}
 }

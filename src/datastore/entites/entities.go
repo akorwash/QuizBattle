@@ -77,11 +77,12 @@ func HashPassword(password string) (string, error) {
 	return string(hash), nil
 }
 
-// Bot is class represent Player User account with login data
-type Bot struct {
-	ID      int    `bson:"id" json:"id"`
-	BotName string `bson:"botname" json:"name"`
-	Level   int    `bson:"level" json:"level"`
+// BotSeat is a system-owned arena participant. It deliberately is not a User:
+// bots never receive credentials, wallets, collectible cards, or market access.
+type BotSeat struct {
+	ActorID  int64  `bson:"actorId" json:"actorId,string"`
+	Name     string `bson:"name" json:"name"`
+	Strategy string `bson:"strategy" json:"strategy"`
 }
 
 // Game class represnt game history
@@ -97,4 +98,5 @@ type Game struct {
 	CreatedAt   time.Time `bson:"createdat" json:"createdAt"`
 	State       string    `bson:"state" json:"state"`
 	MatchID     int64     `bson:"matchid,omitempty" json:"matchId,omitempty,string"`
+	Bot         *BotSeat  `bson:"bot,omitempty" json:"bot,omitempty"`
 }

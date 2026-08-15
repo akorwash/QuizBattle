@@ -18,6 +18,8 @@
   let lastLogKey = null;
   let answerSubmittingTurnID = null;
   let lastRevealedTurnID = null;
+  let lastResultFocusKey = null;
+  let collectionRefreshKey = null;
   const selectedCards = new Set();
   let selectedDeckSnapshotKey = null;
   let deckAssistMessage = "اختر يدويًا أو دع النظام يقترح أقوى خمس بطاقات.";
@@ -26,6 +28,7 @@
     team_2v2: { label: "2 ضد 2", minPlayers: 4, maxPlayers: 4, teamSize: 2 },
     team_4v4: { label: "4 ضد 4", minPlayers: 8, maxPlayers: 8, teamSize: 4 },
     open: { label: "ساحة مفتوحة", minPlayers: 2, maxPlayers: 8, teamSize: 0 },
+    bot: { label: "ضد البوت", minPlayers: 2, maxPlayers: 2, teamSize: 1 },
   });
   const VOICE_SIGNAL_TYPES = new Set(["voice_ready", "voice_leave", "voice_offer", "voice_answer", "voice_ice"]);
   let voiceJoined = false;
@@ -79,7 +82,12 @@
   }
 
   function isDuelMode() {
-    return gameMode() === "duel";
+    return gameMode() === "duel" || isBotMode();
+  }
+
+  function isBotMode() {
+    return Boolean(currentGame && (gameMode() === "bot" || currentGame.opponentType === "bot" ||
+      joinedUsers().some(function (user) { return user && user.isBot; })));
   }
 
   function isTeamMode() {
@@ -105,6 +113,10 @@
   function playerName(userID) {
     const user = userForID(userID);
     return user && user.fullName ? user.fullName : "اللاعب #" + userID;
+  }
+
+  function botStrategyLabel(value) {
+    return value === "random" ? "عشوائي" : "ذكي";
   }
 
   function teamLabel(value) {
@@ -155,15 +167,21 @@
   }
 
   function renderVoiceControls() {
+    const panel = document.getElementById("voiceChatPanel");
     const join = document.getElementById("joinVoiceButton");
     const mute = document.getElementById("muteVoiceButton");
     const leave = document.getElementById("leaveVoiceButton");
-    const unsupportedMode = Boolean(currentGame && !isDuelMode());
+    const botMode = isBotMode();
+    const unsupportedMode = Boolean(currentGame && (!isDuelMode() || botMode));
+    if (panel) {
+      panel.hidden = botMode;
+      panel.setAttribute("aria-hidden", botMode ? "true" : "false");
+    }
     if (join) {
       join.hidden = voiceJoined;
       join.disabled = unsupportedMode || voiceJoined || voiceJoining || !currentAccount || stopped;
       join.setAttribute("aria-busy", voiceJoining ? "true" : "false");
-      join.textContent = unsupportedMode ? "الصوت متاح في 1 ضد 1 فقط" : (voiceJoining ? "بانتظار إذن الميكروفون…" : "انضم إلى الصوت");
+      join.textContent = botMode ? "الصوت غير متاح ضد البوت" : (unsupportedMode ? "الصوت متاح في 1 ضد 1 فقط" : (voiceJoining ? "بانتظار إذن الميكروفون…" : "انضم إلى الصوت"));
     }
     if (mute) {
       mute.hidden = !voiceJoined;
@@ -176,7 +194,7 @@
   }
 
   function currentOpponentID() {
-    if (!isDuelMode() || !currentAccount || !currentGame || !Array.isArray(currentGame.joinedUsers)) return null;
+    if (!isDuelMode() || isBotMode() || !currentAccount || !currentGame || !Array.isArray(currentGame.joinedUsers)) return null;
     const opponent = currentGame.joinedUsers.find(function (user) {
       return user && !sameID(user.id, currentAccount.userId);
     });
@@ -460,11 +478,11 @@
   }
 
   function syncVoiceParticipants() {
-    if (currentGame && !isDuelMode()) {
+    if (currentGame && (isBotMode() || !isDuelMode())) {
       if (voiceJoined || voiceJoining) leaveVoice({ notify: true });
       pendingVoiceSignals = [];
       renderVoiceControls();
-      setVoiceStatus("الدردشة الصوتية معطلة في الساحات الجماعية حاليًا.", "idle");
+      setVoiceStatus(isBotMode() ? "الدردشة الصوتية غير متاحة في مواجهة البوت." : "الدردشة الصوتية معطلة في الساحات الجماعية حاليًا.", "idle");
       return;
     }
     renderVoiceControls();
@@ -487,7 +505,7 @@
   }
 
   async function joinVoice() {
-    if (!isDuelMode()) {
+    if (!isDuelMode() || isBotMode()) {
       setVoiceStatus("الدردشة الصوتية متاحة حاليًا في مواجهات 1 ضد 1 فقط.", "idle");
       return;
     }
@@ -587,6 +605,8 @@
       return {
         userId: user.id,
         fullName: user.fullName || "اللاعب #" + user.id,
+        isBot: Boolean(user.isBot || (player && player.isBot)),
+        botStrategy: user.botStrategy || (player && player.botStrategy) || currentGame.botStrategy || "",
         team: Number(player && player.team !== undefined ? player.team : user.team) || 0,
         score: Number(player && player.score) || 0,
         deckReady: Boolean(player && player.deckReady),
@@ -597,6 +617,8 @@
       views.push({
         userId: player.userId,
         fullName: playerName(player.userId),
+        isBot: Boolean(player.isBot),
+        botStrategy: player.botStrategy || "",
         team: Number(player.team) || 0,
         score: Number(player.score) || 0,
         deckReady: Boolean(player.deckReady),
@@ -668,8 +690,8 @@
       if (player.team > 0) row.dataset.team = String(player.team);
 
       const avatar = document.createElement("span");
-      avatar.className = "qb-participant-avatar";
-      avatar.textContent = initialForName(player.fullName);
+      avatar.className = "qb-participant-avatar" + (player.isBot ? " is-bot" : "");
+      avatar.textContent = player.isBot ? "◆" : initialForName(player.fullName);
       avatar.setAttribute("aria-hidden", "true");
       const identity = document.createElement("span");
       identity.className = "qb-participant-identity";
@@ -677,7 +699,9 @@
       name.textContent = player.fullName;
       const meta = document.createElement("small");
       const ownerSuffix = currentGame.owner && sameID(currentGame.owner.id, player.userId) ? " · المالك" : "";
-      meta.textContent = "#" + player.userId + (player.team > 0 ? " · " + teamLabel(player.team) : "") + ownerSuffix;
+      meta.textContent = player.isBot
+        ? "بوت المعرفة · " + botStrategyLabel(player.botStrategy)
+        : "#" + player.userId + (player.team > 0 ? " · " + teamLabel(player.team) : "") + ownerSuffix;
       identity.append(name, meta);
 
       const facts = document.createElement("span");
@@ -745,8 +769,8 @@
       rank.textContent = String(player.rank);
       rank.setAttribute("aria-label", "المركز " + player.rank);
       const avatar = document.createElement("span");
-      avatar.className = "qb-scoreboard-player__avatar";
-      avatar.textContent = initialForName(player.fullName);
+      avatar.className = "qb-scoreboard-player__avatar" + (player.isBot ? " is-bot" : "");
+      avatar.textContent = player.isBot ? "◆" : initialForName(player.fullName);
       avatar.setAttribute("aria-hidden", "true");
       const copy = document.createElement("span");
       copy.className = "qb-scoreboard-player__copy";
@@ -755,7 +779,7 @@
       const meta = document.createElement("small");
       meta.textContent = sameID(player.userId, championID())
         ? "بطل الساحة النهائي"
-        : (player.team > 0 ? teamLabel(player.team) : (player.deckReady ? "جاهز" : "بانتظار الجاهزية"));
+        : (player.isBot ? "بوت " + botStrategyLabel(player.botStrategy) : (player.team > 0 ? teamLabel(player.team) : (player.deckReady ? "جاهز" : "بانتظار الجاهزية")));
       copy.append(name, meta);
       const score = document.createElement("strong");
       score.className = "qb-scoreboard-player__score";
@@ -804,7 +828,9 @@
       const chip = document.createElement("span");
       chip.className = "qb-tiebreak-player";
       const avatar = document.createElement("span");
-      avatar.textContent = initialForName(playerName(userID));
+      const contender = playerViews().find(function (player) { return sameID(player.userId, userID); });
+      avatar.textContent = contender && contender.isBot ? "◆" : initialForName(playerName(userID));
+      if (contender && contender.isBot) avatar.classList.add("is-bot");
       avatar.setAttribute("aria-hidden", "true");
       const name = document.createElement("strong");
       name.textContent = playerName(userID);
@@ -816,7 +842,7 @@
   function renderArenaReadiness() {
     const config = modeConfig();
     const views = playerViews();
-    setText("arenaCapacity", views.length + " / " + config.maxPlayers + " لاعبين");
+    setText("arenaCapacity", views.length + " / " + config.maxPlayers + (isBotMode() ? " مقعدين" : " لاعبين"));
     const container = document.getElementById("opponentDeck");
     if (container) {
       container.replaceChildren();
@@ -826,13 +852,16 @@
         chip.dataset.state = player.deckReady ? "ready" : "waiting";
         if (player.team > 0) chip.dataset.team = String(player.team);
         const avatar = document.createElement("span");
-        avatar.textContent = initialForName(player.fullName);
+        avatar.textContent = player.isBot ? "◆" : initialForName(player.fullName);
+        if (player.isBot) avatar.classList.add("is-bot");
         avatar.setAttribute("aria-hidden", "true");
         const copy = document.createElement("span");
         const name = document.createElement("strong");
         name.textContent = player.fullName;
         const state = document.createElement("small");
-        state.textContent = player.deckReady ? "ثبت 5 بطاقات" : "لم يثبت بطاقاته";
+        state.textContent = player.isBot
+          ? (player.deckReady ? "جهّز 5 بطاقات" : "يجهّز بطاقاته")
+          : (player.deckReady ? "ثبت 5 بطاقات" : "لم يثبت بطاقاته");
         copy.append(name, state);
         chip.append(avatar, copy);
         container.appendChild(chip);
@@ -846,13 +875,188 @@
     }
   }
 
+  function renderBotActivity() {
+    const badge = document.getElementById("botBattleBadge");
+    const activity = document.getElementById("botActivity");
+    const bot = playerViews().find(function (player) { return player.isBot; });
+    const botMode = isBotMode();
+    if (badge) {
+      badge.hidden = !botMode;
+      badge.textContent = botMode ? "ضد البوت · " + botStrategyLabel((bot && bot.botStrategy) || (currentGame && currentGame.botStrategy)) : "";
+    }
+    if (!activity) return;
+    if (!botMode || (currentMatch && ["completed", "forfeited"].includes(currentMatch.status))) {
+      activity.hidden = true;
+      activity.textContent = "";
+      activity.dataset.state = "idle";
+      return;
+    }
+
+    let message = "بوت المعرفة في مقعده وينتظر تجهيز المواجهة.";
+    let state = "ready";
+    if (currentMatch && currentMatch.status === "collecting_decks") {
+      message = bot && bot.deckReady ? "جهّز بوت المعرفة بطاقاته؛ ثبّت مجموعتك عندما تصبح جاهزًا." : "بوت المعرفة يجهّز بطاقاته…";
+      state = bot && bot.deckReady ? "ready" : "thinking";
+    } else if (currentMatch && ["active", "tie_break"].includes(currentMatch.status)) {
+      const turn = currentMatch.currentTurn;
+      const eligible = Boolean(turn && bot && Array.isArray(turn.eligibleUserIds) && turn.eligibleUserIds.some(function (id) { return sameID(id, bot.userId); }));
+      const answered = Boolean(turn && bot && Array.isArray(turn.answeredUserIds) && turn.answeredUserIds.some(function (id) { return sameID(id, bot.userId); }));
+      if (turn && turn.status === "resolved") {
+        message = "انتهى الدور وكُشفت إجابة بوت المعرفة.";
+        state = "answered";
+      } else if (eligible && answered) {
+        message = "سجّل بوت المعرفة إجابته لدى الخادم.";
+        state = "answered";
+      } else if (eligible) {
+        message = "بوت المعرفة يفكر…";
+        state = "thinking";
+      } else {
+        message = "بوت المعرفة يتابع هذا الدور.";
+        state = "watching";
+      }
+    }
+    activity.hidden = false;
+    activity.dataset.state = state;
+    if (activity.textContent !== message) activity.textContent = message;
+  }
+
+  function normalizeReward(match) {
+    const receipt = match && match.reward && typeof match.reward === "object" ? match.reward : null;
+    const rawStatus = receipt && typeof receipt.status === "string" ? receipt.status.toLowerCase() : "";
+    const allowedStatuses = new Set(["granted", "capped", "ineligible", "pending"]);
+    let status = allowedStatuses.has(rawStatus) ? rawStatus : "";
+    if (!status) {
+      if (match && match.status === "forfeited") status = "ineligible";
+      else if (match && match.rewardsSettled === false) status = "pending";
+      else status = "granted";
+    }
+    const rawCoins = receipt && receipt.coinsGranted !== undefined ? receipt.coinsGranted : match && match.rewardCoins;
+    const parsedCoins = Number(rawCoins);
+    return {
+      status: status,
+      coinsGranted: Number.isFinite(parsedCoins) ? Math.max(0, Math.trunc(parsedCoins)) : 0,
+      card: receipt && receipt.card && typeof receipt.card === "object" ? receipt.card : null,
+      reason: receipt && typeof receipt.reason === "string" ? receipt.reason : "",
+      legacy: !receipt,
+    };
+  }
+
+  function rewardReasonLabel(value) {
+    const reasons = {
+      bot_daily_cap: "بلغت الحد اليومي لمكافآت مواجهات البوت. يمكنك الاستمرار في اللعب دون مكافأة.",
+      pvp_daily_cap: "بلغت الحد اليومي لمكافآت مواجهات اللاعبين. يمكنك الاستمرار في اللعب دون مكافأة.",
+      daily_cap: "بلغت الحد اليومي لمكافآت مواجهات البوت. يمكنك الاستمرار في اللعب دون مكافأة.",
+      capped: "بلغت الحد المسموح لمكافآت مواجهات البوت.",
+      insufficient_participation: "لم تسجل عدد الإجابات المطلوب للحصول على المكافأة.",
+      forfeit: "لا تُمنح مكافأة عند إنهاء المواجهة قبل اكتمالها.",
+      loss: "هذه المواجهة لا تمنح مكافأة عند الخسارة.",
+      draw: "لم تُمنح مكافأة قبل حسم فائز نهائي.",
+    };
+    if (!value) return "";
+    if (reasons[value]) return reasons[value];
+    return /[\u0600-\u06ff\s]/.test(value) ? value : "لم تتحقق شروط المكافأة لهذه المواجهة.";
+  }
+
+  function renderResultScores() {
+    const container = document.getElementById("resultScores");
+    if (!container) return;
+    container.replaceChildren();
+    rankedPlayerViews().forEach(function (player) {
+      const row = document.createElement("div");
+      row.className = "qb-match-result__score" + (player.isBot ? " is-bot" : "");
+      const identity = document.createElement("span");
+      const avatar = document.createElement("span");
+      avatar.className = "qb-match-result__avatar" + (player.isBot ? " is-bot" : "");
+      avatar.textContent = player.isBot ? "◆" : initialForName(player.fullName);
+      avatar.setAttribute("aria-hidden", "true");
+      const name = document.createElement("strong");
+      name.textContent = player.fullName;
+      identity.append(avatar, name);
+      const score = document.createElement("strong");
+      score.textContent = player.score + " نقطة";
+      row.append(identity, score);
+      container.appendChild(row);
+    });
+  }
+
+  function renderRewardCard(card) {
+    const container = document.getElementById("rewardCard");
+    if (!container) return;
+    container.hidden = !card;
+    if (!card) return;
+    const category = card.category || "general-knowledge";
+    const rarity = ["common", "rare", "epic", "legendary"].includes(card.rarity) ? card.rarity : "common";
+    const art = document.getElementById("rewardCardArt");
+    if (art && window.QuizBattleCardVisuals) QuizBattleCardVisuals.applyArt(art, category, { eager: true });
+    ["common", "rare", "epic", "legendary"].forEach(function (value) { container.classList.remove("rarity--" + value); });
+    container.classList.add("rarity--" + rarity);
+    setText("rewardCardRarity", rarityLabel(rarity));
+    setText("rewardCardTitle", card.prompt || card.title || "بطاقة " + categoryLabel(category));
+    const meta = [categoryLabel(category), difficultyLabel(card.difficulty), card.power ? "القوة " + card.power : ""].filter(Boolean);
+    setText("rewardCardMeta", meta.join(" · "));
+  }
+
+  function renderMatchResult(message, forfeited) {
+    const question = document.getElementById("questionCard");
+    const result = document.getElementById("matchResult");
+    clearInterval(clockTimer);
+    clockTimer = null;
+    if (question) question.hidden = true;
+    if (!result) return;
+    result.hidden = false;
+    result.dataset.outcome = forfeited ? "forfeited" : (sameID(championID(), currentAccount.userId) ? "won" : "lost");
+    setText("matchResultEyebrow", forfeited ? "انتهت بالانسحاب" : "انتهت المواجهة");
+    setText("matchResultTitle", forfeited ? "لم تكتمل المواجهة" : (sameID(championID(), currentAccount.userId) ? "أنت بطل الساحة" : "النتيجة النهائية"));
+    setText("matchResultSummary", message);
+    renderResultScores();
+
+    const reward = normalizeReward(currentMatch);
+    const formattedCoins = new Intl.NumberFormat("ar-EG").format(reward.coinsGranted);
+    setText("rewardCoinsGranted", formattedCoins + " عملة");
+    const statusCopy = {
+      granted: reward.coinsGranted > 0 || reward.card ? "تمت إضافة مكافأتك إلى حسابك." : "اكتملت تسوية المواجهة دون مكافأة إضافية.",
+      capped: "اكتملت المواجهة، لكن لم تُمنح مكافأة بسبب الحد الحالي.",
+      ineligible: "انتهت المواجهة دون مكافأة.",
+      pending: "يؤكد الخادم مكافأتك الآن…",
+    };
+    setText("rewardStatus", statusCopy[reward.status]);
+    const reason = document.getElementById("rewardReason");
+    const reasonCopy = rewardReasonLabel(reward.reason);
+    if (reason) {
+      reason.hidden = !reasonCopy;
+      reason.textContent = reasonCopy;
+    }
+    renderRewardCard(reward.card);
+
+    const matchKey = String(currentMatch.id || currentMatch.gameId || battleID) + ":" + reward.status + ":" + reward.coinsGranted + ":" + String(reward.card && reward.card.id || "");
+    if (reward.status === "granted" && collectionRefreshKey !== matchKey) {
+      collectionRefreshKey = matchKey;
+      loadCollection();
+    }
+    const focusKey = String(currentMatch.id || currentMatch.gameId || battleID) + ":" + currentMatch.status;
+    if (lastResultFocusKey !== focusKey) {
+      lastResultFocusKey = focusKey;
+      window.requestAnimationFrame(function () {
+        if (!result.hidden) result.focus();
+      });
+    }
+  }
+
+  function showQuestionSurface() {
+    const question = document.getElementById("questionCard");
+    const result = document.getElementById("matchResult");
+    if (question) question.hidden = false;
+    if (result) result.hidden = true;
+  }
+
   function renderExitButton() {
     const exit = document.getElementById("exitBattleButton");
     if (!exit) return;
     exit.hidden = false;
     const inProgress = currentMatch && ["collecting_decks", "active", "tie_break"].includes(currentMatch.status);
     const owner = currentGame && currentAccount && sameID(currentGame.owner.id, currentAccount.userId);
-    const ownerOnlyCancellation = inProgress && gameMode() !== "duel";
+    const botMode = isBotMode();
+    const ownerOnlyCancellation = inProgress && !isDuelMode();
     if (ownerOnlyCancellation && !owner) {
       exit.disabled = true;
       exit.textContent = "الإلغاء متاح للمالك فقط";
@@ -861,25 +1065,29 @@
     }
     exit.disabled = false;
     exit.textContent = inProgress
-      ? (ownerOnlyCancellation ? "إلغاء المنافسة" : "الانسحاب من المنافسة")
+      ? (botMode ? "إنهاء مواجهة البوت" : (ownerOnlyCancellation ? "إلغاء المنافسة" : "الانسحاب من المنافسة"))
       : "مغادرة الساحة";
     exit.title = inProgress
-      ? (ownerOnlyCancellation ? "ينهي الساحة الجماعية ويحرر بطاقات جميع المشاركين" : "يسجل انسحابك ويحرر بطاقاتك وفق قواعد الساحة")
+      ? (botMode ? "ينهي المواجهة دون مكافأة ويحرر بطاقاتك" : (ownerOnlyCancellation ? "ينهي الساحة الجماعية ويحرر بطاقات جميع المشاركين" : "يسجل انسحابك ويحرر بطاقاتك وفق قواعد الساحة"))
       : "مغادرة الساحة";
   }
 
   function renderGame() {
     if (!currentGame || !currentAccount) return;
     const config = modeConfig();
-    document.title = "QuizBattle — ساحة " + currentGame.owner.fullName;
-    setText("battleTitle", "ساحة " + currentGame.owner.fullName + " · " + config.label);
-    setText("arenaModeBadge", config.label + " · حتى " + config.maxPlayers + " لاعبين");
-    setText("battleLead", gameMode() === "open"
-      ? "ساحة مفتوحة تبدأ من لاعبين. يجهز المالك الساحة ثم تبدأ عندما يثبت جميع الموجودين خمس بطاقات."
-      : "ساحة " + config.label + ". بعد اكتمال " + config.maxPlayers + " لاعبين يجهز المالك الساحة، ثم تبدأ عند جاهزية الجميع.");
+    const botMode = isBotMode();
+    document.title = botMode ? "QuizBattle — مواجهة بوت المعرفة" : "QuizBattle — ساحة " + currentGame.owner.fullName;
+    setText("battleTitle", botMode ? currentGame.owner.fullName + " ضد حارس المعرفة" : "ساحة " + currentGame.owner.fullName + " · " + config.label);
+    setText("arenaModeBadge", botMode ? "ضد البوت · مواجهة خاصة" : config.label + " · حتى " + config.maxPlayers + " لاعبين");
+    setText("battleLead", botMode
+      ? "اختر خمس بطاقات، ثم ابدأ مواجهة خاصة ضد بوت المعرفة. قرارات البوت والنتيجة والمكافآت يؤكدها الخادم."
+      : (gameMode() === "open"
+        ? "ساحة مفتوحة تبدأ من لاعبين. يجهز المالك الساحة ثم تبدأ عندما يثبت جميع الموجودين خمس بطاقات."
+        : "ساحة " + config.label + ". بعد اكتمال " + config.maxPlayers + " لاعبين يجهز المالك الساحة، ثم تبدأ عند جاهزية الجميع."));
     renderParticipants();
     renderLeaderboard();
     renderArenaReadiness();
+    renderBotActivity();
     syncVoiceParticipants();
     renderExitButton();
     const loader = document.getElementById("battlepage");
@@ -895,10 +1103,12 @@
     renderLeaderboard();
     renderArenaReadiness();
     renderTieBreak();
+    renderBotActivity();
 
     const config = modeConfig();
     const joinedPlayers = joinedUsers().length;
     if (!currentMatch) {
+      showQuestionSurface();
       renderWaitingDecks();
       renderPrepareButton();
       renderStartButton();
@@ -910,7 +1120,7 @@
         ? "بانتظار انضمام " + (config.minPlayers - joinedPlayers) + " لاعب إضافي على الأقل."
         : (!fixedModeFull
           ? "بانتظار اكتمال مقاعد الساحة قبل أن يجهزها المالك."
-          : (isOwner() ? "اكتملت شروط التجهيز. اضغط تجهيز الساحة لفتح اختيار البطاقات." : "اكتملت شروط التجهيز. بانتظار مالك الساحة."));
+          : (isOwner() ? (isBotMode() ? "بوت المعرفة جاهز. جهّز المواجهة لاختيار بطاقاتك." : "اكتملت شروط التجهيز. اضغط تجهيز الساحة لفتح اختيار البطاقات.") : "اكتملت شروط التجهيز. بانتظار مالك الساحة."));
       renderWaitingQuestion(waitingMessage);
       renderLog([waitingMessage, "بعد التجهيز يثبت كل لاعب خمس بطاقات ليصبح جاهزًا."]);
       return;
@@ -920,12 +1130,13 @@
     renderStartButton();
 
     if (currentMatch.status === "collecting_decks") {
+      showQuestionSurface();
       renderDecks(own);
       setText("roundIndicator", "التجهيز");
       setText("turnIndicator", (own && own.deckReady ? "مجموعتك جاهزة" : "اختر مجموعتك"));
       const readyCount = matchPlayers().filter(function (player) { return player.deckReady; }).length;
       renderWaitingQuestion(own && own.deckReady
-        ? "تم حجز بطاقاتك بأمان. بانتظار جاهزية بقية اللاعبين ثم يبدأ المالك."
+        ? (isBotMode() ? "تم حجز بطاقاتك بأمان. ابدأ المواجهة عندما يؤكد الخادم جاهزية البوت." : "تم حجز بطاقاتك بأمان. بانتظار جاهزية بقية اللاعبين ثم يبدأ المالك.")
         : "اختر خمس بطاقات متاحة وثبّتها لتعلن جاهزيتك.");
       renderLog([
         own && own.deckReady ? "تم تثبيت مجموعتك وأصبحت جاهزًا." : "مجموعتك لم تُثبت بعد.",
@@ -956,12 +1167,12 @@
       } else {
         message = viewerChampion ? "أحسنت! أنت بطل الساحة النهائي." : "حُسمت الساحة لصالح " + playerName(champion) + ".";
       }
-      renderWaitingQuestion(message + (forfeited ? "" : " مكافأتك: " + (currentMatch.rewardCoins || 0) + " عملة."));
+      renderMatchResult(message, forfeited);
       renderLog([message, "تم إطلاق كل البطاقات المحجوزة بأمان."]);
-      loadCollection();
       return;
     }
 
+    showQuestionSurface();
     const turn = currentMatch.currentTurn;
     if (!turn) {
       renderWaitingQuestion("يحضّر الخادم الدور التالي…");
@@ -1204,8 +1415,9 @@
     const preparing = !currentMatch && (!currentGame.state || currentGame.state === "lobby");
     prepare.hidden = !(owner && preparing);
     prepare.disabled = !eligible;
+    prepare.textContent = isBotMode() ? "تجهيز مواجهة البوت" : "تجهيز الساحة";
     prepare.title = eligible
-      ? "ثبّت المشاركين وافتح اختيار البطاقات"
+      ? (isBotMode() ? "افتح اختيار بطاقاتك وجهّز مجموعة البوت" : "ثبّت المشاركين وافتح اختيار البطاقات")
       : (gameMode() === "open" ? "تحتاج لاعبين على الأقل" : "يجب اكتمال " + config.maxPlayers + " مقاعد");
     if (!preparing) return;
     setText("startRequirement", owner
@@ -1225,10 +1437,11 @@
     }
     const canStart = currentMatch.canStart === true;
     start.disabled = !canStart;
+    start.textContent = isBotMode() ? "ابدأ مواجهة البوت" : "بدء المباراة";
     start.title = canStart ? "ابدأ المنافسة الآن" : startBlockerMessage(currentMatch.startBlockers);
     const readyCount = matchPlayers().filter(function (player) { return player.deckReady; }).length;
     setText("startRequirement", owner
-      ? (canStart ? "الجميع جاهز — يمكنك بدء المنافسة الآن." : start.title)
+      ? (canStart ? (isBotMode() ? "أنت وبوت المعرفة جاهزان — ابدأ المواجهة الآن." : "الجميع جاهز — يمكنك بدء المنافسة الآن.") : start.title)
       : readyCount + " من " + matchPlayers().length + " لاعبين جاهزون · البدء بيد المالك.");
   }
 
@@ -1297,7 +1510,7 @@
         : (isTieBreakTurn(turn) && !canAnswer ? "شاهدت سؤال الحسم دون مشاركة. " : "انتهت المهلة دون إجابة. ")) + (turn.explanation || ""));
     } else {
       setText("questionResult", answered
-        ? "تم تسجيل إجابتك. بانتظار بقية اللاعبين أو انتهاء المهلة."
+        ? (isBotMode() ? "تم تسجيل إجابتك. بانتظار قرار بوت المعرفة أو انتهاء المهلة." : "تم تسجيل إجابتك. بانتظار بقية اللاعبين أو انتهاء المهلة.")
         : (!canAnswer
           ? "أنت تشاهد جولة الحسم؛ الإجابة متاحة للمتنافسين المتعادلين فقط."
           : "اختر إجابة واحدة قبل انتهاء الوقت."));
@@ -1507,14 +1720,17 @@
     const inProgress = currentMatch && ["collecting_decks", "active", "tie_break"].includes(currentMatch.status);
     const owner = currentGame && currentAccount && sameID(currentGame.owner.id, currentAccount.userId);
     if (inProgress) {
-      const ownerOnlyCancellation = gameMode() !== "duel";
+      const botMode = isBotMode();
+      const ownerOnlyCancellation = !isDuelMode();
       if (ownerOnlyCancellation && !owner) {
         QuizBattle.showError("errorSumm", new Error("لا يستطيع إلغاء الساحة الجماعية إلا مالكها."));
         return;
       }
       const confirmation = ownerOnlyCancellation
         ? "سيؤدي إلغاء المنافسة إلى إنهائها لجميع اللاعبين وتحرير بطاقاتهم دون مكافآت. هل تريد المتابعة؟"
-        : "سيُسجل انسحابك وتُطبق قواعد الساحة على النقاط والبطاقات. هل تريد المتابعة؟";
+        : (botMode
+          ? "ستنتهي مواجهة البوت وتُحرر بطاقاتك دون مكافأة. هل تريد المتابعة؟"
+          : "سيُسجل انسحابك وتُطبق قواعد الساحة على النقاط والبطاقات. هل تريد المتابعة؟");
       if (!window.confirm(confirmation)) return;
       try {
         acceptMatchSnapshot(await QuizBattle.request("/api/v1/game/" + battleID + "/forfeit", {
@@ -1624,6 +1840,11 @@
     if (battleSocket) battleSocket.close();
   }
 
+  const testAPI = Object.freeze({ normalizeMode, normalizeReward, rewardReasonLabel });
+  if (typeof module !== "undefined" && module.exports) module.exports = testAPI;
+  if (typeof window === "undefined" || typeof document === "undefined") return;
+
+  window.QuizBattleBattleUI = testAPI;
   document.addEventListener("DOMContentLoaded", function () {
     battleID = parseBattleID();
     if (!battleID) {
@@ -1644,7 +1865,8 @@
     connectBattle();
     loadAll();
     pollTimer = setInterval(function () {
-      if (currentMatch && ["active", "tie_break"].includes(currentMatch.status)) loadMatch(false);
+      if (currentMatch && (["active", "tie_break"].includes(currentMatch.status) ||
+        (["completed", "forfeited"].includes(currentMatch.status) && normalizeReward(currentMatch).status === "pending"))) loadMatch(false);
     }, 1000);
   });
 

@@ -4,7 +4,7 @@ Review and back up the database before running the updated service against data 
 
 ## Collection compatibility
 
-MongoDB collection names are case-sensitive. The application intentionally keeps the legacy names `users`, `Question`, and `Game`. The MVP adds `QuestionBank`, `Matches`, `Cards`, `Wallets`, `MarketListings`, `TradeOffers`, `EconomyLedger`, and `SessionRevocation`.
+MongoDB collection names are case-sensitive. The application intentionally keeps the legacy names `users`, `Question`, and `Game`. The MVP adds `QuestionBank`, `Matches`, `Cards`, `Wallets`, `MarketListings`, `TradeOffers`, `EconomyLedger`, `RewardQuotas`, and `SessionRevocation`.
 
 Card locks, wallet settlement, market purchases, and trades use multi-document transactions. MongoDB must therefore run as a replica set even for local development; Compose initializes the single-node `rs0` set automatically.
 
@@ -16,9 +16,13 @@ Index creation intentionally fails instead of guessing which account or record t
 
 ## Legacy battle membership
 
-Older code allowed an unbounded `joinedusers` array. The current two-player MVP atomically caps new joins at 2 and excludes malformed oversized battles from lists. Direct access to such a battle is rejected.
+Older code allowed an unbounded `joinedusers` array. The current multiplayer MVP atomically caps new joins at the arena's validated capacity, with a hard maximum of eight, and excludes malformed oversized battles from lists. Direct access to such a battle is rejected.
 
-Before deployment, identify active `Game` documents with more than 2 joined users, preserve an audit copy, and close or repair them according to a product-approved policy. The application does not silently truncate player membership because that would discard user state.
+Before deployment, identify active `Game` documents with more than eight joined users—or more members than their persisted mode/capacity allows—preserve an audit copy, and close or repair them according to a product-approved policy. The application does not silently truncate player membership because that would discard user state.
+
+Bot arenas add a separate `bot` seat to `Game`; they do not insert the negative bot actor into `joinedusers` or create a user document. Matches created before `rewards-v1` intentionally retain their original coin-only settlement behavior. New matches persist a private reward nonce and viewer-specific receipts; never backfill a nonce into an old terminal match because doing so could mint retroactive cards.
+
+`rewards-v1` stores UTC-day quota documents for both bot victories (three) and reward-eligible PvP results (ten). The limits apply only to newly stamped matches. The bundled public question bank contains an already disclosed answer key; migrate rewarded production play to a newly rotated server-private bank rather than relying on obscured question IDs.
 
 ## Question-bank import
 

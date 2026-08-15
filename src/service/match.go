@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -82,22 +83,78 @@ func (service *MatchService) Prepare(ctx context.Context, userID, gameID int64, 
 	if err != nil {
 		return nil, err
 	}
-	playerCount := len(game.JoinedUsers)
-	if playerCount < minimumPlayers || playerCount > maximumPlayers || (mode != matchdomain.ModeOpen && playerCount != maximumPlayers) {
-		return nil, ErrArenaNotReady
-	}
 	if !containsUser(game.JoinedUsers, userID) {
 		return nil, matchdomain.ErrNotPlayer
+	}
+	if !validGameBotConfiguration(game, mode) {
+		return nil, ErrArenaNotReady
+	}
+	playerCount := len(game.JoinedUsers)
+	if mode == matchdomain.ModeBot {
+		if playerCount != 1 {
+			return nil, ErrArenaNotReady
+		}
+	} else if playerCount < minimumPlayers || playerCount > maximumPlayers || (mode != matchdomain.ModeOpen && playerCount != maximumPlayers) {
+		return nil, ErrArenaNotReady
 	}
 	matchID, err := repository.NewID()
 	if err != nil {
 		return nil, err
 	}
-	aggregate, err := matchdomain.NewArena(matchID, gameID, game.UserID, mode, append([]int64(nil), game.JoinedUsers...), time.Now().UTC())
-	if err != nil {
+	now := time.Now().UTC()
+	var aggregate *matchdomain.Aggregate
+	if mode == matchdomain.ModeBot {
+		strategy, strategyErr := matchdomain.NormalizeBotStrategy(game.Bot.Strategy)
+		if strategyErr != nil {
+			return nil, strategyErr
+		}
+		seed := make([]byte, matchdomain.BotSeedSize)
+		if _, randomErr := rand.Read(seed); randomErr != nil {
+			return nil, fmt.Errorf("generate bot decision seed: %w", randomErr)
+		}
+		aggregate, err = matchdomain.NewBotDuel(matchID, gameID, game.UserID, strategy, seed, now)
+		if err != nil {
+			return nil, err
+		}
+		if service.questions == nil {
+			return nil, fmt.Errorf("question bank service is required to prepare a bot match")
+		}
+		items, questionErr := service.questions.BotDeckQuestions(ctx, matchID, strategy, matchdomain.DeckSize)
+		if questionErr != nil {
+			return nil, questionErr
+		}
+		botCards := make([]matchdomain.CardSnapshot, 0, matchdomain.DeckSize)
+		for _, item := range items {
+			cardID, idErr := repository.NewID()
+			if idErr != nil {
+				return nil, idErr
+			}
+			botCards = append(botCards, matchdomain.CardSnapshot{
+				ID: cardID, OwnerID: matchdomain.BotActorID, Rarity: economy.RarityForDifficulty(string(item.Difficulty)),
+				Power: 1, Question: matchQuestionSnapshot(item),
+			})
+		}
+		if _, err = aggregate.CommitBotDeck(botCards, fmt.Sprintf("bot_deck:%d", matchID), now); err != nil {
+			return nil, err
+		}
+	} else {
+		aggregate, err = matchdomain.NewArena(matchID, gameID, game.UserID, mode, append([]int64(nil), game.JoinedUsers...), now)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err := aggregate.InitializeRewardPolicy(); err != nil {
 		return nil, err
 	}
 	if err := service.matches.CreateForGame(ctx, aggregate); err != nil {
+		// Another replica may have won the prepare race after our initial read.
+		// Treat that as the same idempotent result when its match is now visible.
+		if errors.Is(err, repository.ErrConflict) {
+			existing, getErr := service.matches.GetByGameID(ctx, gameID)
+			if getErr == nil {
+				return safeSnapshot(existing, userID)
+			}
+		}
 		return nil, err
 	}
 	service.publish("match_created", gameID, aggregate.Version)
@@ -235,32 +292,51 @@ func (service *MatchService) Snapshot(ctx context.Context, userID, gameID int64)
 		return nil, matchdomain.ErrNotPlayer
 	}
 	expectedVersion := aggregate.Version
-	changed := aggregate.Tick(time.Now().UTC())
+	previousStatus := aggregate.Status
+	previousTurn := aggregate.CurrentTurn
+	now := time.Now().UTC()
+	changed, err := aggregate.AdvanceBots(now)
+	if err != nil {
+		return nil, err
+	}
 	if aggregate.Status == matchdomain.StatusTieBreak && aggregate.TieBreak.AwaitingQuestion {
-		added, addErr := service.replenishTieBreak(ctx, aggregate)
+		added, addErr := service.replenishTieBreak(ctx, aggregate, now)
 		if addErr != nil {
 			return nil, addErr
 		}
 		changed = changed || added
+		if added {
+			advanced, advanceErr := aggregate.AdvanceBots(now)
+			if advanceErr != nil {
+				return nil, advanceErr
+			}
+			changed = changed || advanced
+		}
 	}
 	if changed {
 		if err := service.matches.Update(ctx, aggregate, expectedVersion); err != nil {
 			return nil, err
 		}
-		service.publish(matchTickEvent(aggregate), gameID, aggregate.Version)
+		service.publish(matchProgressEvent(aggregate, previousStatus, previousTurn), gameID, aggregate.Version)
 	}
 	if (aggregate.Status == matchdomain.StatusCompleted || aggregate.Status == matchdomain.StatusForfeited) && !aggregate.RewardsSettled {
 		if err := service.economy.SettleMatchRewards(ctx, aggregate.ID); err != nil {
 			return nil, err
 		}
-		aggregate.RewardsSettled = true
+		aggregate, err = service.matches.GetByGameID(ctx, gameID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return safeSnapshot(aggregate, userID)
 }
 
-func (service *MatchService) replenishTieBreak(ctx context.Context, aggregate *matchdomain.Aggregate) (bool, error) {
+func (service *MatchService) replenishTieBreak(ctx context.Context, aggregate *matchdomain.Aggregate, now time.Time) (bool, error) {
 	if aggregate == nil || aggregate.Status != matchdomain.StatusTieBreak || !aggregate.TieBreak.AwaitingQuestion {
 		return false, nil
+	}
+	if now.IsZero() {
+		return false, matchdomain.ErrInvalidState
 	}
 	if service.questions == nil {
 		return false, fmt.Errorf("question bank service is required to continue a tie-break")
@@ -282,7 +358,7 @@ func (service *MatchService) replenishTieBreak(ctx context.Context, aggregate *m
 	for _, item := range items {
 		questions = append(questions, matchQuestionSnapshot(item))
 	}
-	return aggregate.AddTieBreakQuestions(questions, time.Now().UTC())
+	return aggregate.AddTieBreakQuestions(questions, now.UTC())
 }
 
 func (service *MatchService) Forfeit(ctx context.Context, userID, gameID int64, commandID string) (*matchdomain.Snapshot, error) {
@@ -310,7 +386,10 @@ func (service *MatchService) Forfeit(ctx context.Context, userID, gameID int64, 
 		if err := service.economy.SettleMatchRewards(ctx, aggregate.ID); err != nil {
 			return nil, err
 		}
-		aggregate.RewardsSettled = true
+		aggregate, err = service.matches.GetByGameID(ctx, gameID)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return safeSnapshot(aggregate, userID)
 }
@@ -322,20 +401,60 @@ func (service *MatchService) Answer(ctx context.Context, userID, gameID int64, t
 	if err != nil {
 		return nil, err
 	}
+	// Authorization must precede bot catch-up. Otherwise an untrusted caller
+	// could turn a rejected answer into a durable system-authored state change.
+	if !matchContains(aggregate, userID) {
+		return nil, matchdomain.ErrNotPlayer
+	}
 	expectedVersion := aggregate.Version
-	changed, err := aggregate.SubmitAnswer(userID, turnID, option, commandID, time.Now().UTC())
+	previousStatus := aggregate.Status
+	previousTurn := aggregate.CurrentTurn
+	now := time.Now().UTC()
+	automated, err := aggregate.AdvanceBots(now)
 	if err != nil {
 		return nil, err
+	}
+	addedTieBreakTurn := false
+	if aggregate.Status == matchdomain.StatusTieBreak && aggregate.TieBreak.AwaitingQuestion {
+		added, addErr := service.replenishTieBreak(ctx, aggregate, now)
+		if addErr != nil {
+			return nil, addErr
+		}
+		addedTieBreakTurn = added
+		automated = automated || added
+	}
+	var changed bool
+	var answerErr error
+	if addedTieBreakTurn {
+		// The command was sent before this freshly replenished turn existed and
+		// therefore cannot be an informed answer to its server-selected question.
+		// Persist the new turn, then require the client to fetch it and answer with
+		// a new command instead of accepting a guessed future turn ID.
+		answerErr = matchdomain.ErrInvalidTurn
+	} else {
+		changed, answerErr = aggregate.SubmitAnswer(userID, turnID, option, commandID, now)
+	}
+	changed = changed || automated
+	if answerErr != nil && !changed {
+		return nil, answerErr
 	}
 	if changed {
 		if err := service.matches.Update(ctx, aggregate, expectedVersion); err != nil {
 			return nil, err
 		}
-		eventType := "answer_received"
-		if aggregate.CurrentTurn >= 0 && aggregate.CurrentTurn < len(aggregate.Turns) && aggregate.Turns[aggregate.CurrentTurn].Status == matchdomain.TurnResolved {
-			eventType = "turn_resolved"
+		service.publish(matchProgressEvent(aggregate, previousStatus, previousTurn), gameID, aggregate.Version)
+	}
+	if (aggregate.Status == matchdomain.StatusCompleted || aggregate.Status == matchdomain.StatusForfeited) && !aggregate.RewardsSettled {
+		if err := service.economy.SettleMatchRewards(ctx, aggregate.ID); err != nil {
+			return nil, err
 		}
-		service.publish(eventType, gameID, aggregate.Version)
+		aggregate, err = service.matches.GetByGameID(ctx, gameID)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if answerErr != nil {
+		return nil, answerErr
 	}
 	return safeSnapshot(aggregate, userID)
 }
@@ -418,23 +537,33 @@ func safeSnapshot(aggregate *matchdomain.Aggregate, userID int64) (*matchdomain.
 }
 
 func matchContains(aggregate *matchdomain.Aggregate, userID int64) bool {
+	if aggregate == nil || userID <= 0 {
+		return false
+	}
 	for _, player := range aggregate.Players {
-		if player.UserID == userID {
+		if player.UserID == userID && !player.IsBot() {
 			return true
 		}
 	}
 	return false
 }
 
-func matchTickEvent(aggregate *matchdomain.Aggregate) string {
+func matchProgressEvent(aggregate *matchdomain.Aggregate, previousStatus matchdomain.Status, previousTurn int) string {
 	if aggregate.Status == matchdomain.StatusCompleted {
 		return "match_completed"
 	}
-	if aggregate.Status == matchdomain.StatusTieBreak {
+	if aggregate.Status == matchdomain.StatusForfeited {
+		return "match_forfeited"
+	}
+	if aggregate.Status == matchdomain.StatusTieBreak &&
+		(previousStatus != matchdomain.StatusTieBreak || aggregate.CurrentTurn != previousTurn) {
 		return "tiebreak_started"
+	}
+	if aggregate.CurrentTurn != previousTurn {
+		return "turn_started"
 	}
 	if aggregate.CurrentTurn >= 0 && aggregate.CurrentTurn < len(aggregate.Turns) && aggregate.Turns[aggregate.CurrentTurn].Status == matchdomain.TurnResolved {
 		return "turn_resolved"
 	}
-	return "turn_started"
+	return "answer_received"
 }

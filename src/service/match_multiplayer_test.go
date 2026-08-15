@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -31,6 +32,128 @@ func TestMatchPrepareIsOwnerOnly(t *testing.T) {
 	}
 	if prepared.OwnerID != 1 || prepared.Mode != matchdomain.ModeDuel || len(prepared.Players) != 2 || fixture.matches.createCalls != 1 {
 		t.Fatalf("unexpected prepared match: snapshot=%+v creates=%d", prepared, fixture.matches.createCalls)
+	}
+}
+
+func TestMatchPrepareBotBuildsOnlyTheSystemDeck(t *testing.T) {
+	game := entites.Game{
+		ID: 5001, UserID: 1, IsPublic: false, IsActive: true, Mode: "bot", MaxPlayers: 2,
+		JoinedUsers: []int64{1}, State: "lobby",
+		Bot: &entites.BotSeat{ActorID: matchdomain.BotActorID, Name: "حارس المعرفة", Strategy: "smart"},
+	}
+	fixture := newMatchMultiplayerFixture(game)
+
+	prepared, err := fixture.service.Prepare(context.Background(), 1, fixture.gameID, "prepare-bot-smart-001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prepared.Mode != matchdomain.ModeBot || len(prepared.Players) != 2 || prepared.Players[0].IsBot ||
+		!prepared.Players[1].IsBot || prepared.Players[1].BotStrategy != matchdomain.BotSmart || !prepared.Players[1].DeckReady {
+		t.Fatalf("unexpected prepared bot snapshot: %+v", prepared)
+	}
+	if prepared.Players[0].DeckReady || prepared.CanStart {
+		t.Fatalf("human deck was prepared implicitly: %+v", prepared)
+	}
+	if fixture.matches.commitCalls != 0 {
+		t.Fatalf("virtual bot deck touched card locks: %d", fixture.matches.commitCalls)
+	}
+	fixture.commitDeck(t, 1)
+	ready, err := fixture.service.Snapshot(context.Background(), 1, fixture.gameID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !ready.CanStart || len(ready.StartBlockers) != 0 {
+		t.Fatalf("bot duel was not ready after the human committed: %+v", ready)
+	}
+}
+
+func TestMatchPrepareRejectsCorruptBotArena(t *testing.T) {
+	game := entites.Game{
+		ID: 5001, UserID: 1, IsPublic: true, IsActive: true, Mode: "bot", MaxPlayers: 2,
+		JoinedUsers: []int64{1}, State: "lobby",
+		Bot: &entites.BotSeat{ActorID: matchdomain.BotActorID, Name: "Bot", Strategy: "smart"},
+	}
+	fixture := newMatchMultiplayerFixture(game)
+	if _, err := fixture.service.Prepare(context.Background(), 1, fixture.gameID, "prepare-corrupt-bot-001"); !errors.Is(err, ErrArenaNotReady) {
+		t.Fatalf("corrupt bot arena returned %v", err)
+	}
+	if fixture.matches.createCalls != 0 {
+		t.Fatal("corrupt bot arena created a match")
+	}
+}
+
+func TestMatchSnapshotPersistsBotAutomationOnlyOnce(t *testing.T) {
+	aggregate := startedMatchMultiplayerBot(t, time.Now().UTC().Add(-15*time.Second))
+	matches := &matchMultiplayerMatchRepository{aggregate: aggregate}
+	events := &eventRecorder{}
+	service := NewMatchService(
+		matches, &matchMultiplayerEconomyRepository{cards: make(map[int64]economy.Card)}, nil, nil, nil, events,
+	)
+	expectedVersion := aggregate.Version
+
+	if _, err := service.Snapshot(context.Background(), aggregate.OwnerID, aggregate.GameID); err != nil {
+		t.Fatal(err)
+	}
+	if matches.updateCalls != 1 || len(matches.expectedVersions) != 1 || matches.expectedVersions[0] != expectedVersion {
+		t.Fatalf("bot automation was not persisted once: updates=%d versions=%v", matches.updateCalls, matches.expectedVersions)
+	}
+	if got := matchMultiplayerAnswerCount(aggregate, 0, matchdomain.BotActorID); got != 1 {
+		t.Fatalf("bot answer count=%d", got)
+	}
+	if len(events.events) != 1 || events.events[0].Type != "answer_received" {
+		t.Fatalf("unexpected bot automation event: %+v", events.events)
+	}
+
+	if _, err := service.Snapshot(context.Background(), aggregate.OwnerID, aggregate.GameID); err != nil {
+		t.Fatal(err)
+	}
+	if matches.updateCalls != 1 || matchMultiplayerAnswerCount(aggregate, 0, matchdomain.BotActorID) != 1 || len(events.events) != 1 {
+		t.Fatalf("bot retry duplicated persistence: updates=%d events=%+v answers=%+v", matches.updateCalls, events.events, aggregate.Turns[0].Answers)
+	}
+}
+
+func TestMatchAnswerPersistsDueBotBeforeRejectingLateHumanCommand(t *testing.T) {
+	aggregate := startedMatchMultiplayerBot(t, time.Now().UTC().Add(-15*time.Second))
+	turnID := aggregate.Turns[0].ID
+	if _, err := aggregate.SubmitAnswer(aggregate.OwnerID, turnID, 0, "human-answer-before-bot-001", aggregate.StartedAt.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	matches := &matchMultiplayerMatchRepository{aggregate: aggregate}
+	service := NewMatchService(
+		matches, &matchMultiplayerEconomyRepository{cards: make(map[int64]economy.Card)}, nil, nil, nil, &eventRecorder{},
+	)
+	expectedVersion := aggregate.Version
+
+	_, err := service.Answer(context.Background(), aggregate.OwnerID, aggregate.GameID, turnID, 1, "human-late-retry-001")
+	if !errors.Is(err, matchdomain.ErrTurnClosed) {
+		t.Fatalf("late answer returned %v", err)
+	}
+	if matches.updateCalls != 1 || len(matches.expectedVersions) != 1 || matches.expectedVersions[0] != expectedVersion {
+		t.Fatalf("due automation was lost on rejected command: updates=%d versions=%v", matches.updateCalls, matches.expectedVersions)
+	}
+	if matchMultiplayerAnswerCount(aggregate, 0, matchdomain.BotActorID) != 1 || aggregate.Turns[0].Status != matchdomain.TurnResolved {
+		t.Fatalf("due bot answer was not durably resolved: %+v", aggregate.Turns[0])
+	}
+}
+
+func TestMatchBotActorCannotTriggerAutomation(t *testing.T) {
+	aggregate := startedMatchMultiplayerBot(t, time.Now().UTC().Add(-15*time.Second))
+	matches := &matchMultiplayerMatchRepository{aggregate: aggregate}
+	service := NewMatchService(
+		matches, &matchMultiplayerEconomyRepository{cards: make(map[int64]economy.Card)}, nil, nil, nil, &eventRecorder{},
+	)
+
+	if _, err := service.Snapshot(context.Background(), matchdomain.BotActorID, aggregate.GameID); !errors.Is(err, matchdomain.ErrNotPlayer) {
+		t.Fatalf("bot actor snapshot returned %v", err)
+	}
+	if matches.updateCalls != 0 || matchMultiplayerAnswerCount(aggregate, 0, matchdomain.BotActorID) != 0 {
+		t.Fatalf("bot actor triggered automation: updates=%d answers=%+v", matches.updateCalls, aggregate.Turns[0].Answers)
+	}
+	if _, err := service.Answer(context.Background(), 9999, aggregate.GameID, aggregate.Turns[0].ID, 0, "outsider-answer-001"); !errors.Is(err, matchdomain.ErrNotPlayer) {
+		t.Fatalf("outsider answer returned %v", err)
+	}
+	if matches.updateCalls != 0 || matchMultiplayerAnswerCount(aggregate, 0, matchdomain.BotActorID) != 0 {
+		t.Fatalf("outsider triggered automation: updates=%d answers=%+v", matches.updateCalls, aggregate.Turns[0].Answers)
 	}
 }
 
@@ -108,6 +231,22 @@ func TestMatchPrepareIsIdempotent(t *testing.T) {
 	}
 	if len(fixture.events.events) != 1 || fixture.events.events[0].Type != "match_created" {
 		t.Fatalf("prepare retry published duplicate events: %+v", fixture.events.events)
+	}
+}
+
+func TestMatchPrepareReturnsWinnerOfConcurrentCreateRace(t *testing.T) {
+	fixture := newMatchMultiplayerFixture(matchMultiplayerGame("duel", 2, 2))
+	fixture.matches.conflictOnCreate = true
+
+	prepared, err := fixture.service.Prepare(context.Background(), 1, fixture.gameID, "prepare-race-idempotent-001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if prepared == nil || prepared.GameID != fixture.gameID || fixture.matches.createCalls != 1 {
+		t.Fatalf("prepare race was not recovered: snapshot=%+v creates=%d", prepared, fixture.matches.createCalls)
+	}
+	if len(fixture.events.events) != 0 {
+		t.Fatalf("losing replica published a duplicate event: %+v", fixture.events.events)
 	}
 }
 
@@ -251,6 +390,45 @@ func TestMatchSnapshotReplenishesExhaustedTieBreakPool(t *testing.T) {
 	}
 }
 
+func TestMatchAnswerCannotGuessAReplenishedTieBreakTurn(t *testing.T) {
+	now := time.Date(2026, time.August, 15, 12, 0, 0, 0, time.UTC)
+	aggregate, err := matchdomain.NewArena(7101, 7102, 1, matchdomain.ModeDuel, []int64{1, 2}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	aggregate.Status = matchdomain.StatusTieBreak
+	aggregate.CurrentTurn = -1
+	aggregate.TieBreak = matchdomain.TieBreakState{
+		Enabled: true, Active: true, Phase: matchdomain.TieBreakChampion,
+		ContenderIDs: []int64{1, 2}, AwaitingQuestion: true,
+	}
+
+	questionRepository := newMatchMultiplayerQuestionRepository()
+	for index := 0; index < tieBreakQuestionPoolSize; index++ {
+		questionRepository.add(matchMultiplayerQuestion(fmt.Sprintf("tie-guess-%03d", index)))
+	}
+	matches := &matchMultiplayerMatchRepository{aggregate: aggregate}
+	events := &eventRecorder{}
+	matchService := NewMatchService(
+		matches, nil, nil, NewQuestionBankService(questionRepository), nil, events,
+	)
+
+	guessedTurnID := fmt.Sprintf("%d-tb-01", aggregate.ID)
+	if _, err := matchService.Answer(context.Background(), 1, aggregate.GameID, guessedTurnID, 0, "future-tie-answer-001"); !errors.Is(err, matchdomain.ErrInvalidTurn) {
+		t.Fatalf("future tie-break answer returned %v", err)
+	}
+	if matches.updateCalls != 1 || aggregate.CurrentTurn != 0 || len(aggregate.Turns) != 1 {
+		t.Fatalf("new tie-break turn was not persisted exactly once: updates=%d aggregate=%+v", matches.updateCalls, aggregate)
+	}
+	turn := aggregate.Turns[aggregate.CurrentTurn]
+	if turn.ID != guessedTurnID || turn.Status != matchdomain.TurnActive || len(turn.Answers) != 0 || aggregate.Players[0].Score != 0 {
+		t.Fatalf("guessed answer affected the fresh turn: %+v player=%+v", turn, aggregate.Players[0])
+	}
+	if len(events.events) != 1 || events.events[0].Type != "tiebreak_started" {
+		t.Fatalf("fresh tie-break event missing: %+v", events.events)
+	}
+}
+
 type matchMultiplayerFixture struct {
 	service   *MatchService
 	matches   *matchMultiplayerMatchRepository
@@ -319,12 +497,68 @@ func matchMultiplayerDeckIDs(userID int64) []int64 {
 	return result
 }
 
+func startedMatchMultiplayerBot(t *testing.T, startedAt time.Time) *matchdomain.Aggregate {
+	t.Helper()
+	aggregate, err := matchdomain.NewBotDuel(
+		8101, 8102, 1, matchdomain.BotSmart, bytes.Repeat([]byte{0x81}, matchdomain.BotSeedSize), startedAt.Add(-3*time.Second),
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := aggregate.CommitDeck(1, matchMultiplayerBotDeck(1, 8200), "human-deck-bot-001", startedAt.Add(-2*time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := aggregate.CommitBotDeck(matchMultiplayerBotDeck(matchdomain.BotActorID, 8300), "system-deck-bot-001", startedAt.Add(-time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := aggregate.Start(1, "start-bot-match-001", startedAt); err != nil {
+		t.Fatal(err)
+	}
+	decision, err := matchdomain.PlanBotDecision(aggregate, &aggregate.Turns[0], &aggregate.Players[1])
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Keep the decision due but the reveal boundary comfortably in the future,
+	// independent of the deterministic strategy delay selected by the seed.
+	shift := time.Now().UTC().Add(-500 * time.Millisecond).Sub(decision.DueAt)
+	aggregate.StartedAt = aggregate.StartedAt.Add(shift)
+	aggregate.Turns[0].StartedAt = aggregate.Turns[0].StartedAt.Add(shift)
+	aggregate.Turns[0].Deadline = aggregate.Turns[0].Deadline.Add(shift)
+	return aggregate
+}
+
+func matchMultiplayerBotDeck(ownerID, idBase int64) []matchdomain.CardSnapshot {
+	result := make([]matchdomain.CardSnapshot, matchdomain.DeckSize)
+	for index := range result {
+		item := matchMultiplayerQuestion(fmt.Sprintf("bot-lifecycle-%d-%02d", ownerID, index))
+		result[index] = matchdomain.CardSnapshot{
+			ID: idBase + int64(index+1), OwnerID: ownerID, Rarity: "common", Power: 1,
+			Question: matchQuestionSnapshot(item),
+		}
+	}
+	return result
+}
+
+func matchMultiplayerAnswerCount(aggregate *matchdomain.Aggregate, turnIndex int, userID int64) int {
+	if aggregate == nil || turnIndex < 0 || turnIndex >= len(aggregate.Turns) {
+		return 0
+	}
+	count := 0
+	for _, answer := range aggregate.Turns[turnIndex].Answers {
+		if answer.UserID == userID {
+			count++
+		}
+	}
+	return count
+}
+
 type matchMultiplayerMatchRepository struct {
 	aggregate        *matchdomain.Aggregate
 	createCalls      int
 	updateCalls      int
 	commitCalls      int
 	expectedVersions []int64
+	conflictOnCreate bool
 }
 
 func (store *matchMultiplayerMatchRepository) CreateForGame(_ context.Context, aggregate *matchdomain.Aggregate) error {
@@ -333,6 +567,9 @@ func (store *matchMultiplayerMatchRepository) CreateForGame(_ context.Context, a
 	}
 	store.aggregate = aggregate
 	store.createCalls++
+	if store.conflictOnCreate {
+		return repository.ErrConflict
+	}
 	return nil
 }
 

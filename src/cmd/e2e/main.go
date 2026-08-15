@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -47,36 +48,55 @@ type collection struct {
 }
 
 type game struct {
-	ID         string `json:"id"`
-	Mode       string `json:"mode"`
-	MaxPlayers int    `json:"maxPlayers"`
+	ID           string `json:"id"`
+	Mode         string `json:"mode"`
+	MaxPlayers   int    `json:"maxPlayers"`
+	OpponentType string `json:"opponentType"`
+	BotStrategy  string `json:"botStrategy"`
 }
 
 type turn struct {
-	ID     string `json:"id"`
-	Number int    `json:"number"`
-	Kind   string `json:"kind"`
-	Status string `json:"status"`
+	ID         string `json:"id"`
+	Number     int    `json:"number"`
+	Kind       string `json:"kind"`
+	Status     string `json:"status"`
+	QuestionID string `json:"questionId"`
 }
 
 type matchPlayer struct {
-	UserID    string `json:"userId"`
-	Team      int    `json:"team"`
-	DeckReady bool   `json:"deckReady"`
+	UserID      string `json:"userId"`
+	Team        int    `json:"team"`
+	DeckReady   bool   `json:"deckReady"`
+	IsBot       bool   `json:"isBot"`
+	BotStrategy string `json:"botStrategy"`
+}
+
+type rewardCard struct {
+	ID         string `json:"id"`
+	QuestionID string `json:"questionId"`
+	Rarity     string `json:"rarity"`
+}
+
+type rewardReceipt struct {
+	Status       string      `json:"status"`
+	CoinsGranted int64       `json:"coinsGranted"`
+	Card         *rewardCard `json:"card"`
+	Reason       string      `json:"reason"`
 }
 
 type matchSnapshot struct {
-	Mode          string        `json:"mode"`
-	Status        string        `json:"status"`
-	Version       int64         `json:"version"`
-	Players       []matchPlayer `json:"players"`
-	CurrentTurn   *turn         `json:"currentTurn"`
-	RewardCoins   int64         `json:"rewardCoins"`
-	TotalTurns    int           `json:"totalTurns"`
-	TurnNumber    int           `json:"turnNumber"`
-	CanStart      bool          `json:"canStart"`
-	StartBlockers []string      `json:"startBlockers"`
-	RewardsReady  bool          `json:"rewardsSettled"`
+	Mode          string         `json:"mode"`
+	Status        string         `json:"status"`
+	Version       int64          `json:"version"`
+	Players       []matchPlayer  `json:"players"`
+	CurrentTurn   *turn          `json:"currentTurn"`
+	RewardCoins   int64          `json:"rewardCoins"`
+	TotalTurns    int            `json:"totalTurns"`
+	TurnNumber    int            `json:"turnNumber"`
+	CanStart      bool           `json:"canStart"`
+	StartBlockers []string       `json:"startBlockers"`
+	RewardsReady  bool           `json:"rewardsSettled"`
+	Reward        *rewardReceipt `json:"reward"`
 }
 
 type listing struct {
@@ -180,6 +200,7 @@ func main() {
 	guestAfterMatch := guest.getCollection()
 	require(ownerAfterMatch.Wallet.Balance > 600 && guestAfterMatch.Wallet.Balance > 600, "match rewards were not settled for both players")
 	require(allAvailable(ownerAfterMatch.Cards) && allAvailable(guestAfterMatch.Cards), "match cards were not released after settlement")
+	ownerAfterMatch = testBotBattle(owner, ownerAfterMatch)
 
 	marketCard := firstAvailable(ownerAfterMatch.Cards, 1)[0]
 	var marketListing listing
@@ -218,7 +239,86 @@ func main() {
 	testForfeitReleasesCards(owner, guest, ownerAfterTrade, guestAfterTrade)
 	testMultiplayerArenas(clients)
 
-	fmt.Println("PASS: full duel, 2v2, 4v4, open arena, chat, rewards, forfeit recovery, market, and trade scenario")
+	fmt.Println("PASS: bot duel, human duel, 2v2, 4v4, open arena, chat, card rewards, forfeit recovery, market, and trade scenario")
+}
+
+func testBotBattle(owner *apiClient, before collection) collection {
+	answers := loadQuestionAnswers()
+	var battle game
+	owner.request(http.MethodPost, "/api/v1/game", map[string]any{
+		"isPublic": false, "mode": "bot", "maxPlayers": 2,
+		"opponentType": "bot", "botStrategy": "smart",
+	}, &battle)
+	require(battle.ID != "" && battle.Mode == "bot" && battle.OpponentType == "bot" && battle.BotStrategy == "smart", "smart bot arena was not created")
+
+	var snapshot matchSnapshot
+	owner.request(http.MethodPost, "/api/v1/game/"+battle.ID+"/prepare", map[string]any{
+		"commandId": commandID("bot-prepare"),
+	}, &snapshot)
+	require(len(snapshot.Players) == 2 && snapshot.Players[1].IsBot && snapshot.Players[1].DeckReady, "server did not prepare the virtual bot deck")
+	owner.request(http.MethodPut, "/api/v1/game/"+battle.ID+"/deck", map[string]any{
+		"cardIds": firstAvailable(before.Cards, 5), "commandId": commandID("bot-human-deck"),
+	}, &snapshot)
+	require(snapshot.CanStart, "bot duel did not become ready after the human deck")
+	owner.request(http.MethodPost, "/api/v1/game/"+battle.ID+"/start", map[string]any{
+		"commandId": commandID("bot-start"),
+	}, &snapshot)
+	require(snapshot.Status == "active" && snapshot.TotalTurns == 10, "bot duel did not start with ten turns")
+
+	deadline := time.Now().Add(4 * time.Minute)
+	answered := make(map[string]bool, 12)
+	for snapshot.Status != "completed" && time.Now().Before(deadline) {
+		if turn := snapshot.CurrentTurn; turn != nil && turn.Status == "active" && !answered[turn.ID] {
+			option, exists := answers[turn.QuestionID]
+			require(exists, "bot E2E answer key is missing question "+turn.QuestionID)
+			owner.request(http.MethodPost, "/api/v1/game/"+battle.ID+"/answer", map[string]any{
+				"turnId": turn.ID, "option": option, "commandId": commandID("bot-human-answer"),
+			}, &snapshot)
+			answered[turn.ID] = true
+		}
+		if snapshot.Status == "completed" {
+			break
+		}
+		time.Sleep(500 * time.Millisecond)
+		owner.request(http.MethodGet, "/api/v1/game/"+battle.ID+"/match", nil, &snapshot)
+	}
+	require(snapshot.Status == "completed" && snapshot.RewardsReady, "bot duel did not complete and settle")
+	require(snapshot.Reward != nil && snapshot.Reward.Status == "granted" && snapshot.Reward.CoinsGranted == 100 && snapshot.Reward.Card != nil,
+		"smart bot victory did not grant 100 coins and one card")
+	after := owner.getCollection()
+	require(after.Wallet.Balance == before.Wallet.Balance+100, "smart bot reward balance was not applied exactly once")
+	require(len(after.Cards) == len(before.Cards)+1 && owns(after, snapshot.Reward.Card.ID), "smart bot reward card was not added to the collection")
+	require(allAvailable(after.Cards), "bot duel left a collectible card locked")
+	fmt.Printf("bot: smart duel won; +%d coins and card %s (%s)\n", snapshot.Reward.CoinsGranted, snapshot.Reward.Card.ID, snapshot.Reward.Card.Rarity)
+	return after
+}
+
+func loadQuestionAnswers() map[string]int {
+	file, err := openE2EQuestionBank()
+	check(err)
+	answers := make(map[string]int, 1600)
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		var item struct {
+			ID                 string `json:"id"`
+			CorrectOptionIndex int    `json:"correctOptionIndex"`
+		}
+		check(json.Unmarshal(scanner.Bytes(), &item))
+		answers[item.ID] = item.CorrectOptionIndex
+	}
+	closeErr := file.Close()
+	check(errors.Join(scanner.Err(), closeErr))
+	require(len(answers) > 0, "could not load the Arabic question-bank answer key for local bot E2E")
+	return answers
+}
+
+func openE2EQuestionBank() (*os.File, error) {
+	file, err := os.Open("../data/question-bank/questions.ar.jsonl")
+	if err == nil {
+		return file, nil
+	}
+	return os.Open("data/question-bank/questions.ar.jsonl")
 }
 
 func testForfeitReleasesCards(owner, guest *apiClient, ownerBefore, guestBefore collection) {

@@ -77,6 +77,10 @@ func EnsureIndexes(ctx context.Context, database *mongo.Database) error {
 			{Keys: bson.D{{Key: "receiverId", Value: 1}, {Key: "status", Value: 1}}, Options: options.Index().SetName("ix_trade_receiver_status")},
 			{Keys: bson.D{{Key: "status", Value: 1}, {Key: "expiresAt", Value: 1}, {Key: "id", Value: 1}}, Options: options.Index().SetName("ix_trade_status_expires")},
 		},
+		rewardQuotaCollection: {
+			{Keys: bson.D{{Key: "userId", Value: 1}, {Key: "day", Value: 1}}, Options: options.Index().SetName("ix_reward_quota_user_day")},
+			{Keys: bson.D{{Key: "expiresAt", Value: 1}}, Options: options.Index().SetName("ttl_reward_quota_expires").SetExpireAfterSeconds(0)},
+		},
 		matchCollection: {
 			{Keys: bson.D{{Key: "id", Value: 1}}, Options: options.Index().SetName("uq_match_id").SetUnique(true)},
 			{Keys: bson.D{{Key: "gameId", Value: 1}}, Options: options.Index().SetName("uq_match_game").SetUnique(true)},

@@ -31,6 +31,7 @@ func (repository *snapshotMatchRepository) CommitDeck(context.Context, *matchdom
 
 type snapshotEconomyRepository struct {
 	settlements int
+	aggregate   *matchdomain.Aggregate
 }
 
 func (repository *snapshotEconomyRepository) GetCardsByIDs(context.Context, []int64) (map[int64]economy.Card, error) {
@@ -39,6 +40,9 @@ func (repository *snapshotEconomyRepository) GetCardsByIDs(context.Context, []in
 
 func (repository *snapshotEconomyRepository) SettleMatchRewards(context.Context, int64) error {
 	repository.settlements++
+	if repository.aggregate != nil {
+		repository.aggregate.RewardsSettled = true
+	}
 	return nil
 }
 
@@ -51,7 +55,7 @@ func TestSnapshotRetriesUnsettledForfeit(t *testing.T) {
 	if _, err := aggregate.Forfeit(10, "forfeit-recovery-1", now.Add(time.Minute)); err != nil {
 		t.Fatal(err)
 	}
-	economyRepository := &snapshotEconomyRepository{}
+	economyRepository := &snapshotEconomyRepository{aggregate: aggregate}
 	matchService := NewMatchService(
 		&snapshotMatchRepository{aggregate: aggregate},
 		economyRepository,

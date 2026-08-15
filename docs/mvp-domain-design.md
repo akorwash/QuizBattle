@@ -5,9 +5,9 @@ Status: implementation contract for the first locally playable release.
 ## Scope and assumptions
 
 The MVP is a modular Go monolith backed by MongoDB. It supports two to eight
-human players across duel, 2v2, 4v4 and open arenas, an internal Arabic question bank, collectible question cards, a
+human players across duel, 2v2, 4v4 and open arenas, plus a private one-human/one-bot duel, an internal Arabic question bank, collectible question cards, a
 wallet, a marketplace, direct card trades, a social lobby, and a complete
-server-authoritative match. Horizontal scaling, ranked matchmaking, bots,
+server-authoritative match. Horizontal scaling, ranked matchmaking,
 spectators, real-money purchases, and battle-forced card transfer are
 outside this release.
 
@@ -21,6 +21,7 @@ QuestionBank remain simpler supporting contexts.
 | --- | --- | --- |
 | Match | Core | Lobby readiness, committed decks, timed turns, answers, score and final result |
 | Collection & Economy | Core | Card ownership, escrow, wallet balances and immutable ledger entries |
+| Bot policy | Supporting | Private server-seeded decisions and virtual decks for random/smart PvE duels |
 | Marketplace & Trade | Supporting | Listings, purchases, bilateral offers, expiry and settlement |
 | QuestionBank | Supporting | Curated/versioned questions and safe delivery to active turns |
 | Social | Generic | World chat and lobby presence; never authoritative for match state |
@@ -38,6 +39,7 @@ service/repository contracts. Browser messages are commands, never facts.
 - **Deck commitment**: five distinct cards locked for one match.
 - **Prepared roster**: the owner-frozen membership after a lobby reaches the mode requirement.
 - **Ready player**: a prepared participant with five valid committed cards.
+- **Bot participant**: a match-scoped system actor with a private decision seed and virtual deck; never an account, wallet, or tradable card owner.
 - **Turn**: one timed question from one committed card. Every eligible player may answer once.
 - **Main stage**: five cards per participant, producing `5 × player_count` turns.
 - **Tie-break**: repeated neutral questions restricted to tied leaders until one champion remains.
@@ -47,10 +49,12 @@ service/repository contracts. Browser messages are commands, never facts.
 - **Trade offer**: escrowed cards/coins proposed by one player to another.
 - **Settlement**: one atomic transaction that changes ownership/balances and
   appends the matching ledger records.
+- **Reward receipt**: a durable viewer-specific statement of granted, capped, or ineligible rewards.
 
 ## Match rules
 
 - Duel requires 2 players, 2v2 requires 4, 4v4 requires 8, and open accepts 2–8 up to its configured capacity.
+- Bot mode is a private duel with one human and one server-owned participant. `random` answers uniformly; `smart` uses difficulty-aware accuracy. Both use deterministic private-seed timing so retries and refreshes cannot change a planned decision.
 - The owner prepares the arena to freeze its roster, and alone may start after every player is ready.
 - Each player commits five distinct cards they currently own and that are not
   listed, offered, or locked in another match.
@@ -62,8 +66,9 @@ service/repository contracts. Browser messages are commands, never facts.
 - A resolved turn is shown for three seconds before the next turn opens.
 - Duel/open use the highest individual score. Team modes first use the sum of each team's scores, then select the highest individual inside the winning team as champion.
 - Tied leaders enter repeated neutral-question sudden death. A team tie is resolved first; a champion tie inside the winning team is resolved second.
-- Champion earns 120 coins, another winning teammate 90, and every loser 45. Rewards
-  are idempotent and issued once at final settlement.
+- In PvP, the champion earns 120 coins, another winning teammate earns 90, and every loser earns 45. Each human winner also receives one newly minted active-question card. Only the first ten reward-eligible PvP results per user per UTC day mint coins/cards.
+- A human bot victory earns 60 coins against `random` or 100 against `smart`, plus one newly minted card. Only the first three bot wins per user per UTC day are rewarded; bot losses, draws, and forfeits award nothing.
+- Rewards are idempotent and issued once at final settlement. The bot is excluded from wallets, collectible cards, ledger rewards, and human card-lock counts.
 - Cards gain one play and mastery progress, but rarity/power never changes
   answer score in the MVP.
 - Battle results never transfer card ownership. Ownership changes only through
@@ -74,7 +79,7 @@ service/repository contracts. Browser messages are commands, never facts.
 ### Match aggregate
 
 - State moves only `collecting_decks -> active -> tie_break* -> completed|forfeited`.
-- Between two and eight immutable prepared player IDs belong to a match.
+- Between two and eight immutable prepared participants belong to a match. Human IDs are positive and unique; bot mode has exactly one negative, match-scoped system actor and one positive owner ID.
 - A deck contains exactly five unique owned cards.
 - A card appears in at most one committed deck and one active match.
 - Only an active turn accepts answers; an eligible player answers it at most once.
@@ -83,6 +88,7 @@ service/repository contracts. Browser messages are commands, never facts.
 - A command idempotency key takes effect at most once.
 - Correct options and opponent answers are never exposed before resolution.
 - Server time controls deadlines. Completed turns/matches cannot reopen.
+- Bot answers due before a deadline are applied before timeout catch-up, even when no browser was connected at the due time.
 - Optimistic `version` compare-and-swap prevents lost concurrent commands.
 
 ### Economy aggregate/transaction
@@ -98,15 +104,17 @@ service/repository contracts. Browser messages are commands, never facts.
 - One idempotency key maps to one command/result.
 - Wallet/card mutations and ledger entries commit in the same MongoDB
   transaction. Local MongoDB therefore runs as a single-node replica set.
+- Match reward coin credit, card mint, quota reservation, card release, receipt, and settlement marker commit in one transaction. A retry observes the same result rather than minting twice.
 
 ## Persistence
 
 | Collection | Important keys/indexes |
 | --- | --- |
 | `QuestionBank` | unique `id`; `status,category,difficulty`; `contentHash` |
-| `Cards` | unique `id`; `ownerId,status`; unique sparse `ownerId,questionId,edition` |
+| `Cards` | unique `id`; `ownerId,status`; `questionId`; editions are assigned inside the same serialized reward transaction |
 | `Wallets` | unique `userId`; non-negative balance validation in service/update |
 | `EconomyLedger` | unique `id`; unique `idempotencyKey,entryPart`; `userId,createdAt` |
+| `RewardQuotas` | deterministic user/day key; `userId,day`; TTL cleanup after the anti-farming window |
 | `MarketListings` | unique `id`; unique active `cardId`; `status,createdAt`; expiry |
 | `TradeOffers` | unique `id`; `senderId,status`; `receiverId,status`; expiry |
 | `Matches` | unique `id`; unique `gameId`; `playerIds,status`; `version` |
@@ -160,6 +168,7 @@ match state.
 - Coins enter through one starter grant and match rewards. Coins leave through
   the 5% market fee. No negative balance, client-supplied reward, or admin-free
   mint endpoint exists.
+- Winner cards are selected from active reviewed questions with private deterministic ranking. Selection prefers questions not already owned; duplicates become later editions only after the active pool has been collected.
 
 ## Multiplayer acceptance scenario
 
@@ -175,6 +184,7 @@ match state.
    ownership changes commit atomically.
 9. Participants exchange world-chat messages and can reconnect on mobile without losing
    the authoritative match/economy state.
+10. Alice creates a private smart-bot arena. The server creates the virtual bot deck, applies delayed bot answers during lazy catch-up, and—if Alice wins—atomically grants 100 coins and one new card. A repeated settlement returns the same receipt.
 
 ## Rollout and evidence
 
@@ -187,6 +197,6 @@ match state.
 7. Repeat security/static/dependency scans before considering deployment.
 
 Open risks remain email/mobile verification, historical leaked credentials,
-single-process realtime/rate limits, abuse/fraud controls, and the absence of a
+single-process realtime/rate limits, broader abuse/fraud controls beyond the PvP/bot daily caps, a public development answer key that must be replaced by a rotated server-private bank before high-value ranked play, and the absence of a
 production payment/compliance model. Coins are strictly virtual and cannot be
 purchased or redeemed in this MVP.

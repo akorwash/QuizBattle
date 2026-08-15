@@ -2,7 +2,7 @@
 
 [Play QuizBattle](https://quizbattle.qubefyn.com)
 
-QuizBattle is a competitive Arabic knowledge-card game inspired by **Saif Al-Ma'rifa**. Every collectible card is backed by an Arabic question, and each player brings five cards into solo or team arenas for up to eight players.
+QuizBattle is a competitive Arabic knowledge-card game inspired by **Saif Al-Ma'rifa**. Every collectible card is backed by an Arabic question, and each player brings five cards into human, team, open, or private bot arenas for up to eight participants.
 
 > **Current status:** QuizBattle is a deployable, single-instance MVP with a hardened runtime baseline. It is delivered with Docker Compose and GitHub Actions and served behind Cloudflare. Accounts, the public lobby, persistent chat, the server-authoritative match engine, collectible cards, coins, the marketplace, and direct trades are implemented. See the production limitations below before scaling it.
 
@@ -13,20 +13,21 @@ QuizBattle is a competitive Arabic knowledge-card game inspired by **Saif Al-Ma'
 | Accounts | Sign-up, sign-in, HttpOnly sessions, session revocation on logout, profile updates, date of birth, and player avatars |
 | Player community | Public lobby and a MongoDB-backed world chat whose message identity is assigned by the server; the latest 50 messages return after refresh |
 | Arena voice | Optional peer-to-peer WebRTC audio for 1v1 matches, with mute and leave controls and no server-side recording; voice is disabled in team/open arenas, which require an SFU before it can be implemented safely |
-| Matches | 1v1, 2v2, 4v4, and open arenas for 2–8 players; 20-second questions and a 3-second answer reveal |
+| Matches | 1v1, 2v2, 4v4, open arenas for 2–8 players, and private 1v1 bot challenges with random or smart strategies; 20-second questions and a 3-second answer reveal |
 | Question bank | 1,573 sourced Arabic questions across nine categories, with content hashes and a standalone validator |
-| Cards | Economy state is initialized on first use with ten starter cards; cards include rarity, power metadata, play/win history, reviewable automatic deck selection, and transactional match locking |
-| Coins | Economy state is initialized on first use with 600 coins; rewards are 120 for the champion, 90 for each winning teammate, and 45 for each losing player; forfeits award nothing |
+| Cards | Economy state is initialized on first use with ten starter cards; human winners receive a newly minted question card, while cards also include rarity, power metadata, play/win history, reviewable automatic deck selection, and transactional match locking |
+| Coins | Economy state is initialized on first use with 600 coins; PvP rewards are 120 for the champion, 90 for each winning teammate, and 45 for each losing player; human wins in bot mode award 60 (random) or 100 (smart); both reward paths have daily anti-farming caps, and forfeits award nothing |
 | Marketplace | List a card, buy atomically, cancel a listing, charge a 5% fee rounded down with a one-coin minimum, and prevent double sales |
 | Direct trades | Card/coin-for-card/coin offers with accept, reject, and cancel; the sender's offered assets are escrowed transactionally, and requested assets are verified at acceptance |
 | Mobile | Fully localized Arabic, right-to-left interface, fixed mobile navigation, and layouts starting at 320 px |
 | Operations | Docker Compose, a MongoDB replica set, health/readiness endpoints, graceful shutdown, and database indexes |
 
-Private arenas, invitations, bots, seasonal rankings, and spectator mode are not part of this MVP yet.
+Private human invitations, seasonal rankings, and spectator mode are not part of this MVP yet.
 
 ## MVP gameplay rules
 
 - Fixed arena modes are `duel` (2 players), `team_2v2` (4 players), and `team_4v4` (8 players). The `open` mode accepts 2–8 players, according to the owner-selected capacity.
+- A `bot` arena is a private two-seat duel. The human chooses a `random` bot for a lighter challenge or a `smart` bot whose accuracy varies by question difficulty. Bot timing and answers are planned from a private server seed, persist across refreshes, and cannot be submitted by the browser.
 - In fixed modes, the owner selects **Prepare arena** after exactly 2, 4, or 8 players have joined. An open arena can be prepared with any roster from two players up to its configured capacity. Preparation freezes membership and prevents further joins.
 - Each owner may run at most three concurrent arenas. Completed and forfeited arenas remain in history but do not count toward this limit.
 - On the first collection or economy request, the server transactionally initializes the account with ten cards and 600 coins.
@@ -39,7 +40,8 @@ Private arenas, invitations, bots, seasonal rankings, and spectator mode are not
 - Card power and rarity are metadata used by deck selection; they do not multiply match points, so the game is not pay-to-win.
 - In an open arena, the highest-scoring player wins. In 2v2 and 4v4, the team with the highest combined score wins, and its highest-scoring member becomes the final champion.
 - If multiple leaders are tied, the engine starts neutral tie-break questions for those contenders only. It repeats while questions are available; if the tie-break pool is exhausted, the match waits for replenishment instead of declaring a false winner.
-- Match results never transfer card ownership. Cards only change owners through the marketplace or an explicit direct trade.
+- A completed human victory mints one new card from the active question bank; it never takes a card from an opponent. Existing cards only change owners through the marketplace or an explicit direct trade.
+- PvP keeps the 120/90/45 coin schedule and grants one new card to each human winner for the first ten reward-eligible PvP results per user per UTC day. A bot victory grants the human 60 coins against `random` or 100 against `smart`, plus one new card. Only the first three bot wins per user per UTC day are rewarded. Matches beyond either limit remain playable and are still resolved by points, but award nothing. A loss, unresolved draw, or forfeit against a bot awards nothing.
 - A duel participant—or the arena owner in team/open modes—may forfeit. Forfeiting ends the match without rewards and releases every locked card.
 
 The detailed domain contract is documented in [docs/mvp-domain-design.md](docs/mvp-domain-design.md), and the visual card system is documented in [docs/card-design-spec.md](docs/card-design-spec.md).
@@ -63,6 +65,8 @@ The canonical dataset is [data/question-bank/questions.ar.jsonl](data/question-b
 
 Every record contains four unique options, the correct answer, an explanation, a source, a verification date, and a `contentHash`. The validator rejects duplicate IDs, duplicate prompts, and invalid record shapes. Primary data sources are listed in [data/question-bank/SOURCES.md](data/question-bank/SOURCES.md) and include Wikidata, IANA, BIPM, IUPAC, UN M49, and Quran Foundation. Religion questions are limited to Quran chapter names and ordering and should receive specialist human review before a broad public launch.
 
+> **Competitive-integrity warning:** this public development bank includes its answer key and is already present in Git history. It is suitable for local/MVP testing, but not for valuable ranked rewards: a player can build an offline answer lookup. Before treating coins, cards, seasons, or rankings as high-value competitive outcomes, deploy a newly rotated server-private bank through `QUESTION_BANK_PATH`, keep it out of the repository and image, and retire the public questions from rewarded play.
+
 Validate the bank with:
 
 ```bash
@@ -83,7 +87,7 @@ Browser (Arabic HTML/CSS/JavaScript)
 Domain modules: avatar | chat | economy | match | question
 Mongo collections: users, Game, Matches, QuestionBank, Cards, Wallets,
                    MarketListings, TradeOffers, EconomyLedger, SessionRevocation,
-                   ChatMessage, UserAvatar
+                   RewardQuotas, ChatMessage, UserAvatar
 ```
 
 The application is a modular monolith written in Go. Transactions that change coin balances or card ownership require a MongoDB replica set. Realtime events and rate-limit state are still process-local, so run **one application instance only** until a shared broker and distributed state are implemented.
@@ -120,7 +124,7 @@ In development, `COOKIE_SECURE` defaults to `false`. Every non-development/test 
 
 ## End-to-end testing
 
-With the local stack running, the following command creates unique local test accounts and exercises persistent chat, authenticated WebRTC signaling without activating a microphone, a complete 1v1 match, preparation and startup of 2v2, 4v4, and open arenas, rewards, the marketplace, direct trades, and card release after a forfeit:
+With the local stack running, the following command creates unique local test accounts and exercises persistent chat, authenticated WebRTC signaling without activating a microphone, a complete human 1v1 match, a complete smart-bot match with an exact coin/card reward check, preparation and startup of 2v2, 4v4, and open arenas, the marketplace, direct trades, and card release after a forfeit:
 
 ```bash
 cd src
@@ -225,6 +229,7 @@ Current production constraints:
 - Runtime secrets are stored in root-only server files. MongoDB is internal, TLS-authenticated, and backed up in encrypted form. Copy encrypted backups and the recovery key off-host and test restoration regularly.
 - The production pipeline runs tests, the race detector, `govulncheck`, `gosec`, and full-history secret scanning. It builds an immutable image by digest, emits an SBOM, and validates the production topology before deployment.
 - Configure TURN with short-lived server-issued credentials before considering arena voice reliable on all networks; STUN alone cannot traverse every restricted NAT.
+- The bundled public question bank exposes its answer key. Production rewards must remain virtual/low-stakes until a newly rotated server-private bank replaces it.
 
 ## Contributing
 

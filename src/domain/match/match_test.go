@@ -121,6 +121,9 @@ func TestRejectsInvalidDecksAndAnswers(t *testing.T) {
 	if _, err := aggregate.SubmitAnswer(33, turnID, 0, "outsider-001", now); !errors.Is(err, ErrNotPlayer) {
 		t.Fatalf("outsider answer: %v", err)
 	}
+	if _, err := aggregate.SubmitAnswer(11, turnID, 0, "early-ans-01", now.Add(-time.Nanosecond)); !errors.Is(err, ErrInvalidTurn) {
+		t.Fatalf("pre-start answer: %v", err)
+	}
 	if _, err := aggregate.SubmitAnswer(11, turnID, 4, "badoption001", now); !errors.Is(err, ErrInvalidOption) {
 		t.Fatalf("invalid option: %v", err)
 	}

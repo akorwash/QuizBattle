@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/akorwash/QuizBattle/domain/economy"
@@ -17,20 +18,22 @@ import (
 )
 
 const (
-	walletCollection  = "Wallets"
-	cardCollection    = "Cards"
-	ledgerCollection  = "EconomyLedger"
-	listingCollection = "MarketListings"
-	tradeCollection   = "TradeOffers"
+	walletCollection      = "Wallets"
+	cardCollection        = "Cards"
+	ledgerCollection      = "EconomyLedger"
+	listingCollection     = "MarketListings"
+	tradeCollection       = "TradeOffers"
+	rewardQuotaCollection = "RewardQuotas"
 )
 
 type MongoEconomyRepository struct {
-	database *mongo.Database
-	wallets  *mongo.Collection
-	cards    *mongo.Collection
-	ledger   *mongo.Collection
-	listings *mongo.Collection
-	trades   *mongo.Collection
+	database     *mongo.Database
+	wallets      *mongo.Collection
+	cards        *mongo.Collection
+	ledger       *mongo.Collection
+	listings     *mongo.Collection
+	trades       *mongo.Collection
+	rewardQuotas *mongo.Collection
 }
 
 func NewMongoEconomyRepository(database *mongo.Database) *MongoEconomyRepository {
@@ -38,7 +41,7 @@ func NewMongoEconomyRepository(database *mongo.Database) *MongoEconomyRepository
 		database: database,
 		wallets:  database.Collection(walletCollection), cards: database.Collection(cardCollection),
 		ledger: database.Collection(ledgerCollection), listings: database.Collection(listingCollection),
-		trades: database.Collection(tradeCollection),
+		trades: database.Collection(tradeCollection), rewardQuotas: database.Collection(rewardQuotaCollection),
 	}
 }
 
@@ -191,7 +194,7 @@ func (repository *MongoEconomyRepository) SettleMatchRewards(ctx context.Context
 		return economy.ErrInvalidEconomyState
 	}
 	now := time.Now().UTC()
-	return repository.withTransaction(ctx, func(tx context.Context) error {
+	operation := func(tx context.Context) error {
 		matches := repository.database.Collection(matchCollection)
 		var aggregate matchdomain.Aggregate
 		if err := matches.FindOne(tx, bson.M{"id": matchID}).Decode(&aggregate); err != nil {
@@ -203,66 +206,130 @@ func (repository *MongoEconomyRepository) SettleMatchRewards(ctx context.Context
 		if aggregate.RewardsSettled {
 			return nil
 		}
-		rewards := aggregate.Rewards()
-		if (aggregate.Status != matchdomain.StatusCompleted && aggregate.Status != matchdomain.StatusForfeited) || len(rewards) != len(aggregate.Players) {
-			return matchdomain.ErrInvalidState
+		candidates, err := aggregate.RewardCandidates()
+		if err != nil {
+			return fmt.Errorf("plan match rewards: %w", err)
 		}
+		humanPlayers := make(map[int64]matchdomain.Player, len(candidates))
 		expectedLockedCards := 0
 		for _, player := range aggregate.Players {
+			if player.IsBot() {
+				continue
+			}
 			if len(player.Deck) != 0 && len(player.Deck) != matchdomain.DeckSize {
 				return economy.ErrInvalidEconomyState
 			}
+			humanPlayers[player.UserID] = player
 			expectedLockedCards += len(player.Deck)
 		}
-		if aggregate.Status == matchdomain.StatusCompleted && expectedLockedCards != matchdomain.DeckSize*len(aggregate.Players) {
+		if len(humanPlayers) != len(candidates) || aggregate.Status == matchdomain.StatusCompleted && expectedLockedCards != matchdomain.DeckSize*len(humanPlayers) {
 			return economy.ErrInvalidEconomyState
 		}
-		positiveRewards := 0
-		for _, reward := range rewards {
-			if reward < 0 {
+
+		var activeQuestions []question.Question
+		receipts := make([]matchdomain.RewardReceipt, 0, len(candidates))
+		for _, candidate := range candidates {
+			if candidate.UserID <= 0 || candidate.Coins < 0 {
 				return economy.ErrInvalidEconomyState
 			}
-			if reward > 0 {
-				positiveRewards++
+			receipt := matchdomain.RewardReceipt{
+				UserID: candidate.UserID, PolicyVersion: aggregate.RewardPolicyVersion,
+				Source: candidate.Source, BotStrategy: candidate.BotStrategy,
+				Outcome: candidate.Outcome, Status: matchdomain.RewardStatusGranted,
+				CoinsGranted: candidate.Coins, SettledAt: now,
 			}
-		}
-		ledgerIDs, err := newIDs(positiveRewards)
-		if err != nil {
-			return err
-		}
-		entries := make([]any, 0, positiveRewards)
-		index := 0
-		for userID, reward := range rewards {
-			if reward == 0 {
-				continue
+			grantCard := candidate.GrantsCard
+			quotaLimit := 0
+			quotaReason := ""
+			if aggregate.RewardPolicyVersion == matchdomain.RewardPolicyV1 {
+				switch {
+				case candidate.Source == matchdomain.RewardSourceBot && grantCard:
+					quotaLimit = matchdomain.BotDailyRewardLimit
+					quotaReason = matchdomain.RewardReasonBotDailyCap
+				case candidate.Source == matchdomain.RewardSourcePVP && (receipt.CoinsGranted > 0 || grantCard):
+					quotaLimit = matchdomain.PVPDailyRewardLimit
+					quotaReason = matchdomain.RewardReasonPVPDailyCap
+				}
 			}
+			if quotaLimit > 0 {
+				allowed, reserveErr := repository.reserveDailyReward(
+					tx, candidate.UserID, candidate.Source, aggregate.CompletedAt, now, quotaLimit,
+				)
+				if reserveErr != nil {
+					return reserveErr
+				}
+				if !allowed {
+					receipt.Status = matchdomain.RewardStatusCapped
+					receipt.Reason = quotaReason
+					receipt.CoinsGranted = 0
+					grantCard = false
+				}
+			}
+			if receipt.CoinsGranted == 0 && !grantCard && receipt.Status == matchdomain.RewardStatusGranted &&
+				(candidate.Outcome == matchdomain.RewardOutcomeLoss || candidate.Outcome == matchdomain.RewardOutcomeDraw || candidate.Outcome == matchdomain.RewardOutcomeForfeit) {
+				receipt.Status = matchdomain.RewardStatusIneligible
+				receipt.Reason = string(candidate.Outcome)
+			}
+
 			var wallet economy.Wallet
-			if err := repository.wallets.FindOne(tx, bson.M{"userId": userID}).Decode(&wallet); err != nil {
-				return fmt.Errorf("find reward wallet: %w", err)
+			if receipt.CoinsGranted > 0 || grantCard {
+				if err := repository.wallets.FindOne(tx, bson.M{"userId": candidate.UserID}).Decode(&wallet); err != nil {
+					return fmt.Errorf("find reward wallet: %w", err)
+				}
 			}
-			oldVersion := wallet.Version
-			wallet.Balance += reward
-			wallet.Version++
-			wallet.UpdatedAt = now
-			result, err := repository.wallets.ReplaceOne(tx, bson.M{"userId": userID, "version": oldVersion}, wallet)
-			if err != nil {
-				return fmt.Errorf("credit match reward: %w", err)
+			if receipt.CoinsGranted > 0 {
+				oldVersion := wallet.Version
+				wallet.Balance += receipt.CoinsGranted
+				wallet.Version++
+				wallet.UpdatedAt = now
+				result, replaceErr := repository.wallets.ReplaceOne(tx, bson.M{"userId": candidate.UserID, "version": oldVersion}, wallet)
+				if replaceErr != nil {
+					return fmt.Errorf("credit match reward: %w", replaceErr)
+				}
+				if err := matched(result); err != nil {
+					return err
+				}
+				entryPart := fmt.Sprintf("player:%d", candidate.UserID)
+				idempotencyKey := fmt.Sprintf("match:%d:reward", matchID)
+				if aggregate.RewardPolicyVersion == matchdomain.RewardPolicyV1 {
+					entryPart += ":coins"
+					idempotencyKey += ":" + matchdomain.RewardPolicyV1
+				}
+				if err := repository.insertRewardLedger(tx, economy.LedgerEntry{
+					UserID: candidate.UserID, CoinDelta: receipt.CoinsGranted, BalanceAfter: wallet.Balance,
+					Reason: "match_reward", ReferenceType: "match", ReferenceID: fmt.Sprint(matchID),
+					IdempotencyKey: idempotencyKey, EntryPart: entryPart, CreatedAt: now,
+				}); err != nil {
+					return err
+				}
 			}
-			if err := matched(result); err != nil {
-				return err
+			if grantCard {
+				if len(activeQuestions) == 0 {
+					activeQuestions, err = repository.activeRewardQuestions(tx)
+					if err != nil {
+						return err
+					}
+				}
+				card, summary, mintErr := repository.mintRewardCard(tx, &aggregate, candidate, activeQuestions, now)
+				if mintErr != nil {
+					return mintErr
+				}
+				receipt.Card = summary
+				if err := repository.insertRewardLedger(tx, economy.LedgerEntry{
+					UserID: candidate.UserID, BalanceAfter: wallet.Balance, CardID: card.ID,
+					NewOwner: candidate.UserID, Reason: "match_card_reward",
+					ReferenceType: "match", ReferenceID: fmt.Sprint(matchID),
+					IdempotencyKey: fmt.Sprintf("match:%d:reward:%s", matchID, matchdomain.RewardPolicyV1),
+					EntryPart:      fmt.Sprintf("player:%d:card", candidate.UserID), CreatedAt: now,
+				}); err != nil {
+					return err
+				}
 			}
-			entries = append(entries, economy.LedgerEntry{
-				ID: ledgerIDs[index], UserID: userID, CoinDelta: reward, BalanceAfter: wallet.Balance,
-				Reason: "match_reward", ReferenceType: "match", ReferenceID: fmt.Sprint(matchID),
-				IdempotencyKey: fmt.Sprintf("match:%d:reward", matchID), EntryPart: fmt.Sprintf("player:%d", userID), CreatedAt: now,
-			})
-			index++
+			if aggregate.RewardPolicyVersion == matchdomain.RewardPolicyV1 {
+				receipts = append(receipts, receipt)
+			}
 		}
-		if len(entries) > 0 {
-			if _, err := repository.ledger.InsertMany(tx, entries); err != nil {
-				return fmt.Errorf("record match rewards: %w", err)
-			}
-		}
+
 		lockRef := fmt.Sprintf("match:%d", matchID)
 		cardUpdate := bson.M{
 			"$set": bson.M{"status": economy.CardAvailable, "lockRef": "", "updatedAt": now},
@@ -283,12 +350,12 @@ func (repository *MongoEconomyRepository) SettleMatchRewards(ctx context.Context
 			return fmt.Errorf("release settled match cards: %w", economy.ErrInvalidEconomyState)
 		}
 		if aggregate.Status == matchdomain.StatusCompleted && !aggregate.IsTie {
-			winnerIDs := append([]int64(nil), aggregate.WinnerIDs...)
-			if len(winnerIDs) == 0 && aggregate.WinnerID > 0 {
-				winnerIDs = append(winnerIDs, aggregate.WinnerID)
-			}
+			winnerIDs := humanWinnerIDs(candidates)
 			if len(winnerIDs) == 0 {
-				return economy.ErrInvalidEconomyState
+				// A bot may be the sole winner and has no collectible mastery.
+				if aggregate.EffectiveMode() != matchdomain.ModeBot {
+					return economy.ErrInvalidEconomyState
+				}
 			}
 			winnerSet := make(map[int64]struct{}, len(winnerIDs))
 			for _, winnerID := range winnerIDs {
@@ -309,19 +376,25 @@ func (repository *MongoEconomyRepository) SettleMatchRewards(ctx context.Context
 			if len(winnerCardIDs) != matchdomain.DeckSize*len(winnerSet) {
 				return economy.ErrInvalidEconomyState
 			}
-			winningCards, err := repository.cards.UpdateMany(
-				tx,
-				bson.M{"id": bson.M{"$in": winnerCardIDs}, "ownerId": bson.M{"$in": winnerIDs}, "status": economy.CardAvailable, "lockRef": ""},
-				bson.M{"$inc": bson.M{"wins": 1, "version": 1}, "$set": bson.M{"updatedAt": now}},
-			)
-			if err != nil {
-				return fmt.Errorf("record winning card mastery: %w", err)
-			}
-			if err := matchedAndModified(winningCards, int64(len(winnerCardIDs))); err != nil {
-				return fmt.Errorf("record winning card mastery: %w", economy.ErrInvalidEconomyState)
+			if len(winnerCardIDs) > 0 {
+				winningCards, updateErr := repository.cards.UpdateMany(
+					tx,
+					bson.M{"id": bson.M{"$in": winnerCardIDs}, "ownerId": bson.M{"$in": winnerIDs}, "status": economy.CardAvailable, "lockRef": ""},
+					bson.M{"$inc": bson.M{"wins": 1, "version": 1}, "$set": bson.M{"updatedAt": now}},
+				)
+				if updateErr != nil {
+					return fmt.Errorf("record winning card mastery: %w", updateErr)
+				}
+				if err := matchedAndModified(winningCards, int64(len(winnerCardIDs))); err != nil {
+					return fmt.Errorf("record winning card mastery: %w", economy.ErrInvalidEconomyState)
+				}
 			}
 		}
-		result, err := matches.UpdateOne(tx, bson.M{"id": matchID, "rewardsSettled": false}, bson.M{"$set": bson.M{"rewardsSettled": true}})
+		settlement := bson.M{"rewardsSettled": true}
+		if aggregate.RewardPolicyVersion == matchdomain.RewardPolicyV1 {
+			settlement["rewardReceipts"] = receipts
+		}
+		result, err := matches.UpdateOne(tx, bson.M{"id": matchID, "rewardsSettled": false}, bson.M{"$set": settlement})
 		if err != nil {
 			return fmt.Errorf("mark rewards settled: %w", err)
 		}
@@ -329,7 +402,238 @@ func (repository *MongoEconomyRepository) SettleMatchRewards(ctx context.Context
 			return ErrConflict
 		}
 		return nil
-	})
+	}
+	const settlementAttempts = 4
+	for attempt := 0; attempt < settlementAttempts; attempt++ {
+		err := repository.withTransaction(ctx, operation)
+		if err == nil {
+			return nil
+		}
+		// Two first rewards for the same user/day can race while creating the
+		// deterministic quota document. Retrying the complete transaction turns
+		// that duplicate-key/write-version race into a normal quota increment.
+		if !mongo.IsDuplicateKeyError(err) && !errors.Is(err, ErrConflict) {
+			return err
+		}
+	}
+	return ErrConflict
+}
+
+type rewardQuota struct {
+	ID        string    `bson:"_id"`
+	UserID    int64     `bson:"userId"`
+	Day       string    `bson:"day"`
+	Used      int       `bson:"used"`
+	Version   int64     `bson:"version"`
+	UpdatedAt time.Time `bson:"updatedAt"`
+	ExpiresAt time.Time `bson:"expiresAt"`
+}
+
+func humanWinnerIDs(candidates []matchdomain.RewardCandidate) []int64 {
+	result := make([]int64, 0)
+	for _, candidate := range candidates {
+		if candidate.Outcome == matchdomain.RewardOutcomeChampion || candidate.Outcome == matchdomain.RewardOutcomeTeamWinner {
+			result = append(result, candidate.UserID)
+		}
+	}
+	return result
+}
+
+func (repository *MongoEconomyRepository) reserveDailyReward(
+	ctx context.Context,
+	userID int64,
+	source matchdomain.RewardSource,
+	completedAt, now time.Time,
+	limit int,
+) (bool, error) {
+	if userID <= 0 || completedAt.IsZero() || limit <= 0 ||
+		(source != matchdomain.RewardSourceBot && source != matchdomain.RewardSourcePVP) {
+		return false, economy.ErrInvalidEconomyState
+	}
+	completedAt = completedAt.UTC()
+	day := completedAt.Format("2006-01-02")
+	key := fmt.Sprintf("%s:%s:%d:%s", matchdomain.RewardPolicyV1, source, userID, day)
+	var quota rewardQuota
+	err := repository.rewardQuotas.FindOne(ctx, bson.M{"_id": key}).Decode(&quota)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		start := time.Date(completedAt.Year(), completedAt.Month(), completedAt.Day(), 0, 0, 0, 0, time.UTC)
+		expiresAt := start.Add(8 * 24 * time.Hour)
+		if minimumExpiry := now.Add(24 * time.Hour); expiresAt.Before(minimumExpiry) {
+			expiresAt = minimumExpiry
+		}
+		quota = rewardQuota{ID: key, UserID: userID, Day: day, Used: 1, Version: 1, UpdatedAt: now, ExpiresAt: expiresAt}
+		if _, insertErr := repository.rewardQuotas.InsertOne(ctx, quota); insertErr != nil {
+			return false, fmt.Errorf("create %s reward quota: %w", source, insertErr)
+		}
+		return true, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("find %s reward quota: %w", source, err)
+	}
+	if quota.Used >= limit {
+		return false, nil
+	}
+	result, err := repository.rewardQuotas.UpdateOne(
+		ctx,
+		bson.M{"_id": key, "version": quota.Version, "used": bson.M{"$lt": limit}},
+		bson.M{"$inc": bson.M{"used": 1, "version": 1}, "$set": bson.M{"updatedAt": now}},
+	)
+	if err != nil {
+		return false, fmt.Errorf("reserve %s reward quota: %w", source, err)
+	}
+	if result.MatchedCount != 1 {
+		return false, ErrConflict
+	}
+	return true, nil
+}
+
+func (repository *MongoEconomyRepository) activeRewardQuestions(ctx context.Context) ([]question.Question, error) {
+	cursor, err := repository.database.Collection(questionBankCollection).Find(
+		ctx,
+		bson.M{"status": question.StatusActive},
+		options.Find().SetSort(bson.D{{Key: "id", Value: 1}}).SetLimit(5000),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("find reward questions: %w", err)
+	}
+	defer cursor.Close(ctx)
+	var items []question.Question
+	if err := cursor.All(ctx, &items); err != nil {
+		return nil, fmt.Errorf("decode reward questions: %w", err)
+	}
+	if len(items) == 0 {
+		return nil, fmt.Errorf("reward question pool is empty: %w", economy.ErrInvalidEconomyState)
+	}
+	return items, nil
+}
+
+func (repository *MongoEconomyRepository) mintRewardCard(
+	ctx context.Context,
+	aggregate *matchdomain.Aggregate,
+	candidate matchdomain.RewardCandidate,
+	questions []question.Question,
+	now time.Time,
+) (economy.Card, *matchdomain.RewardCard, error) {
+	if aggregate == nil || aggregate.RewardPolicyVersion != matchdomain.RewardPolicyV1 || candidate.UserID <= 0 || len(questions) == 0 {
+		return economy.Card{}, nil, economy.ErrInvalidEconomyState
+	}
+	desiredRarity, err := matchdomain.RewardRarity(aggregate.RewardNonce, aggregate.ID, candidate)
+	if err != nil {
+		return economy.Card{}, nil, err
+	}
+	ownedEditions, err := repository.rewardOwnedEditions(ctx, candidate.UserID)
+	if err != nil {
+		return economy.Card{}, nil, err
+	}
+	selected, err := selectRewardQuestion(questions, ownedEditions, desiredRarity, aggregate.RewardNonce, aggregate.ID, candidate.UserID)
+	if err != nil {
+		return economy.Card{}, nil, err
+	}
+	edition := 1
+	if previous := ownedEditions[selected.ID]; previous > 0 {
+		edition = previous + 1
+	}
+	cardID, err := NewID()
+	if err != nil {
+		return economy.Card{}, nil, err
+	}
+	rarity := economy.RarityForDifficulty(string(selected.Difficulty))
+	card := economy.Card{
+		ID: cardID, OwnerID: candidate.UserID, QuestionID: selected.ID, Edition: edition,
+		Rarity: rarity, Power: 1, Status: economy.CardAvailable, Version: 1,
+		CreatedAt: now, UpdatedAt: now,
+	}
+	if _, err := repository.cards.InsertOne(ctx, card); err != nil {
+		return economy.Card{}, nil, fmt.Errorf("mint match reward card: %w", err)
+	}
+	summary := &matchdomain.RewardCard{
+		ID: card.ID, QuestionID: card.QuestionID, Category: selected.Category,
+		Difficulty: string(selected.Difficulty), Rarity: card.Rarity, Power: card.Power, Edition: card.Edition,
+	}
+	return card, summary, nil
+}
+
+func (repository *MongoEconomyRepository) rewardOwnedEditions(ctx context.Context, userID int64) (map[string]int, error) {
+	cursor, err := repository.cards.Find(ctx, bson.M{"ownerId": userID}, options.Find().SetProjection(bson.M{"questionId": 1, "edition": 1}))
+	if err != nil {
+		return nil, fmt.Errorf("find reward owner cards: %w", err)
+	}
+	defer cursor.Close(ctx)
+	var cards []economy.Card
+	if err := cursor.All(ctx, &cards); err != nil {
+		return nil, fmt.Errorf("decode reward owner cards: %w", err)
+	}
+	result := make(map[string]int, len(cards))
+	for _, card := range cards {
+		edition := card.Edition
+		if edition < 1 {
+			edition = 1
+		}
+		if edition > result[card.QuestionID] {
+			result[card.QuestionID] = edition
+		}
+	}
+	return result, nil
+}
+
+func selectRewardQuestion(
+	questions []question.Question,
+	ownedEditions map[string]int,
+	desiredRarity string,
+	nonce []byte,
+	matchID, userID int64,
+) (question.Question, error) {
+	desiredDifficulty := map[string]question.Difficulty{
+		"common": question.DifficultyEasy,
+		"rare":   question.DifficultyMedium,
+		"epic":   question.DifficultyHard,
+	}[desiredRarity]
+	if desiredDifficulty == "" {
+		return question.Question{}, matchdomain.ErrInvalidRewardPolicy
+	}
+	groups := make([][]question.Question, 0, 3)
+	uniqueDesired := make([]question.Question, 0)
+	uniqueAny := make([]question.Question, 0)
+	duplicateDesired := make([]question.Question, 0)
+	for _, item := range questions {
+		_, owned := ownedEditions[item.ID]
+		if !owned {
+			uniqueAny = append(uniqueAny, item)
+			if item.Difficulty == desiredDifficulty {
+				uniqueDesired = append(uniqueDesired, item)
+			}
+		} else if item.Difficulty == desiredDifficulty {
+			duplicateDesired = append(duplicateDesired, item)
+		}
+	}
+	groups = append(groups, uniqueDesired, uniqueAny, duplicateDesired, questions)
+	for _, group := range groups {
+		if len(group) == 0 {
+			continue
+		}
+		sort.Slice(group, func(left, right int) bool {
+			leftRank, leftErr := matchdomain.RewardQuestionRank(nonce, matchID, userID, group[left].ID)
+			rightRank, rightErr := matchdomain.RewardQuestionRank(nonce, matchID, userID, group[right].ID)
+			if leftErr != nil || rightErr != nil || leftRank == rightRank {
+				return group[left].ID < group[right].ID
+			}
+			return leftRank < rightRank
+		})
+		return group[0], nil
+	}
+	return question.Question{}, economy.ErrInvalidEconomyState
+}
+
+func (repository *MongoEconomyRepository) insertRewardLedger(ctx context.Context, entry economy.LedgerEntry) error {
+	ledgerID, err := NewID()
+	if err != nil {
+		return err
+	}
+	entry.ID = ledgerID
+	if _, err := repository.ledger.InsertOne(ctx, entry); err != nil {
+		return fmt.Errorf("record match reward: %w", err)
+	}
+	return nil
 }
 
 func (repository *MongoEconomyRepository) withTransaction(ctx context.Context, operation func(context.Context) error) error {

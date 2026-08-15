@@ -2,25 +2,29 @@ package resources
 
 // Game List of Games running by the game engin
 type Game struct {
-	ID          int64       `json:"id,string"`
-	IsPublic    bool        `json:"isPublic"`
-	Owner       UserModel   `json:"owner"`
-	Mode        string      `json:"mode"`
-	MinPlayers  int         `json:"minPlayers"`
-	MaxPlayers  int         `json:"maxPlayers"`
-	TeamSize    int         `json:"teamSize"`
-	Timeline    []string    `json:"timeline,omitempty"`
-	IsActive    bool        `json:"isActive"`
-	JoinedUsers []UserModel `json:"joinedUsers"`
-	State       string      `json:"state"`
-	MatchID     int64       `json:"matchId,omitempty,string"`
+	ID           int64       `json:"id,string"`
+	IsPublic     bool        `json:"isPublic"`
+	Owner        UserModel   `json:"owner"`
+	Mode         string      `json:"mode"`
+	OpponentType string      `json:"opponentType"`
+	BotStrategy  string      `json:"botStrategy,omitempty"`
+	MinPlayers   int         `json:"minPlayers"`
+	MaxPlayers   int         `json:"maxPlayers"`
+	TeamSize     int         `json:"teamSize"`
+	Timeline     []string    `json:"timeline,omitempty"`
+	IsActive     bool        `json:"isActive"`
+	JoinedUsers  []UserModel `json:"joinedUsers"`
+	State        string      `json:"state"`
+	MatchID      int64       `json:"matchId,omitempty,string"`
 }
 
 // CreateGameModel to create new game
 type CreateGameModel struct {
-	IsPublic   bool   `json:"isPublic"`
-	Mode       string `json:"mode"`
-	MaxPlayers int    `json:"maxPlayers,omitempty"`
+	IsPublic     bool   `json:"isPublic"`
+	Mode         string `json:"mode"`
+	MaxPlayers   int    `json:"maxPlayers,omitempty"`
+	OpponentType string `json:"opponentType,omitempty"`
+	BotStrategy  string `json:"botStrategy,omitempty"`
 }
 
 // GameEvent is a server-authored notification for lobby clients.

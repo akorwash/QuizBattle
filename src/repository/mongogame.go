@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
@@ -48,6 +49,9 @@ func (repository *MongoGameRepository) Add(game *entites.Game) error {
 	if game == nil {
 		return fmt.Errorf("add game: nil entity")
 	}
+	if err := validateStoredGameBotConfiguration(game); err != nil {
+		return fmt.Errorf("add game: %w", err)
+	}
 	id, err := newID()
 	if err != nil {
 		return err
@@ -68,11 +72,17 @@ func (repository *MongoGameRepository) Add(game *entites.Game) error {
 }
 
 func (repository *MongoGameRepository) JoinGame(gameID, userID int64) error {
+	if gameID <= 0 || userID <= 0 {
+		return ErrConflict
+	}
 	ctx, cancel := operationContext()
 	defer cancel()
 	filter := bson.M{
 		"id":          gameID,
 		"isactive":    true,
+		"ispublic":    true,
+		"mode":        bson.M{"$ne": string(matchdomain.ModeBot)},
+		"bot":         bson.M{"$exists": false},
 		"joinedusers": bson.M{"$ne": userID},
 		"$or": bson.A{
 			bson.M{"state": "lobby"},
@@ -90,6 +100,29 @@ func (repository *MongoGameRepository) JoinGame(gameID, userID int64) error {
 	}
 	if result.MatchedCount == 0 {
 		return ErrConflict
+	}
+	return nil
+}
+
+func validateStoredGameBotConfiguration(game *entites.Game) error {
+	mode, err := matchdomain.NormalizeMode(game.Mode)
+	if err != nil {
+		return matchdomain.ErrInvalidMatch
+	}
+	if mode != matchdomain.ModeBot {
+		if game.Bot != nil {
+			return matchdomain.ErrInvalidMatch
+		}
+		return nil
+	}
+	if game.UserID <= 0 || game.IsPublic || game.MaxPlayers != matchdomain.MaxPlayers(matchdomain.ModeBot) ||
+		game.Bot == nil || game.Bot.ActorID != matchdomain.BotActorID || strings.TrimSpace(game.Bot.Name) == "" ||
+		len(game.JoinedUsers) != 1 || game.JoinedUsers[0] != game.UserID {
+		return matchdomain.ErrInvalidMatch
+	}
+	strategy, err := matchdomain.NormalizeBotStrategy(game.Bot.Strategy)
+	if err != nil || string(strategy) != game.Bot.Strategy {
+		return matchdomain.ErrInvalidMatch
 	}
 	return nil
 }
@@ -161,6 +194,8 @@ func (repository *MongoGameRepository) GetPublicBattle() ([]entites.Game, error)
 	return repository.findMany(bson.M{
 		"ispublic": true,
 		"isactive": true,
+		"mode":     bson.M{"$ne": string(matchdomain.ModeBot)},
+		"bot":      bson.M{"$exists": false},
 		"$or": bson.A{
 			bson.M{"state": "lobby"},
 			bson.M{"state": ""},

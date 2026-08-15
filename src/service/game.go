@@ -38,12 +38,48 @@ func NewGameService(gameRepo repository.IGameRepository, userRepo repository.IUs
 }
 
 func (service *GameService) CreateNewGame(userID int64, model resources.CreateGameModel) (*resources.Game, error) {
-	if !model.IsPublic {
-		return nil, fmt.Errorf("%w: private battles require an invitation flow that is not implemented yet", ErrInvalidInput)
+	opponentType := strings.ToLower(strings.TrimSpace(model.OpponentType))
+	if opponentType == "" {
+		if strings.EqualFold(strings.TrimSpace(model.Mode), string(matchdomain.ModeBot)) {
+			opponentType = "bot"
+		} else {
+			opponentType = "human"
+		}
+	}
+	if opponentType != "human" && opponentType != "bot" {
+		return nil, fmt.Errorf("%w: opponentType must be human or bot", ErrInvalidInput)
+	}
+	if opponentType == "bot" {
+		rawMode := strings.ToLower(strings.TrimSpace(model.Mode))
+		if model.IsPublic {
+			return nil, fmt.Errorf("%w: bot battles must be private", ErrInvalidInput)
+		}
+		if rawMode != "" && rawMode != "duel" && rawMode != "1v1" && rawMode != string(matchdomain.ModeBot) {
+			return nil, fmt.Errorf("%w: bot battles are duel-only", ErrInvalidInput)
+		}
+		model.Mode = string(matchdomain.ModeBot)
+		model.MaxPlayers = matchdomain.MaxPlayers(matchdomain.ModeBot)
+	} else {
+		if strings.EqualFold(strings.TrimSpace(model.Mode), string(matchdomain.ModeBot)) {
+			return nil, fmt.Errorf("%w: bot mode requires opponentType bot", ErrInvalidInput)
+		}
+		if !model.IsPublic {
+			return nil, fmt.Errorf("%w: private human battles require an invitation flow that is not implemented yet", ErrInvalidInput)
+		}
 	}
 	mode, _, maximumPlayers, _, err := normalizeGameMode(model.Mode, model.MaxPlayers)
 	if err != nil {
 		return nil, err
+	}
+	strategy := ""
+	if mode == matchdomain.ModeBot {
+		parsed, strategyErr := matchdomain.NormalizeBotStrategy(model.BotStrategy)
+		if strategyErr != nil {
+			return nil, fmt.Errorf("%w: %v", ErrInvalidInput, strategyErr)
+		}
+		strategy = string(parsed)
+	} else if strings.TrimSpace(model.BotStrategy) != "" {
+		return nil, fmt.Errorf("%w: botStrategy is only valid for bot battles", ErrInvalidInput)
 	}
 	if _, err := service.validateUser(userID); err != nil {
 		return nil, err
@@ -69,6 +105,9 @@ func (service *GameService) CreateNewGame(userID int64, model resources.CreateGa
 		JoinedUsers: []int64{userID},
 		State:       "lobby",
 	}
+	if mode == matchdomain.ModeBot {
+		game.Bot = &entites.BotSeat{ActorID: matchdomain.BotActorID, Name: "حارس المعرفة", Strategy: strategy}
+	}
 	if err := service.gameRepo.Add(game); err != nil {
 		return nil, err
 	}
@@ -93,6 +132,15 @@ func (service *GameService) JoinGame(userID, gameID int64) (*resources.Game, err
 	if !game.IsActive {
 		return nil, ErrGameClosed
 	}
+	mode, _, maximumPlayers, _, err := gameModeDetails(game)
+	if err != nil {
+		return nil, err
+	}
+	// A bot arena is closed to membership even if an old/corrupt document lost
+	// one half of the mode/seat pair. Mongo enforces the same invariant.
+	if mode == matchdomain.ModeBot || game.Bot != nil {
+		return nil, ErrForbidden
+	}
 	if game.State != "" && game.State != "lobby" {
 		return nil, ErrBattleFull
 	}
@@ -101,10 +149,6 @@ func (service *GameService) JoinGame(userID, gameID int64) (*resources.Game, err
 	}
 	if !game.IsPublic {
 		return nil, ErrForbidden
-	}
-	_, _, maximumPlayers, _, err := gameModeDetails(game)
-	if err != nil {
-		return nil, err
 	}
 	if len(game.JoinedUsers) >= maximumPlayers {
 		return nil, ErrBattleFull
@@ -284,18 +328,22 @@ func resourceFromUsers(game *entites.Game, users map[int64]entites.User) (resour
 	if err != nil {
 		return resources.Game{}, false
 	}
+	if !validGameBotConfiguration(game, mode) {
+		return resources.Game{}, false
+	}
 	result := &resources.Game{
-		ID:         game.ID,
-		IsPublic:   game.IsPublic,
-		IsActive:   game.IsActive,
-		Owner:      resources.UserModel{ID: owner.ID, FullName: owner.Fullname},
-		Mode:       string(mode),
-		MinPlayers: minimumPlayers,
-		MaxPlayers: maximumPlayers,
-		TeamSize:   teamSize,
-		Timeline:   append([]string(nil), game.TimeLine...),
-		State:      game.State,
-		MatchID:    game.MatchID,
+		ID:           game.ID,
+		IsPublic:     game.IsPublic,
+		IsActive:     game.IsActive,
+		Owner:        resources.UserModel{ID: owner.ID, FullName: owner.Fullname},
+		Mode:         string(mode),
+		OpponentType: "human",
+		MinPlayers:   minimumPlayers,
+		MaxPlayers:   maximumPlayers,
+		TeamSize:     teamSize,
+		Timeline:     append([]string(nil), game.TimeLine...),
+		State:        game.State,
+		MatchID:      game.MatchID,
 	}
 	for index, joinedUserID := range game.JoinedUsers {
 		user, found := users[joinedUserID]
@@ -306,7 +354,34 @@ func resourceFromUsers(game *entites.Game, users map[int64]entites.User) (resour
 			ID: user.ID, FullName: user.Fullname, Team: teamForPlayer(mode, index),
 		})
 	}
+	if game.Bot != nil {
+		result.OpponentType = "bot"
+		result.BotStrategy = game.Bot.Strategy
+		result.JoinedUsers = append(result.JoinedUsers, resources.UserModel{
+			ID: game.Bot.ActorID, FullName: game.Bot.Name, IsBot: true, BotStrategy: game.Bot.Strategy,
+		})
+	}
 	return *result, true
+}
+
+// validGameBotConfiguration keeps the system participant out of the user
+// roster and rejects half-migrated/spoofed bot arenas before projection or
+// match preparation. Legacy human duels have neither a mode nor a bot seat and
+// remain valid.
+func validGameBotConfiguration(game *entites.Game, mode matchdomain.Mode) bool {
+	if game == nil {
+		return false
+	}
+	if mode != matchdomain.ModeBot {
+		return game.Bot == nil
+	}
+	if game.Bot == nil || game.UserID <= 0 || game.IsPublic || game.MaxPlayers != matchdomain.MaxPlayers(matchdomain.ModeBot) ||
+		game.Bot.ActorID != matchdomain.BotActorID || strings.TrimSpace(game.Bot.Name) == "" ||
+		len(game.JoinedUsers) != 1 || game.JoinedUsers[0] != game.UserID {
+		return false
+	}
+	strategy, err := matchdomain.NormalizeBotStrategy(game.Bot.Strategy)
+	return err == nil && string(strategy) == game.Bot.Strategy
 }
 
 func normalizeGameMode(rawMode string, requestedMaximum int) (matchdomain.Mode, int, int, int, error) {

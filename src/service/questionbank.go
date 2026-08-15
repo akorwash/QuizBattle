@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"sort"
 
+	matchdomain "github.com/akorwash/QuizBattle/domain/match"
 	"github.com/akorwash/QuizBattle/domain/question"
 )
 
@@ -130,6 +131,102 @@ func (service *QuestionBankService) StarterQuestions(ctx context.Context, userID
 		seen[item.ID] = struct{}{}
 	}
 	return selected, nil
+}
+
+// BotDeckQuestions selects a reproducible, category-diverse virtual deck. The
+// cards exist only inside the match aggregate; they are never minted into the
+// economy or exposed through the market.
+func (service *QuestionBankService) BotDeckQuestions(ctx context.Context, matchID int64, strategy matchdomain.BotStrategy, count int) ([]question.Question, error) {
+	if matchID <= 0 || count <= 0 || count > 50 {
+		return nil, fmt.Errorf("invalid bot deck selection")
+	}
+	strategy, err := matchdomain.NormalizeBotStrategy(string(strategy))
+	if err != nil {
+		return nil, err
+	}
+	items, err := service.repository.ListActive(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) < count {
+		return nil, fmt.Errorf("question bank has %d active questions; need %d", len(items), count)
+	}
+	byCategory := make(map[string][]question.Question)
+	for _, item := range items {
+		byCategory[item.Category] = append(byCategory[item.Category], item)
+	}
+	categories := make([]string, 0, len(byCategory))
+	for category := range byCategory {
+		categories = append(categories, category)
+	}
+	sort.Slice(categories, func(left, right int) bool {
+		leftRank := stableRank(matchID, "bot-category:"+string(strategy)+":"+categories[left])
+		rightRank := stableRank(matchID, "bot-category:"+string(strategy)+":"+categories[right])
+		if leftRank == rightRank {
+			return categories[left] < categories[right]
+		}
+		return leftRank < rightRank
+	})
+	for category := range byCategory {
+		bucket := byCategory[category]
+		sort.Slice(bucket, func(left, right int) bool {
+			if strategy == matchdomain.BotSmart {
+				leftDifficulty := botDifficultyRank(bucket[left].Difficulty)
+				rightDifficulty := botDifficultyRank(bucket[right].Difficulty)
+				if leftDifficulty != rightDifficulty {
+					return leftDifficulty > rightDifficulty
+				}
+			}
+			leftRank := stableRank(matchID, "bot-card:"+string(strategy)+":"+bucket[left].ID)
+			rightRank := stableRank(matchID, "bot-card:"+string(strategy)+":"+bucket[right].ID)
+			if leftRank == rightRank {
+				return bucket[left].ID < bucket[right].ID
+			}
+			return leftRank < rightRank
+		})
+		byCategory[category] = bucket
+	}
+
+	selected := make([]question.Question, 0, count)
+	for _, category := range categories {
+		if len(selected) >= count {
+			break
+		}
+		if bucket := byCategory[category]; len(bucket) > 0 {
+			selected = append(selected, bucket[0])
+			byCategory[category] = bucket[1:]
+		}
+	}
+	for len(selected) < count {
+		added := false
+		for _, category := range categories {
+			bucket := byCategory[category]
+			if len(bucket) == 0 {
+				continue
+			}
+			selected = append(selected, bucket[0])
+			byCategory[category] = bucket[1:]
+			added = true
+			if len(selected) >= count {
+				break
+			}
+		}
+		if !added {
+			return nil, fmt.Errorf("question bank could not build a bot deck")
+		}
+	}
+	return selected, nil
+}
+
+func botDifficultyRank(value question.Difficulty) int {
+	switch value {
+	case question.DifficultyHard:
+		return 3
+	case question.DifficultyMedium:
+		return 2
+	default:
+		return 1
+	}
 }
 
 func stableRank(userID int64, value string) uint64 {
