@@ -1,0 +1,215 @@
+name: quizbattle
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-mongo-image: &mongo-image
+  image: mongo:8.0@sha256:de267922bc1153d923f5c9dc429f21c11faf18299080c1ce04d6d6007097fb06
+
+services:
+  mongo-secret-prepare:
+    <<: *mongo-image
+    user: "0:0"
+    restart: "no"
+    network_mode: none
+    read_only: true
+    entrypoint: ["bash", "-euc"]
+    command:
+      - |
+        install -d -o 999 -g 999 -m 0700 /run/quizbattle-mongo
+        install -o 999 -g 999 -m 0400 /run/secrets/mongo_root_password /run/quizbattle-mongo/root-password
+        install -o 999 -g 999 -m 0400 /run/secrets/mongo_keyfile /run/quizbattle-mongo/keyfile
+        install -o 999 -g 999 -m 0400 /run/secrets/mongo_server_pem /run/quizbattle-mongo/server.pem
+        install -o 999 -g 999 -m 0444 /run/secrets/mongo_ca_certificate /run/quizbattle-mongo/ca.crt
+    secrets:
+      - mongo_root_password
+      - mongo_keyfile
+      - mongo_server_pem
+      - mongo_ca_certificate
+    volumes:
+      - mongo-runtime-secrets:/run/quizbattle-mongo
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=8m,mode=1777
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 64m
+    cpus: 0.25
+    pids_limit: 64
+    logging: *default-logging
+
+  mongo:
+    <<: *mongo-image
+    hostname: mongo
+    restart: unless-stopped
+    depends_on:
+      mongo-secret-prepare:
+        condition: service_completed_successfully
+    command:
+      - mongod
+      - --replSet=rs0
+      - --bind_ip_all
+      - --auth
+      - --keyFile=/run/quizbattle-mongo/keyfile
+      - --tlsMode=requireTLS
+      - --tlsCertificateKeyFile=/run/quizbattle-mongo/server.pem
+      - --tlsCAFile=/run/quizbattle-mongo/ca.crt
+      - --tlsAllowConnectionsWithoutCertificates
+      - --setParameter=authenticationMechanisms=SCRAM-SHA-256
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-quizbattle_root}
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/quizbattle-mongo/root-password
+      MONGO_INITDB_DATABASE: admin
+    expose:
+      - "27017"
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+      - mongo-runtime-secrets:/run/quizbattle-mongo:ro
+    networks:
+      - backend
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=64m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 2g
+    cpus: 2.0
+    pids_limit: 512
+    stop_grace_period: 60s
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --host mongo --port 27017 --tls
+          --tlsCAFile /run/quizbattle-mongo/ca.crt
+          --eval 'quit(db.adminCommand({ping:1}).ok === 1 ? 0 : 2)'
+      interval: 10s
+      timeout: 8s
+      retries: 12
+      start_period: 60s
+    logging: *default-logging
+
+  mongo-init:
+    <<: *mongo-image
+    user: "0:0"
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint: ["bash", "/opt/quizbattle/mongo-init.sh"]
+    environment:
+      MONGO_HOST: mongo
+      MONGO_PORT: "27017"
+      MONGO_REPLICA_SET: rs0
+      MONGO_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-quizbattle_root}
+      MONGO_APP_USERNAME: ${MONGO_APP_USERNAME:-quizbattle_app}
+      MONGO_DATABASE: ${MONGO_DATABASE:-quizbattle}
+    secrets:
+      - mongo_root_password
+      - mongo_app_password
+      - mongo_ca_certificate
+    volumes:
+      - ./mongo-init.sh:/opt/quizbattle/mongo-init.sh:ro
+    networks:
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    cpus: 0.50
+    pids_limit: 128
+    logging: *default-logging
+
+  app:
+    image: ${QUIZBATTLE_IMAGE:?QUIZBATTLE_IMAGE must be an immutable image@sha256 digest}
+    restart: unless-stopped
+    init: true
+    user: "65532:65532"
+    ports:
+      - "127.0.0.1:${APP_PORT:-3200}:8080"
+    environment:
+      APP_ENV: production
+      PORT: "8080"
+      RELEASE_SHA: ${RELEASE_SHA:?RELEASE_SHA is required}
+      MONGO_URI: ${MONGO_URI:?MONGO_URI is required}
+      MONGO_DATABASE: ${MONGO_DATABASE:-quizbattle}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      SESSION_TTL: ${SESSION_TTL:-1h}
+      COOKIE_SECURE: "true"
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?ALLOWED_ORIGINS is required}
+      TRUSTED_PROXY_CIDRS: 172.30.8.1/32
+      SEED_DATABASE: ${SEED_DATABASE:-true}
+      QUESTION_BANK_PATH: /app/data/question-bank/questions.ar.jsonl
+    depends_on:
+      mongo:
+        condition: service_healthy
+      mongo-init:
+        condition: service_completed_successfully
+    volumes:
+      - ./secrets/mongo-ca.crt:/run/quizbattle/tls/mongo-ca.crt:ro
+    networks:
+      - frontend
+      - backend
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,noexec,size=32m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 1.5
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "/app/quizbattle", "healthcheck"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 30s
+    deploy:
+      replicas: 1
+    labels:
+      com.quizbattle.release: ${RELEASE_SHA:?RELEASE_SHA is required}
+      com.quizbattle.topology: single-replica
+    logging: *default-logging
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.8.0/24
+          gateway: 172.30.8.1
+  backend:
+    driver: bridge
+    internal: true
+
+volumes:
+  mongo-data:
+  mongo-config:
+  mongo-runtime-secrets:
+
+secrets:
+  mongo_root_password:
+    file: ./secrets/mongo-root-password
+  mongo_app_password:
+    file: ./secrets/mongo-app-password
+  mongo_keyfile:
+    file: ./secrets/mongo-keyfile
+  mongo_ca_certificate:
+    file: ./secrets/mongo-ca.crt
+  mongo_server_pem:
+    file: ./secrets/mongo-server.pem

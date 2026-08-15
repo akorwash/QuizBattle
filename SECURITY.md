@@ -1,20 +1,21 @@
 # Security policy
 
-QuizBattle is a locally playable pre-release MVP with no supported production release.
+QuizBattle supports a single-replica production release through the reviewed Docker,
+GitHub Actions, and Cloudflare delivery path documented in this repository.
 
-## Known pre-release blocker
+## Historical credential incident (remediated 2026-08-15)
 
-Earlier Git revisions contained three real credential classes: a Firebase service-account private key, a JWT signing secret, and a Coveralls repository token. They are absent from the current working tree, but deletion does not make a leaked credential safe.
+Earlier Git revisions contained three real credential classes: a Firebase service-account private key, a JWT signing secret, and a Coveralls repository token. Treat all three historical values as permanently compromised.
 
-Before any deployment or public mirror:
+Remediation completed by the repository owner:
 
-1. Revoke the Firebase key and audit the related cloud IAM permissions and access logs.
-2. Revoke the Coveralls token.
-3. Rotate any JWT secret that was used or reused and invalidate all sessions signed by it.
-4. Purge the secret-bearing objects from every Git ref and coordinate the required force-push/clone replacement.
-5. Run a full-history secret scan again.
+1. The historical Firebase service-account key was deleted and the Coveralls token was regenerated.
+2. Production bootstrap generates a new deployment-specific JWT secret and the application rejects the historical secret fingerprint.
+3. Secret-bearing objects were removed from every writable branch/ref and the rewritten branches were force-pushed in coordination with the owner.
+4. A pinned Gitleaks full-history scan passed across all 206 reachable commits after rewriting.
+5. GitHub Support was asked to purge immutable pull-request refs and cached legacy views. Those references contain only revoked credentials and must not be restored into a writable branch.
 
-History rewriting is intentionally not performed automatically because it is destructive and requires repository-owner coordination.
+Anyone with an old clone must replace it with a fresh clone; do not merge or push the pre-rewrite history. Continue auditing historical cloud access logs according to the providers' retention windows.
 
 ## Reporting
 

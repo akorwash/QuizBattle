@@ -1,0 +1,395 @@
+name: Production delivery
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: quizbattle-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY_IMAGE: ghcr.io/akorwash/quizbattle
+
+jobs:
+  quality:
+    name: Test and validate release inputs
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Gate the complete Git history for leaked secrets
+        shell: bash
+        run: |
+          docker run --rm \
+            --volume "$GITHUB_WORKSPACE:/repo:ro" \
+            zricethezav/gitleaks@sha256:aa036a2f4bdfe3cc3c55fa4326308efabb4a6be498c883c864fd1d0d5585438a \
+            git /repo --redact=100 --no-banner
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: src/go.mod
+          cache-dependency-path: src/go.sum
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Verify Go modules and formatting
+        working-directory: src
+        shell: bash
+        run: |
+          go mod download
+          go mod verify
+          unformatted="$(gofmt -l .)"
+          if [[ -n "$unformatted" ]]; then
+            printf '%s\n' "$unformatted"
+            exit 1
+          fi
+
+      - name: Vet and test Go application
+        working-directory: src
+        run: |
+          go vet ./...
+          go test -race -count=1 ./...
+
+      - name: Gate reachable vulnerabilities and security findings
+        working-directory: src
+        shell: bash
+        run: |
+          go run golang.org/x/vuln/cmd/govulncheck@v1.7.0 ./...
+          go run github.com/securego/gosec/v2/cmd/gosec@v2.28.0 -quiet ./...
+
+      - name: Test browser-side modules
+        run: node --test src/tests/*.test.js
+
+      - name: Validate Arabic question bank
+        run: python3 tools/question-bank/test_question_bank.py
+
+      - name: Build production container
+        run: docker build --tag "quizbattle-ci:${GITHUB_SHA}" .
+
+      - name: Exercise fresh production topology and encrypted backup
+        shell: bash
+        run: |
+          sudo --preserve-env=GITHUB_ACTIONS \
+            bash deploy/tests/test-production-compose.sh \
+              "quizbattle-ci:${GITHUB_SHA}" \
+              "$GITHUB_SHA"
+
+      - name: Validate production Compose topology
+        shell: bash
+        run: |
+          QUIZBATTLE_IMAGE="ghcr.io/akorwash/quizbattle@sha256:0000000000000000000000000000000000000000000000000000000000000000" \
+          RELEASE_SHA="$GITHUB_SHA" \
+          MONGO_URI="mongodb://quizbattle_app:ci-only-password@mongo:27017/quizbattle?authSource=quizbattle&replicaSet=rs0&tls=true&tlsCAFile=/run/quizbattle/tls/mongo-ca.crt" \
+          JWT_SECRET="ci-only-QuizBattle-secret-with-entropy-2026" \
+          ALLOWED_ORIGINS="https://quizbattle.qubefyn.com" \
+            docker compose \
+              -f deploy/docker-compose.production.yml \
+              config --quiet
+          bash -n \
+            deploy/deploy.sh \
+            deploy/ssh-entrypoint.sh \
+            deploy/bootstrap.sh \
+            deploy/bootstrap-secrets.sh \
+            deploy/mongo-init.sh \
+            deploy/backup-mongo.sh \
+            deploy/certbot-renew-hook.sh \
+            deploy/tests/test-production-compose.sh
+          bash deploy/tests/test-production-assets.sh
+
+  publish:
+    name: Publish and smoke-test immutable image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    outputs:
+      image_digest: ${{ steps.build_image.outputs.digest }}
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        id: build_image
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.REGISTRY_IMAGE }}:sha-${{ github.sha }}
+            ${{ env.REGISTRY_IMAGE }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - name: Smoke-test exact published digest
+        shell: bash
+        env:
+          PUBLISHED_IMAGE_DIGEST: ${{ steps.build_image.outputs.digest }}
+        run: |
+          if [[ ! "$PUBLISHED_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "The build did not return an immutable image digest." >&2
+            exit 1
+          fi
+
+          image_ref="${REGISTRY_IMAGE}@${PUBLISHED_IMAGE_DIGEST}"
+          suffix="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          network_name="quizbattle-smoke-${suffix}"
+          mongo_name="quizbattle-mongo-${suffix}"
+          app_name="quizbattle-app-${suffix}"
+          cleanup() {
+            docker rm -f "$app_name" "$mongo_name" >/dev/null 2>&1 || true
+            docker network rm "$network_name" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+
+          docker pull "$image_ref"
+          image_revision="$(docker image inspect \
+            --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' \
+            "$image_ref")"
+          [[ "$image_revision" == "$GITHUB_SHA" ]] || {
+            echo "The image revision label does not match this commit." >&2
+            exit 1
+          }
+
+          docker network create "$network_name"
+          docker run --detach \
+            --name "$mongo_name" \
+            --network "$network_name" \
+            mongo:8.0@sha256:de267922bc1153d923f5c9dc429f21c11faf18299080c1ce04d6d6007097fb06 \
+            mongod --replSet rs0 --bind_ip_all
+
+          for attempt in {1..30}; do
+            if docker exec "$mongo_name" mongosh --quiet --eval \
+              'quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)' >/dev/null 2>&1; then
+              break
+            fi
+            if [[ "$attempt" == "30" ]]; then
+              docker logs "$mongo_name"
+              exit 1
+            fi
+            sleep 2
+          done
+          docker exec "$mongo_name" mongosh --quiet --eval \
+            "rs.initiate({_id: 'rs0', members: [{_id: 0, host: '${mongo_name}:27017'}]})"
+          for attempt in {1..30}; do
+            if docker exec "$mongo_name" mongosh --quiet --eval \
+              'quit(db.hello().isWritablePrimary ? 0 : 2)' >/dev/null 2>&1; then
+              break
+            fi
+            if [[ "$attempt" == "30" ]]; then
+              docker logs "$mongo_name"
+              exit 1
+            fi
+            sleep 2
+          done
+
+          docker run --detach \
+            --name "$app_name" \
+            --network "$network_name" \
+            --publish 127.0.0.1:38080:8080 \
+            --env APP_ENV=development \
+            --env PORT=8080 \
+            --env RELEASE_SHA="$GITHUB_SHA" \
+            --env "MONGO_URI=mongodb://${mongo_name}:27017/?replicaSet=rs0" \
+            --env MONGO_DATABASE=quizbattle_ci \
+            --env JWT_SECRET=ci-only-QuizBattle-secret-with-entropy-2026 \
+            --env SESSION_TTL=1h \
+            --env COOKIE_SECURE=false \
+            --env ALLOWED_ORIGINS=http://127.0.0.1:38080 \
+            --env SEED_DATABASE=true \
+            --env QUESTION_BANK_PATH=/app/data/question-bank/questions.ar.jsonl \
+            "$image_ref"
+
+          for attempt in {1..60}; do
+            health="$(curl --fail --silent --max-time 5 http://127.0.0.1:38080/healthz 2>/dev/null || true)"
+            ready="$(curl --fail --silent --max-time 5 http://127.0.0.1:38080/readyz 2>/dev/null || true)"
+            if [[ "$health" == *'"status":"ok"'* \
+              && "$health" == *"\"release\":\"${GITHUB_SHA}\""* \
+              && "$ready" == *'"status":"ready"'* ]]; then
+              exit 0
+            fi
+            if [[ "$attempt" == "60" ]]; then
+              docker logs "$app_name"
+              exit 1
+            fi
+            sleep 2
+          done
+
+  deploy:
+    name: Deploy production digest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: publish
+    runs-on: ubuntu-latest
+    # A required encrypted pre-deploy MongoDB snapshot may take substantially
+    # longer than the container replacement itself as the database grows.
+    timeout-minutes: 150
+    environment: production
+    concurrency:
+      group: quizbattle-production
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - name: Check out verified runtime files and host key
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Configure restricted SSH access
+        env:
+          QUIZBATTLE_SSH_KEY: ${{ secrets.QUIZBATTLE_SSH_KEY }}
+        shell: bash
+        run: |
+          if [[ -z "$QUIZBATTLE_SSH_KEY" ]]; then
+            echo "The production secret QUIZBATTLE_SSH_KEY is required." >&2
+            exit 1
+          fi
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$QUIZBATTLE_SSH_KEY" > "$HOME/.ssh/quizbattle_deploy_key"
+          chmod 600 "$HOME/.ssh/quizbattle_deploy_key"
+          install -m 600 .github/ssh/known_hosts "$HOME/.ssh/known_hosts"
+          printf '%s\n' \
+            'Host quizbattle-production' \
+            '  HostName 95.216.214.178' \
+            '  User root' \
+            '  Port 22' \
+            '  IdentityFile ~/.ssh/quizbattle_deploy_key' \
+            '  BatchMode yes' \
+            '  IdentitiesOnly yes' \
+            '  StrictHostKeyChecking yes' \
+            '  ConnectTimeout 15' \
+            '  ServerAliveInterval 15' \
+            '  ServerAliveCountMax 2' \
+            > "$HOME/.ssh/config"
+          chmod 600 "$HOME/.ssh/config"
+
+      - name: Verify reviewed production runtime
+        shell: bash
+        run: |
+          runtime_files=(
+            deploy/docker-compose.production.yml
+            deploy/deploy.sh
+            deploy/ssh-entrypoint.sh
+            deploy/bootstrap-secrets.sh
+            deploy/mongo-init.sh
+            deploy/backup-mongo.sh
+            deploy/quizbattle-mongo-backup.service
+            deploy/quizbattle-mongo-backup.timer
+            deploy/certbot-renew-hook.sh
+            deploy/nginx/quizbattle.qubefyn.com.conf
+          )
+          expected_digest="$(for runtime_file in "${runtime_files[@]}"; do
+            sha256sum "$runtime_file" | awk '{ print $1 }'
+          done | sha256sum | awk '{ print $1 }')"
+          actual_digest="$(ssh quizbattle-production runtime-digest)"
+          if [[ ! "$actual_digest" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "The server returned an invalid runtime digest." >&2
+            exit 1
+          fi
+          if [[ "$actual_digest" != "$expected_digest" ]]; then
+            echo "Production runtime files differ from the reviewed release." >&2
+            exit 1
+          fi
+
+      - name: Authorize this run to pull its GHCR image
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          # The actor is validated by the server's forced-command entrypoint.
+          # shellcheck disable=SC2029
+          printf '%s' "$GHCR_TOKEN" | ssh quizbattle-production "login-ghcr ${GITHUB_ACTOR}"
+
+      - name: Deploy and verify immutable release
+        id: remote_deploy
+        shell: bash
+        env:
+          PUBLISHED_IMAGE_DIGEST: ${{ needs.publish.outputs.image_digest }}
+        run: |
+          if [[ ! "$PUBLISHED_IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "The publish job did not provide a valid image digest." >&2
+            exit 1
+          fi
+          image_ref="${REGISTRY_IMAGE}@${PUBLISHED_IMAGE_DIGEST}"
+          # All three values are locally validated release identities; the server
+          # applies a second strict validation before executing deploy.sh.
+          # shellcheck disable=SC2029
+          remote_output="$(ssh quizbattle-production \
+            "deploy ${image_ref} ${GITHUB_SHA} ${GITHUB_RUN_ID}")"
+          printf '%s\n' "$remote_output"
+          if grep --fixed-strings --quiet 'STALE_DEPLOY_SKIPPED' <<< "$remote_output"; then
+            echo "skipped=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skipped=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Verify public Cloudflare route
+        if: steps.remote_deploy.outputs.skipped != 'true'
+        shell: bash
+        run: |
+          headers_file="$(mktemp)"
+          body_file="$(mktemp)"
+          chmod 600 "$headers_file" "$body_file"
+          cleanup_probe() {
+            rm -f -- "$headers_file" "$body_file"
+          }
+          trap cleanup_probe EXIT
+
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error --max-time 10 \
+              -H 'Cache-Control: no-cache' \
+              --dump-header "$headers_file" \
+              --output "$body_file" \
+              "https://quizbattle.qubefyn.com/healthz?release=${GITHUB_SHA}" \
+              2>/dev/null; then
+              response="$(<"$body_file")"
+            else
+              response=""
+            fi
+            if [[ "$response" == *'"status":"ok"'* \
+              && "$response" == *"\"release\":\"${GITHUB_SHA}\""* ]] \
+              && grep --extended-regexp --ignore-case --quiet \
+                '^cf-ray:[[:space:]]*[[:graph:]]+' "$headers_file"; then
+              exit 0
+            fi
+            if [[ "$attempt" == "30" ]]; then
+              echo "Cloudflare did not expose release ${GITHUB_SHA} with a cf-ray header." >&2
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Remove temporary GHCR credentials from server
+        if: always()
+        run: ssh quizbattle-production logout-ghcr >/dev/null 2>&1 || true

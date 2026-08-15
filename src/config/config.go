@@ -17,6 +17,7 @@ const compromisedJWTSecretSHA256 = "f873a0fad42aacdecfaafa1546f5c997b" + //gitle
 
 type Config struct {
 	Environment       string
+	ReleaseSHA        string
 	Port              string
 	MongoURI          string
 	MongoDatabase     string
@@ -37,6 +38,7 @@ func Load() (Config, error) {
 	environment := strings.ToLower(valueOrDefault("APP_ENV", "production"))
 	cfg := Config{
 		Environment:       environment,
+		ReleaseSHA:        strings.TrimSpace(os.Getenv("RELEASE_SHA")),
 		Port:              valueOrDefault("PORT", "8080"),
 		MongoURI:          strings.TrimSpace(os.Getenv("MONGO_URI")),
 		MongoDatabase:     firstNonEmpty("MONGO_DATABASE", "MongoDBName"),
@@ -84,6 +86,12 @@ func Load() (Config, error) {
 		cfg.CookieSecure = value
 	}
 	productionLike := cfg.Environment != "development" && cfg.Environment != "test"
+	if cfg.ReleaseSHA == "" && productionLike {
+		return Config{}, fmt.Errorf("RELEASE_SHA is required outside development or test")
+	}
+	if cfg.ReleaseSHA != "" && !validReleaseSHA(cfg.ReleaseSHA) {
+		return Config{}, fmt.Errorf("RELEASE_SHA must be a 40-character lowercase hexadecimal Git commit SHA")
+	}
 	if productionLike && !cfg.CookieSecure {
 		return Config{}, fmt.Errorf("COOKIE_SECURE cannot be disabled outside development or test")
 	}
@@ -115,6 +123,20 @@ func Load() (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+func validReleaseSHA(value string) bool {
+	if len(value) != 40 {
+		return false
+	}
+	for _, character := range value {
+		if character < '0' || character > '9' {
+			if character < 'a' || character > 'f' {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func validJWTSecret(secret string) bool {

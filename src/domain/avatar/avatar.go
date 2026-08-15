@@ -174,8 +174,11 @@ func opaquePixel(value color.Color) color.NRGBA {
 	const background = uint32(246)
 	alpha := uint32(pixel.A)
 	return color.NRGBA{
+		// #nosec G115 -- each alpha blend is mathematically bounded to 0..255.
 		R: uint8((uint32(pixel.R)*alpha + background*(255-alpha) + 127) / 255),
+		// #nosec G115 -- each alpha blend is mathematically bounded to 0..255.
 		G: uint8((uint32(pixel.G)*alpha + background*(255-alpha) + 127) / 255),
+		// #nosec G115 -- each alpha blend is mathematically bounded to 0..255.
 		B: uint8((uint32(pixel.B)*alpha + background*(255-alpha) + 127) / 255),
 		A: 255,
 	}

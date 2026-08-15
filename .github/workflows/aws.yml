@@ -1,8 +1,6 @@
-name: Deploy to Amazon ECS
+name: Legacy manual deploy to Amazon ECS
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -122,6 +120,8 @@ jobs:
           task-definition: ${{ runner.temp }}/task-definition.json
           container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.image.outputs.image }}
+          environment-variables: |
+            RELEASE_SHA=${{ github.sha }}
 
       - name: Deploy to Amazon ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@c465972ecbd160473f22e683363b422a5412a3de # v2.6.3

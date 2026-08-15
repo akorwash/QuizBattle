@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily QuizBattle encrypted MongoDB backup schedule
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+RandomizedDelaySec=30m
+Persistent=true
+Unit=quizbattle-mongo-backup.service
+
+[Install]
+WantedBy=timers.target

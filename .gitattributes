@@ -1,0 +1,8 @@
+*.sh text eol=lf
+*.go text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.github/workflows/*.yml text eol=lf
+.github/ssh/known_hosts text eol=lf
+deploy/** text eol=lf

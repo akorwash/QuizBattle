@@ -2,7 +2,7 @@
 
 QuizBattle لعبة معرفة عربية تنافسية مستوحاة من روح **سيف المعرفة**: كل سؤال يتحول إلى بطاقة قابلة للجمع، ويختار كل لاعب خمس بطاقات لساحات فردية أو جماعية يصل عددها إلى 8 لاعبين.
 
-> **الحالة الحالية:** MVP محلي قابل للعب بعد جولة تطوير وتقوية كبيرة. يعمل الحساب، اللوبي العام، الدردشة، محرك الجولات الخادمي، البطاقات، العملات، السوق والتبادل. المشروع **ليس جاهزًا للنشر الإنتاجي بعد** بسبب حواجز أمنية وتشغيلية موثقة أدناه.
+> **الحالة الحالية:** MVP قابل للنشر بإصدار إنتاجي أحادي النسخة ومؤمّن عبر Docker وGitHub Actions وCloudflare. يعمل الحساب، اللوبي العام، الدردشة، محرك الجولات الخادمي، البطاقات، العملات، السوق والتبادل، مع قيود التوسع والصوت الموضحة أدناه.
 
 ## ما يعمل الآن
 
@@ -130,6 +130,7 @@ go run ./cmd/e2e -base http://127.0.0.1:8080
 | `MONGO_DATABASE` | نعم | — | اسم قاعدة البيانات |
 | `JWT_SECRET` | نعم | — | مفتاح عشوائي خاص بكل نشر، 32 حرفًا على الأقل |
 | `APP_ENV` | لا | `production` | استخدم `development` أو `test` فقط محليًا |
+| `RELEASE_SHA` | في production/staging | — | رقم commit كامل: 40 حرفًا hexadecimal صغيرًا؛ يظهر في health checks لمنع نشر إصدار خاطئ |
 | `PORT` | لا | `8080` | منفذ HTTP |
 | `SESSION_TTL` | لا | `1h` | مدة الجلسة بين 15 دقيقة و24 ساعة |
 | `COOKIE_SECURE` | لا | حسب البيئة | لا يمكن تعطيله خارج development/test |
@@ -150,7 +151,7 @@ Public:
 
 - `GET /`, `/about`, `/contact`, `/auth/signin`, `/auth/signup`
 - `POST /user/createuser`, `POST /user/login`, `POST /user/logout`
-- `GET /healthz`, `GET /readyz`
+- `GET /healthz` — يعيد `{"status":"ok","release":"<commit-sha>"}`، و`GET /readyz`
 
 Authenticated account/lobby:
 
@@ -201,15 +202,12 @@ go run github.com/securego/gosec/v2/cmd/gosec@v2.28.0 -quiet ./...
 
 راجع [SECURITY.md](SECURITY.md)، [تقرير المراجعة](docs/review-report-2026-08-15.md)، و[ملاحظات الهجرة](docs/migration-notes.md) قبل أي نشر.
 
-## حواجز النشر المتبقية
+## حدود التشغيل الإنتاجي
 
-لا تنشر قبل تنفيذ الآتي:
-
-- إلغاء/تدوير مفتاح Firebase التاريخي، JWT secret التاريخي، وCoveralls token، وتدقيق استخدامها ثم تنظيف تاريخ Git. حذفها من الشجرة الحالية وحده غير كافٍ.
-- إبقاء نسخة تطبيق واحدة؛ لا autoscaling ولا zero-downtime overlap قبل توزيع WebSocket state/events/rate limits.
-- وضع الأسرار في Secrets Manager/SSM أو بديل مماثل، وإنهاء TLS عند load balancer موثوق.
-- إضافة اختبارات تنافس حقيقية لمعاملات Mongo، container scan، SBOM، attestation/signature، وسياسة task definition ثابتة.
-- إضافة shared realtime broker وميزانية اتصالات/رسائل عالمية قبل التوسع الأفقي.
-- تجهيز TURN بإعتمادات قصيرة العمر صادرة من الخادم قبل اعتبار الصوت جاهزًا للإنتاج؛ STUN وحده لا يضمن الاتصال عبر الشبكات المقيدة.
+- أُلغيت مفاتيح Firebase وCoveralls التاريخية، ويُولّد النشر JWT secret جديدًا. أُعيدت كتابة الفروع القابلة للتعديل وفحص التاريخ الكامل (206 commits) بلا تسريبات؛ يظل طلب إزالة مراجع PR والنسخ المخبأة القديمة لدى GitHub Support إجراء تنظيف متابعة.
+- أبقِ نسخة تطبيق واحدة؛ لا autoscaling ولا zero-downtime overlap قبل توزيع WebSocket state/events/rate limits عبر broker مشترك.
+- تحفظ أسرار التشغيل في ملفات root-only على الخادم، وMongoDB داخلي مع TLS ومصادقة، وتُشفّر النسخ الاحتياطية. انقل النسخ المشفرة ومفتاح الاستعادة إلى موقع منفصل واختبر الاستعادة دوريًا.
+- خط الإنتاج يفحص الاختبارات وrace detector و`govulncheck` و`gosec` وتاريخ الأسرار، ويبني image ثابتة بالـdigest مع SBOM واختبار topology إنتاجي قبل النشر.
+- جهّز TURN بإعتمادات قصيرة العمر صادرة من الخادم قبل اعتبار الصوت مضمونًا على كل الشبكات؛ STUN وحده لا يضمن الاتصال عبر الشبكات المقيدة.
 
 Licensed under the [MIT License](LICENSE).

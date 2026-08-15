@@ -78,6 +78,7 @@ func (controller *AvatarController) Get(avatarService service.AvatarServices) ht
 		w.Header().Set("Content-Type", content.ContentType)
 		w.Header().Set("Content-Length", strconv.Itoa(len(content.Data)))
 		w.WriteHeader(http.StatusOK)
+		// #nosec G705 -- bytes are a server-generated JPEG with a fixed image MIME type.
 		_, _ = w.Write(content.Data)
 	}
 }
@@ -108,6 +109,7 @@ func readAvatarUpload(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 		return nil, avatardomain.ErrImageTooLarge
 	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxAvatarMultipartBytes)
+	// #nosec G120 -- MaxBytesReader above enforces a stricter bound on the complete body.
 	if err := r.ParseMultipartForm(avatardomain.MaxUploadBytes); err != nil {
 		var sizeError *http.MaxBytesError
 		if errors.As(err, &sizeError) {

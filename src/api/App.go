@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -221,10 +222,7 @@ func (app *App) routes(
 		app.sockets.ServeBattle(gameID, identity.UserID, identity.TokenID, identity.FullName, identity.ExpiresAt, w, r)
 	})))))
 
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte("{\"status\":\"ok\"}\n"))
-	})
+	mux.HandleFunc("GET /healthz", app.health)
 	mux.HandleFunc("GET /readyz", app.readiness)
 	staticFiles := http.StripPrefix("/static/", http.FileServer(http.Dir("./static")))
 	mux.Handle("GET /static/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -243,6 +241,15 @@ func (app *App) routes(
 		requestLogging,
 		limitConcurrency(256),
 	)
+}
+
+func (app *App) health(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Cache-Control", "no-store")
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(struct {
+		Status  string `json:"status"`
+		Release string `json:"release"`
+	}{Status: "ok", Release: app.config.ReleaseSHA})
 }
 
 func (app *App) Run(ctx context.Context) error {
