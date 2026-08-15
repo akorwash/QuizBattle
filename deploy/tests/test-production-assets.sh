@@ -128,6 +128,11 @@ assert_fixed 'lock_file="${backup_dir}/.backup.lock"' "${backup_file}"
 assert_fixed "stat -c '%u:%g:%a:%h'" "${backup_file}"
 assert_fixed 'readonly LOCK_FILE="$DEPLOY_DIR/.deploy.lock"' "${deploy_file}"
 assert_fixed 'readonly DOCKER_CONFIG="$DEPLOY_DIR/.docker"' "${deploy_file}"
+assert_fixed 'readonly MONGO_IMAGE="mongo:8.0@sha256:de267922bc1153d923f5c9dc429f21c11faf18299080c1ce04d6d6007097fb06"' "${deploy_file}"
+assert_fixed 'readonly MONGO_REPO_DIGEST="mongo@sha256:de267922bc1153d923f5c9dc429f21c11faf18299080c1ce04d6d6007097fb06"' "${deploy_file}"
+assert_fixed 'pull_and_verify_immutable_image "$MONGO_IMAGE" "$MONGO_REPO_DIGEST"' "${deploy_file}"
+assert_fixed 'pull_and_verify_immutable_image "$target_image" "$target_image"' "${deploy_file}"
+assert_fixed 'Docker did not retain the requested repository digest: ${expected_repo_digest}.' "${deploy_file}"
 assert_fixed 'The previous image revision label does not match the previous release SHA.' "${deploy_file}"
 assert_fixed "'^cf-ray:[[:space:]]*[[:graph:]]+'" "${deploy_file}"
 assert_fixed 'readonly DOCKER_CONFIG_DIR="$DEPLOY_DIR/.docker"' "${installer_file}"
@@ -159,6 +164,18 @@ assert_fixed 'fs.readFileSync("/run/secrets/mongo_app_password"' "${mongo_init_f
 assert_fixed 'QUIZBATTLE_ENV_FILE:-${script_dir}/.env' "${bootstrap_file}"
 assert_fixed 'TRUSTED_PROXY_CIDRS:-172.30.8.1/32' "${bootstrap_file}"
 assert_fixed 'TRUSTED_PROXY_CIDRS=172.30.8.1/32' "${example_file}"
+
+mongo_pull_line="$(grep -nF \
+  'pull_and_verify_immutable_image "$MONGO_IMAGE" "$MONGO_REPO_DIGEST"' \
+  "${deploy_file}" | tail -n 1 | cut -d: -f1)"
+app_pull_line="$(grep -nF \
+  'pull_and_verify_immutable_image "$target_image" "$target_image"' \
+  "${deploy_file}" | tail -n 1 | cut -d: -f1)"
+backup_line="$(grep -nF '  "$BACKUP_SCRIPT"' "${deploy_file}" | head -n 1 | cut -d: -f1)"
+[[ -n "${mongo_pull_line}" && -n "${app_pull_line}" && -n "${backup_line}" ]] \
+  || fail "could not determine immutable-image preflight ordering"
+(( mongo_pull_line < backup_line && app_pull_line < backup_line )) \
+  || fail "all immutable images must be pulled and verified before the first deployment mutation"
 
 if grep -Eq '(^|[[:space:]])set[[:space:]]+-x' "${bootstrap_file}" "${mongo_init_file}" "${backup_file}"; then
   fail "deployment scripts must never enable shell tracing around secrets"

@@ -13,6 +13,8 @@ readonly DOCKER_CONFIG="$DEPLOY_DIR/.docker"
 readonly BACKUP_SCRIPT="$DEPLOY_DIR/backup-mongo.sh"
 readonly APP_PORT="3200"
 readonly PUBLIC_HEALTH_URL="https://quizbattle.qubefyn.com/healthz"
+readonly MONGO_IMAGE="mongo:8.0@sha256:de267922bc1153d923f5c9dc429f21c11faf18299080c1ce04d6d6007097fb06"
+readonly MONGO_REPO_DIGEST="mongo@sha256:de267922bc1153d923f5c9dc429f21c11faf18299080c1ce04d6d6007097fb06"
 export DOCKER_CONFIG
 
 log() {
@@ -69,6 +71,27 @@ write_release_env() {
   chmod 600 "$temporary_file"
   chown root:root "$temporary_file"
   mv -f -- "$temporary_file" "$ENV_FILE"
+}
+
+pull_and_verify_immutable_image() {
+  local image="$1"
+  local expected_repo_digest="$2"
+  local repo_digest
+
+  [[ "$image" == *@sha256:* && "$expected_repo_digest" == *@sha256:* ]] \
+    || die "Refusing to pull an image that is not pinned by digest."
+
+  log "Pulling immutable image ${image}."
+  docker pull "$image"
+
+  while IFS= read -r repo_digest; do
+    if [[ "$repo_digest" == "$expected_repo_digest" ]]; then
+      return 0
+    fi
+  done < <(docker image inspect \
+    --format '{{range .RepoDigests}}{{println .}}{{end}}' "$image")
+
+  die "Docker did not retain the requested repository digest: ${expected_repo_digest}."
 }
 
 verify_health() {
@@ -226,17 +249,11 @@ fi
 compose=(docker compose --project-name quizbattle --env-file "$ENV_FILE" -f "$COMPOSE_FILE")
 "${compose[@]}" config --quiet
 
-log "Pulling and verifying immutable image ${target_image}."
-docker pull "$target_image"
-matched_digest="false"
-while IFS= read -r repo_digest; do
-  if [[ "$repo_digest" == "$target_image" ]]; then
-    matched_digest="true"
-    break
-  fi
-done < <(docker image inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "$target_image")
-[[ "$matched_digest" == "true" ]] \
-  || die "Docker did not retain the requested repository digest."
+# Compose deliberately runs with --pull never so that startup cannot silently
+# substitute a different image. Preload and verify every required immutable
+# image before taking a backup or changing release state.
+pull_and_verify_immutable_image "$MONGO_IMAGE" "$MONGO_REPO_DIGEST"
+pull_and_verify_immutable_image "$target_image" "$target_image"
 image_revision="$(docker image inspect \
   --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' \
   "$target_image")"
