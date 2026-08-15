@@ -1,0 +1,44 @@
+{
+  "valid": true,
+  "input": "questions.ar.jsonl",
+  "questionCount": 1573,
+  "minimumRequired": 1000,
+  "sha256": "460985a05c6772a38b3e0dda81e4b5b535fdc85c694199e68687dd50ccf32900",
+  "countsByCategory": {
+    "cities": 157,
+    "civics": 68,
+    "general-knowledge": 54,
+    "geography": 314,
+    "history": 44,
+    "mathematics": 500,
+    "religion": 114,
+    "science": 236,
+    "technology": 86
+  },
+  "countsByDifficulty": {
+    "easy": 487,
+    "hard": 20,
+    "medium": 1066
+  },
+  "countsByStatus": {
+    "active": 1573
+  },
+  "countsBySourceType": {
+    "generated": 500,
+    "open-data": 358,
+    "primary-reference": 629,
+    "primary-registry": 86
+  },
+  "correctOptionDistribution": {
+    "0": 397,
+    "1": 375,
+    "2": 413,
+    "3": 388
+  },
+  "duplicates": {
+    "ids": 0,
+    "prompts": 0
+  },
+  "errors": [],
+  "warnings": []
+}

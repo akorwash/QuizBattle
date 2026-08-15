@@ -119,3 +119,26 @@
   .mastfoot {
   color: rgba(255, 255, 255, .5);
   }
+
+  .chat-scroll {
+  height: 350px;
+  overflow-y: auto;
+  }
+
+  .message-box {
+  height: 150px;
+  }
+
+  .battle-action-left {
+  bottom: 40px;
+  float: left;
+  position: relative;
+  right: 10px;
+  }
+
+  .battle-action-right {
+  bottom: 40px;
+  float: right;
+  left: 10px;
+  position: relative;
+  }

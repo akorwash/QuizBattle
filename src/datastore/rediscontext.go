@@ -1,40 +1,44 @@
 package datastore
 
 import (
+	"context"
+	"crypto/tls"
 	"fmt"
 	"time"
 
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
-var cashStatus = false
-
-//CheckCashingStatus get the status of cashing system
-func CheckCashingStatus() bool {
-	return cashStatus
-}
-
-//RedisConfiguration config of redis
+// RedisConfiguration config of redis
 type RedisConfiguration struct {
 	EndPoint string
+	Username string
 	Password string
+	UseTLS   bool
 }
 
-//GetRedisContext get the redis context
-func GetRedisContext(config RedisConfiguration) (*redis.Client, error) {
-	client := redis.NewClient(&redis.Options{
-		Addr:        config.EndPoint,
-		Password:    config.Password,
-		DB:          0,
-		MaxRetries:  5,
-		ReadTimeout: time.Minute,
-	})
-
-	_, err := client.Ping().Result()
-	cashStatus = (err == nil)
-	if !cashStatus {
-		fmt.Println("faild to get redis context, ", err.Error())
+// GetRedisContext get the redis context
+func GetRedisContext(ctx context.Context, config RedisConfiguration) (*redis.Client, error) {
+	if config.EndPoint == "" {
+		return nil, fmt.Errorf("Redis endpoint is required")
 	}
+	options := &redis.Options{
+		Addr:         config.EndPoint,
+		Username:     config.Username,
+		Password:     config.Password,
+		DB:           0,
+		MaxRetries:   3,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
+	}
+	if config.UseTLS {
+		options.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
+	client := redis.NewClient(options)
 
+	if err := client.Ping(ctx).Err(); err != nil {
+		_ = client.Close()
+		return nil, fmt.Errorf("connect to Redis: %w", err)
+	}
 	return client, nil
 }

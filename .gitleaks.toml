@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated local build cache; source files are scanned separately"
+paths = [
+  '''^\.cache/''',
+]

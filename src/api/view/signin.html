@@ -1,53 +1,76 @@
-<!DOCTYPE html>
-	<html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-            <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
-            <meta name="author" content="Ahmed Korwash">
-            <title>Quiz Battle - SignIn</title>
-            <link rel="icon" href="/static/icon.png">
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="تسجيل الدخول إلى QuizBattle.">
+    <meta name="author" content="Ahmed Korwash">
+    <meta name="theme-color" content="#071719">
+    <title>QuizBattle — تسجيل الدخول</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.12">
+    <script defer src="/static/api.js?v=20260815.9"></script>
+    <script defer src="/static/auth.js?v=20260815.9"></script>
+  </head>
+  <body class="qb-body qb-page-auth qb-page-signin">
+    <div class="qb-app-shell">
+      <a class="qb-skip-link" href="#mainContent">انتقل إلى نموذج الدخول</a>
 
-            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-            <link rel="stylesheet" href="/static/auth.css">
-              
-            <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-            <script src="/static/auth.js"></script>
-        </head>
-        <body class="text-center">
-            <div class="d-flex w-100 h-100 p-3 mx-auto flex-column">
-          <header class="masthead mb-auto">
-            <div class="inner">
-              <h3 class="masthead-brand">Quiz Battle</h3>
-              <nav class="nav nav-masthead justify-content-center">
-                <a class="nav-link " href="/">Home</a>
-                <a class="nav-link" href="/about">About</a>
-                <a class="nav-link" href="/contact">Contact</a>
-                <a class="nav-link active" href="/auth/signin">Sign In</a>
-              </nav>
-            </div>
-          </header>
-        
-          <main role="main" class="inner cover">
-            <form id="loginform" class="form-signin">
-              <img class="mb-4 rounded " src="/static/icon.png" alt="Quiz battle game icon" width="72" height="72">
-              <h1 class="h3 mb-3 font-weight-normal">Please sign in</h1>
-              <label for="inputEmail" class="sr-only">Email address/Mobile Number</label>
-              <input type="text" name="inputemail" id="inputemail" class="form-control" placeholder="Email or Mobile Number" required autofocus>
-              <label for="inputPassword" class="sr-only">Password</label>
-              <input type="password" name="inputpassword" id="inputpassword" class="form-control" placeholder="Password" required>
-              <button class="btn btn-lg btn-primary btn-block" type="submit">Sign in</button>
-              <a href="/auth/signup">Create new account</a>
-              <span id="errorSumm" class="error text-danger"></span>
-
-            </form>
-          </main>
-        
-          <footer class="mastfoot mt-auto">
-            <div class="inner">
-              <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
-            </div>
-          </footer>
+      <header class="qb-topbar">
+        <div class="qb-container qb-topbar__inner">
+          <a class="qb-brand" href="/" aria-label="QuizBattle — الصفحة الرئيسية">
+            <span class="qb-brand__mark" aria-hidden="true"><img src="/static/quizbattle-logo.png?v=20260815.1" alt="" width="48" height="48"></span>
+            <span>QuizBattle</span>
+          </a>
+          <nav class="qb-nav" aria-label="التنقل الرئيسي">
+            <a class="qb-nav__link" href="/">الرئيسية</a>
+            <a class="qb-nav__link" href="/about">عن اللعبة</a>
+            <a class="qb-nav__link" href="/contact">تواصل معنا</a>
+            <a class="qb-nav__link qb-nav__link--accent" aria-current="page" href="/auth/signin">تسجيل الدخول</a>
+          </nav>
         </div>
-        </body>
-	</html>
+      </header>
+
+      <main id="mainContent" class="qb-main">
+        <div class="qb-auth-shell">
+          <section class="qb-auth-intro" aria-labelledby="signinIntroTitle">
+            <p class="qb-eyebrow">العودة إلى الساحة</p>
+            <h1 id="signinIntroTitle">بطاقاتك ومكافآتك تبدأ بحساب محمي</h1>
+            <p>سجّل الدخول للوصول إلى الساحات العامة ومجلس اللاعبين. الجلسة تحفظ في ملف ارتباط آمن ولا نخزن رمز الدخول داخل المتصفح.</p>
+            <div class="qb-status-banner" role="note">
+              <span class="qb-status-banner__mark" aria-hidden="true">◆</span>
+              <p>استخدم بريدك أو اسم المستخدم أو رقم الهاتف، ولا تشارك كلمة المرور مع أي لاعب.</p>
+            </div>
+          </section>
+
+          <form id="loginform" class="form-signin qb-auth-card qb-panel qb-form" method="post" action="/user/login" data-endpoint="/user/login">
+            <div class="qb-auth-card__mark" aria-hidden="true"><img src="/static/quizbattle-logo.png?v=20260815.1" alt="" width="64" height="64"></div>
+            <div>
+              <h2>تسجيل الدخول</h2>
+              <p class="qb-panel__copy">أدخل بيانات حسابك للمتابعة.</p>
+            </div>
+            <div class="qb-form-group">
+              <label class="qb-label" for="inputemail">البريد أو اسم المستخدم أو رقم الهاتف</label>
+              <input id="inputemail" name="inputemail" class="form-control" type="text" dir="auto" autocomplete="username" maxlength="254" required autofocus>
+            </div>
+            <div class="qb-form-group">
+              <label class="qb-label" for="inputpassword">كلمة المرور</label>
+              <input id="inputpassword" name="inputpassword" class="form-control" type="password" dir="ltr" autocomplete="current-password" maxlength="72" required>
+            </div>
+            <button class="qb-button qb-button--primary" type="submit">دخول إلى QuizBattle</button>
+            <span id="errorSumm" class="qb-error" role="status" aria-live="polite"></span>
+            <div class="qb-auth-card__footer">
+              <span>ليس لديك حساب؟</span>
+              <a href="/auth/signup">أنشئ حسابًا جديدًا</a>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      <footer class="qb-footer">
+        <div class="qb-container"><p>QuizBattle — جلسة آمنة، ومنافسة عادلة.</p></div>
+      </footer>
+    </div>
+  </body>
+</html>

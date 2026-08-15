@@ -1,151 +1,111 @@
 package repository
 
 import (
-	"context"
+	"errors"
 	"fmt"
 
-	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-//MongoUserRepository repo to query the users collection at mongo database
 type MongoUserRepository struct {
-	mongoContext *mongo.Database
+	collection *mongo.Collection
 }
 
-//NewMongoUserRepository ctor for MongoUserRepository
-func NewMongoUserRepository(dbConfig datastore.DBConfiguration) (*MongoUserRepository, error) {
-	dbcontext, err := datastore.GetContext(dbConfig)
-	if err != nil {
-		println("Error while get database context: %v\n", err)
-		return nil, err
-	}
-	repo := MongoUserRepository{}
-	repo.mongoContext = dbcontext
-	return &repo, nil
+func NewMongoUserRepository(database *mongo.Database) *MongoUserRepository {
+	return &MongoUserRepository{collection: database.Collection("users")}
 }
 
-//GetUserByName query the database and find user by their username
-func (repos *MongoUserRepository) GetUserByName(_name string) (*entites.User, error) {
-	filter := bson.M{"username": _name}
-	iter := repos.mongoContext.Collection("users")
-	cursor, err := iter.Find(context.Background(), filter)
-	if err != nil {
-		println("Error while getting all todos, Reason: %v\n", err)
-		return nil, err
-	}
-
-	var _user entites.User
-	for cursor.Next(context.Background()) {
-		cursor.Decode(&_user)
-		break
-	}
-	if _user.Username == "" {
-		return nil, fmt.Errorf("User not found")
-	}
-	return &_user, nil
+func (repository *MongoUserRepository) GetUserByName(name string) (*entites.User, error) {
+	return repository.findOne(bson.M{"username": name})
 }
 
-//GetUserByMobile query the database and find user by their mobile number
-func (repos *MongoUserRepository) GetUserByMobile(_mobile string) (*entites.User, error) {
-	filter := bson.M{"mobilenumber": _mobile}
-	iter := repos.mongoContext.Collection("users")
-	cursor, err := iter.Find(context.Background(), filter)
-	if err != nil {
-		println("Error while getting all todos, Reason: %v\n", err)
-		return nil, err
-	}
-
-	var _user entites.User
-	for cursor.Next(context.Background()) {
-		cursor.Decode(&_user)
-		break
-	}
-	if _user.Username == "" {
-		return nil, fmt.Errorf("User not found")
-	}
-	return &_user, nil
+func (repository *MongoUserRepository) GetUserByMobile(mobile string) (*entites.User, error) {
+	return repository.findOne(bson.M{"mobilenumber": mobile})
 }
 
-//GetUserByEmail query the database and find user by their email
-func (repos *MongoUserRepository) GetUserByEmail(_email string) (*entites.User, error) {
-	filter := bson.M{"email": _email}
-	iter := repos.mongoContext.Collection("users")
-	cursor, err := iter.Find(context.Background(), filter)
-	if err != nil {
-		println("Error while getting all todos, Reason: %v\n", err)
-		return nil, err
-	}
-
-	var _user entites.User
-	for cursor.Next(context.Background()) {
-		cursor.Decode(&_user)
-		break
-	}
-	if _user.Username == "" {
-		return nil, fmt.Errorf("User not found")
-	}
-	return &_user, nil
+func (repository *MongoUserRepository) GetUserByEmail(email string) (*entites.User, error) {
+	return repository.findOne(bson.M{"email": email})
 }
 
-//GetUserByID query the database and find user by their email
-func (repos *MongoUserRepository) GetUserByID(_id int64) (*entites.User, error) {
-	filter := bson.M{"id": bson.M{"$eq": _id}}
-	iter := repos.mongoContext.Collection("users")
-	cursor, err := iter.Find(context.Background(), filter)
-	if err != nil {
-		println("Error while getting all todos, Reason: %v\n", err)
-		return nil, err
-	}
-
-	var _user entites.User
-	for cursor.Next(context.Background()) {
-		cursor.Decode(&_user)
-		break
-	}
-	if _user.Username == "" {
-		return nil, fmt.Errorf("User not found")
-	}
-	return &_user, nil
+func (repository *MongoUserRepository) GetUserByID(id int64) (*entites.User, error) {
+	return repository.findOne(bson.M{"id": id})
 }
 
-//AddUser to do
-func (repos *MongoUserRepository) AddUser(user entites.User) error {
-	iter := repos.mongoContext.Collection("users")
-
-	userCount, err := iter.CountDocuments(context.Background(), bson.M{})
+func (repository *MongoUserRepository) GetUsersByIDs(ids []int64) (map[int64]entites.User, error) {
+	users := make(map[int64]entites.User, len(ids))
+	if len(ids) == 0 {
+		return users, nil
+	}
+	ctx, cancel := operationContext()
+	defer cancel()
+	cursor, err := repository.collection.Find(ctx, bson.M{"id": bson.M{"$in": ids}})
 	if err != nil {
-		println("Error while count users recored: %v\n", err)
+		return nil, fmt.Errorf("find users: %w", err)
+	}
+	defer cursor.Close(ctx)
+	var found []entites.User
+	if err := cursor.All(ctx, &found); err != nil {
+		return nil, fmt.Errorf("decode users: %w", err)
+	}
+	for _, user := range found {
+		users[user.ID] = user
+	}
+	return users, nil
+}
+
+func (repository *MongoUserRepository) findOne(filter bson.M) (*entites.User, error) {
+	ctx, cancel := operationContext()
+	defer cancel()
+	var user entites.User
+	if err := repository.collection.FindOne(ctx, filter).Decode(&user); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find user: %w", err)
+	}
+	return &user, nil
+}
+
+func (repository *MongoUserRepository) AddUser(user *entites.User) error {
+	if user == nil {
+		return fmt.Errorf("add user: nil entity")
+	}
+	id, err := newID()
+	if err != nil {
 		return err
-
 	}
-	user.ID = userCount + 1
-
-	iter.InsertOne(context.Background(), user)
+	user.ID = id
+	ctx, cancel := operationContext()
+	defer cancel()
+	if _, err := repository.collection.InsertOne(ctx, user); err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return ErrConflict
+		}
+		return fmt.Errorf("add user: %w", err)
+	}
 	return nil
 }
 
-//UpdateUser to do
-func (repos *MongoUserRepository) UpdateUser(user entites.User) error {
-	iter := repos.mongoContext.Collection("users")
-
-	filter := bson.M{"id": bson.M{"$eq": user.ID}}
-	update := bson.M{
-		"$set": bson.M{
+func (repository *MongoUserRepository) UpdateUser(user entites.User) error {
+	ctx, cancel := operationContext()
+	defer cancel()
+	result, err := repository.collection.UpdateOne(
+		ctx,
+		bson.M{"id": user.ID},
+		bson.M{"$set": bson.M{
 			"fullname":     user.Fullname,
 			"monthofbirth": user.MonthOfBirth,
 			"yearofbirth":  user.YearOfBirth,
 			"dayofbirth":   user.DayOfBirth,
-			"mobilenumber": user.MobileNumber,
-		},
-	}
-
-	_, err := iter.UpdateOne(
-		context.Background(),
-		filter,
-		update,
+		}},
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("update user: %w", err)
+	}
+	if result.MatchedCount == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

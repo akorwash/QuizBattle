@@ -1,188 +1,280 @@
-<!DOCTYPE html>
-	<html>
-        <head>
-         
-            <meta charset="utf-8">
-            <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-            <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
-            <meta name="author" content="Ahmed Korwash">
-            <title id="pagetile">Quiz Battle - Profile</title>
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="حساب QuizBattle وإدارة الساحات وبطاقات المعرفة والتداولات المستقبلية.">
+    <meta name="author" content="Ahmed Korwash">
+    <meta name="theme-color" content="#071719">
+    <title id="pagetile">QuizBattle — حسابي</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.14">
+    <script defer src="/static/api.js?v=20260815.9"></script>
+    <script defer src="/static/site.js?v=20260815.9"></script>
+    <script defer src="/static/game.js?v=20260815.10"></script>
+    <script defer src="/static/worldchat.js?v=20260815.10"></script>
+    <script defer src="/static/card-visuals.js?v=20260815.9"></script>
+    <script defer src="/static/dashboard.js?v=20260815.9"></script>
+    <script defer src="/static/account.js?v=20260815.10"></script>
+    <script defer src="/static/economy.js?v=20260815.9"></script>
+  </head>
+  <body class="qb-body qb-page-profile">
+    <div class="qb-app-shell">
+      <a class="qb-skip-link" href="#mainContent">انتقل إلى المحتوى</a>
 
-            <script>
-              var title = document.getElementById('pagetile')
-              title.innerText = "Quiz Battle - "+ decodeURI(window.location.href.split('/')[5])
-            </script>
-
-            <link rel="icon" href="/static/icon.png">
-
-            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-            <link rel="stylesheet" href="/static/home.css">
-            <script type="text/javascript" src="/static/urlbase.js"></script>
-
-            <style>
-              .chat_list {
-              border-bottom: 1px solid #c4c4c4;
-              margin: 0;
-              padding: 18px 16px 10px;
-              }
-
-              .chat_people {
-              overflow: hidden;
-              clear: both;
-              }
-
-              .chat_img_left {
-              float: left;
-              width: 11%;
-              }
-              .chat_img_right {
-              float: right;
-              width: 11%;
-              }
-              .chat_ib {
-              float: left;
-              padding: 0 0 0 15px;
-              width: 88%;
-              }
-
-              img {
-              max-width: 100%;
-              border-radius: 50%;
-              }
-
-              img {
-                  vertical-align: middle;
-                  border-style: none;
-              }
-
-
-              .chat_ib h5{ font-size:15px; color:#464646; margin:0 0 8px 0;}
-              .chat_ib h5 span{ font-size:13px; float:right;}
-
-              .left{float: left !important;}
-              .right{float: right !important;}
-              .text-left{text-align:left !important}
-              .text-right{text-align:right !important}
-              .chat_ib p{ font-size:14px; color:#989898; margin:auto}
-            </style>
-            <style type="text/css"> 
-              h1 { 
-                  color:green; 
-              } 
-              .xyz { 
-                  background-size: auto; 
-                  text-align: center; 
-                  padding-top: 100px; 
-              } 
-              .btn-circle.btn-sm { 
-                  width: 30px; 
-                  height: 30px; 
-                  padding: 6px 0px; 
-                  border-radius: 15px; 
-                  font-size: 8px; 
-                  text-align: center; 
-                  font-weight: bold;
-              } 
-              .btn-circle.btn-md { 
-                  width: 50px; 
-                  height: 50px; 
-                  padding: 7px 10px; 
-                  border-radius: 25px; 
-                  font-size: 10px; 
-                  text-align: center; 
-              } 
-              .btn-circle.btn-xl { 
-                  width: 70px; 
-                  height: 70px; 
-                  padding: 10px 16px; 
-                  border-radius: 35px; 
-                  font-size: 12px; 
-                  text-align: center; 
-              } 
-          </style> 
-            <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-        </head>
-        <body class="text-center">
-          <div class=" d-flex w-100 h-100 p-3 mx-auto flex-column">
-          <header class="masthead mb-auto">
-            <div class="inner">
-              <h3 class="masthead-brand">Quiz Battle</h3>
-              <nav class="nav nav-masthead justify-content-center">
-                <a class="nav-link active" href="/">Home</a>
-                <a class="nav-link" href="/about">About</a>
-                <a class="nav-link" href="/contact">Contact</a>
-                <a style="display:block" id="signInNav" class="nav-link" href="/auth/signin">Sign In</a>
-                <a onclick="Logout()" href="" style="display:none" id="logout" class="nav-link">Logout</a>
-                <a style="display:none" id="useracc" class="nav-link" href="/user/profile/"></a>
-
-              </nav>
-            </div>
-          </header>
-          <div class="row">
-            <div class="col-md-4">
-              <div class="my-3 p-3 bg-white rounded shadow-sm">
-                <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">Your Battles</h6>
-                
-                <div class="text-center" id="games_list">
-                 
-            
-                </div>
-                <span id="errorSumm" class="error text-danger"></span>
-                
-                <small style="text-decoration: none; color: black; font-size: 14px;font-weight: bold;" class="d-block text-right mt-3">
-                  <input id="createdmodegame" type="checkbox" checked> Public Game
-                  <button class="btn btn-sm btn-danger" id="creategame" >Create Game</button>
-                </small>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="my-3 p-3 bg-white rounded shadow-sm">
-                <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">World wide chat</h6>
-                <div style="color: black; height: 350px; overflow-y:scroll" id="messages">
-                
-                </div>
-                <span id="worldchaterrorSumm" class="error text-danger"></span>
-
-                <small style="text-decoration: none; color: black; font-size: 14px;font-weight: bold;" class="d-block text-right mt-3">
-                 <textarea required autofocus class="mb-2 form-control" id="inputmessage" placeholder="Your message"></textarea>
-                 <button style="float: left;" class="btn btn-sm btn-primary" id="sendmessage" >Send</button>
-                 <button class="btn btn-sm btn-circle btn-danger" id="onYourMic" >Mic</button>
-                 <button class="btn btn-sm btn-circle btn-danger" id="hearTheWorld" >Hear The World</button>
-                 <input style="position: relative; top:4px" id="volume" type="range" min="0" max="1" step="0.1" value="0.5"/> <span style="color:#464646">Volume</span>
-                </small>
-              </div>
-            </div>
-            <div class="col-md-3">
-              
-              <div class="my-3 p-3 bg-white rounded shadow-sm">
-                <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">Update Your Account</h6>
-                <form id="updateaccform" class="form-signin">
-                  <label for="inputname" class="sr-only">Full name</label>
-                  <input type="text" name="inputname" id="inputname" class="m-2 form-control" placeholder="Full name" required autofocus>
-                  
-                  <label for="inputdob" class="sr-only">Date of Birth</label>
-                  <input type="date" name="inputname" id="inputdob" class="m-2 form-control" placeholder="Full name" required autofocus>
-                  
-                  <button class="btn m-2 btn-lg btn-primary btn-block" type="submit">Update Info</button>
-    
-                  <span id="errorSumm" class="error text-danger"></span>
-    
-                </form>
-              </div>
-            </div>
-          </div>
-          
-        
-          <footer class="mastfoot mt-auto">
-            <div class="inner">
-              <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
-            </div>
-          </footer>
+      <header class="qb-topbar">
+        <div class="qb-container qb-topbar__inner">
+          <a class="qb-brand" href="/" aria-label="QuizBattle — الصفحة الرئيسية">
+            <span class="qb-brand__mark" aria-hidden="true"><img src="/static/quizbattle-logo.png?v=20260815.1" alt="" width="48" height="48"></span>
+            <span>QuizBattle</span>
+          </a>
+          <nav class="qb-nav" aria-label="التنقل الرئيسي">
+            <a class="qb-nav__link" href="/">الرئيسية</a>
+            <a class="qb-nav__link" href="/game/play">الساحة</a>
+            <a id="signInNav" class="qb-nav__link qb-nav__link--accent" href="/auth/signin">تسجيل الدخول</a>
+            <a id="logout" class="qb-nav__link" href="#" hidden>تسجيل الخروج</a>
+            <a id="useracc" class="qb-nav__link" aria-current="page" href="/user/profile" hidden></a>
+          </nav>
         </div>
-        </body>
-        <script type="text/javascript" src="/static/site.js"></script>
-        <script src="/static/authvalidation.js"></script>
-        <script type="text/javascript" src="/static/worldchat.js"></script>
-        <script type="text/javascript" src="/static/voice.js"></script>
-	</html>
+      </header>
+
+      <main id="mainContent" class="qb-main">
+        <div class="qb-container">
+          <section class="qb-profile-summary" aria-labelledby="profileTitle">
+            <a class="qb-profile-summary__avatar" href="#account" aria-label="تغيير صورة الحساب">
+              <img id="profileAvatarImage" alt="" decoding="async" hidden>
+              <span id="profileAvatarFallback" aria-hidden="true">لا</span>
+              <span class="qb-profile-summary__avatar-edit" aria-hidden="true">تغيير</span>
+            </a>
+            <div>
+              <p class="qb-eyebrow">مساحة اللاعب</p>
+              <h1 id="profileTitle">حسابك ومقتنياتك</h1>
+              <p>تابع بطاقاتك ورصيدك وأسواقك وساحاتك من لوحة واحدة.</p>
+            </div>
+            <div class="qb-metric-strip" aria-label="ملخص الحساب">
+              <div class="qb-metric"><strong id="ownedCardsMetric">—</strong><span>بطاقات مملوكة</span></div>
+              <div class="qb-metric"><strong id="walletMetric">—</strong><span>عملة اللعبة</span></div>
+              <div class="qb-metric"><strong id="lockedCoinsMetric">—</strong><span>عملة محجوزة</span></div>
+            </div>
+          </section>
+          <span id="accountError" class="qb-error qb-dashboard-error" role="status" aria-live="polite"></span>
+
+          <nav class="qb-tabs" data-dashboard-tabs aria-label="أقسام حساب اللاعب">
+            <a class="qb-tabs__link" href="#collection">مجموعتي</a>
+            <a class="qb-tabs__link" href="#market">السوق</a>
+            <a class="qb-tabs__link" href="#trades">التبادلات</a>
+            <a class="qb-tabs__link" href="#battles">ساحاتي</a>
+            <a class="qb-tabs__link" href="#community">المجتمع</a>
+            <a class="qb-tabs__link" href="#account">بيانات الحساب</a>
+          </nav>
+
+          <section id="collection" class="qb-panel qb-anchor-section" aria-labelledby="collectionTitle">
+            <header class="qb-panel__header">
+              <div>
+                <h2 id="collectionTitle" class="qb-panel__title">مجموعة بطاقات المعرفة</h2>
+                <p class="qb-panel__copy">اختر بطاقاتك للمباراة أو اعرض بطاقة متاحة في السوق.</p>
+              </div>
+              <span id="collectionCount" class="qb-card__category">جاري التحميل</span>
+            </header>
+            <div class="qb-filter-bar" role="search" aria-label="البحث في بطاقاتك">
+              <div class="qb-form-group">
+                <label class="qb-label" for="cardSearch">ابحث في المجموعة</label>
+                <input id="cardSearch" class="form-control" type="search" autocomplete="off" placeholder="سؤال، مصدر أو رقم بطاقة">
+              </div>
+              <div class="qb-form-group">
+                <label class="qb-label" for="cardCategoryFilter">المجال</label>
+                <select id="cardCategoryFilter" class="form-control">
+                  <option value="">كل المجالات</option>
+                  <option value="mathematics">رياضيات</option>
+                  <option value="geography">جغرافيا</option>
+                  <option value="science">علوم</option>
+                  <option value="cities">مدن</option>
+                  <option value="religion">معرفة دينية</option>
+                  <option value="technology">تقنية</option>
+                  <option value="civics">سياسة ومدنيات</option>
+                  <option value="general-knowledge">ثقافة عامة</option>
+                  <option value="history">تاريخ</option>
+                </select>
+              </div>
+              <div class="qb-form-group">
+                <label class="qb-label" for="cardStatusFilter">الحالة</label>
+                <select id="cardStatusFilter" class="form-control">
+                  <option value="">كل الحالات</option>
+                  <option value="available">متاحة</option>
+                  <option value="match_locked">داخل مباراة</option>
+                  <option value="market_escrow">معروضة للبيع</option>
+                  <option value="trade_escrow">محجوزة للتبادل</option>
+                </select>
+              </div>
+            </div>
+            <div id="cardCollection" class="qb-card-grid" aria-live="polite">
+              <div class="qb-loading-state" role="status">جاري تحميل بطاقاتك ومحفظتك…</div>
+            </div>
+          </section>
+
+          <div class="qb-profile-layout">
+            <section id="market" class="qb-panel qb-anchor-section" aria-labelledby="marketTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="marketTitle" class="qb-panel__title">سوق البطاقات</h2>
+                  <p class="qb-panel__copy">شراء وبيع بطاقات المعرفة بعملة داخلية.</p>
+                </div>
+                <span id="marketStatus" class="qb-card__rarity">جاري التحميل</span>
+              </header>
+              <div id="marketplaceList" class="qb-loading-state" role="status">جاري تحميل عروض السوق…</div>
+            </section>
+
+            <section id="trades" class="qb-panel qb-anchor-section" aria-labelledby="tradesTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="tradesTitle" class="qb-panel__title">عروض التبادل</h2>
+                  <p class="qb-panel__copy">عروض واردة وصادرة مع قبول نهائي من الخادم.</p>
+                </div>
+                <span id="tradeStatus" class="qb-card__rarity">جاري التحميل</span>
+              </header>
+              <div id="tradeOffersList" class="qb-loading-state" role="status">جاري تحميل عروض التبادل…</div>
+              <form id="createTradeForm" class="qb-form mt-3">
+                <h3 class="qb-panel__title">إنشاء عرض مباشر</h3>
+                <p id="tradeFormHelp" class="qb-help">اكتب رقم اللاعب وأرقام البطاقات مفصولة بفواصل. بطاقاتك المعروضة وعملاتك تُحجز حتى القبول أو الإلغاء.</p>
+                <div class="qb-contact-grid">
+                  <div class="qb-form-group"><label class="qb-label" for="tradeReceiver">رقم اللاعب المستلم</label><input id="tradeReceiver" class="form-control" dir="ltr" inputmode="numeric" autocomplete="off" aria-describedby="tradeFormHelp" required></div>
+                  <div class="qb-form-group"><label class="qb-label" for="tradeOfferedCards">بطاقاتك المعروضة</label><input id="tradeOfferedCards" class="form-control" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="123, 456" aria-describedby="tradeFormHelp"></div>
+                  <div class="qb-form-group"><label class="qb-label" for="tradeRequestedCards">البطاقات المطلوبة</label><input id="tradeRequestedCards" class="form-control" dir="ltr" inputmode="numeric" autocomplete="off" placeholder="789" aria-describedby="tradeFormHelp"></div>
+                  <div class="qb-form-group"><label class="qb-label" for="tradeOfferedCoins">عملات تعرضها</label><input id="tradeOfferedCoins" class="form-control" type="number" dir="ltr" min="0" max="100000" value="0"></div>
+                  <div class="qb-form-group"><label class="qb-label" for="tradeRequestedCoins">عملات تطلبها</label><input id="tradeRequestedCoins" class="form-control" type="number" dir="ltr" min="0" max="100000" value="0"></div>
+                </div>
+                <button class="qb-button qb-button--primary" type="submit">إرسال عرض التبادل</button>
+                <span id="tradeError" class="qb-error" role="status" aria-live="polite"></span>
+              </form>
+            </section>
+
+            <section id="battles" class="qb-panel qb-anchor-section" aria-labelledby="battlesTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="battlesTitle" class="qb-panel__title">ساحاتي الحالية</h2>
+                  <p class="qb-panel__copy">الساحات التي أنشأتها أو انضممت إليها.</p>
+                </div>
+              </header>
+              <div id="games_list" class="qb-lobby-list" aria-live="polite"></div>
+              <span id="errorSumm" class="qb-error" role="status" aria-live="polite"></span>
+              <form id="createArenaForm" class="qb-arena-creator" method="post" action="/api/v1/game" novalidate>
+                <input id="createdmodegame" type="checkbox" checked hidden aria-hidden="true" tabindex="-1">
+                <fieldset class="qb-arena-mode-picker">
+                  <legend>اختر نوع الساحة</legend>
+                  <label class="qb-arena-mode-option">
+                    <input id="gameModeDuel" type="radio" name="gameMode" value="duel" checked>
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">1×1</span>
+                    <strong>مواجهة فردية</strong>
+                    <small>لاعبان، فائز واحد</small>
+                  </label>
+                  <label class="qb-arena-mode-option">
+                    <input id="gameModeTeam2" type="radio" name="gameMode" value="team_2v2">
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">2×2</span>
+                    <strong>فريقان صغيران</strong>
+                    <small>4 لاعبين، لاعبان لكل فريق</small>
+                  </label>
+                  <label class="qb-arena-mode-option">
+                    <input id="gameModeTeam4" type="radio" name="gameMode" value="team_4v4">
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">4×4</span>
+                    <strong>معركة الفرق</strong>
+                    <small>8 لاعبين، 4 لكل فريق</small>
+                  </label>
+                  <label class="qb-arena-mode-option">
+                    <input id="gameModeOpen" type="radio" name="gameMode" value="open" aria-controls="openCapacityControl" aria-expanded="false">
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">2–8</span>
+                    <strong>ساحة مفتوحة</strong>
+                    <small>ابدأ بعد جاهزية الموجودين</small>
+                  </label>
+                </fieldset>
+
+                <div id="openCapacityControl" class="qb-open-capacity" hidden>
+                  <label for="openMaxPlayers">الحد الأقصى للاعبين</label>
+                  <input id="openMaxPlayers" class="form-control" type="number" min="2" max="8" step="1" value="8" inputmode="numeric" aria-describedby="openCapacityHint">
+                  <small id="openCapacityHint">يمكن للمالك تجهيز الساحة من لاعبين، وبحد أقصى 8.</small>
+                </div>
+
+                <div class="qb-lobby-controls">
+                  <p class="qb-help">كل الساحات عامة حاليًا. يوزّع الخادم اللاعبين على الفرق تلقائيًا.</p>
+                  <button id="creategame" class="qb-button qb-button--primary" type="submit">إنشاء ساحة 1 ضد 1</button>
+                </div>
+              </form>
+              <p class="qb-help">يمكنك تشغيل 3 ساحات في الوقت نفسه؛ الساحات المكتملة أو المنتهية بالانسحاب تبقى في سجلك ولا تُحتسب ضمن الحد.</p>
+            </section>
+
+            <section id="community" class="qb-panel qb-community-panel qb-anchor-section" aria-labelledby="communityTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="communityTitle" class="qb-panel__title">مجلس اللاعبين</h2>
+                  <p class="qb-panel__copy">المحادثة العامة متاحة هنا وفي ساحة اللاعبين، وتحتفظ بأحدث 100 رسالة لمدة تصل إلى سبعة أيام.</p>
+                </div>
+              </header>
+              <div id="messages" class="chat-scroll qb-chat-messages" role="log" aria-label="رسائل المجتمع" aria-live="polite"></div>
+              <span id="worldchaterrorSumm" class="qb-error" role="status" aria-live="polite"></span>
+              <div class="qb-chat-composer">
+                <label class="visually-hidden" for="inputmessage">اكتب رسالة إلى مجلس اللاعبين</label>
+                <textarea id="inputmessage" class="form-control" rows="2" maxlength="500" placeholder="اكتب رسالتك…" aria-describedby="profileChatHint"></textarea>
+                <button id="sendmessage" class="qb-button qb-button--primary" type="button">إرسال</button>
+              </div>
+              <small id="profileChatHint" class="qb-help">Enter للإرسال، وShift + Enter لسطر جديد. تُعرض أحدث 50 رسالة بعد إعادة التحميل.</small>
+            </section>
+
+            <section id="account" class="qb-panel qb-anchor-section qb-span-full" aria-labelledby="accountTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="accountTitle" class="qb-panel__title">تحديث بيانات الحساب</h2>
+                  <p class="qb-panel__copy">غيّر صورتك واسم العرض وتاريخ الميلاد من مكان واحد.</p>
+                </div>
+              </header>
+              <div id="avatarEditor" class="qb-avatar-editor" aria-labelledby="avatarEditorTitle">
+                <div id="avatarPreviewFrame" class="qb-avatar-editor__preview" aria-busy="false">
+                  <img id="accountAvatarImage" alt="" decoding="async" hidden>
+                  <span id="accountAvatarFallback" aria-hidden="true">لا</span>
+                  <span class="qb-avatar-editor__loader" aria-hidden="true" hidden></span>
+                </div>
+                <div class="qb-avatar-editor__body">
+                  <div>
+                    <h3 id="avatarEditorTitle" class="qb-avatar-editor__title">صورة اللاعب</h3>
+                    <p id="avatarRules" class="qb-help">اختر صورة JPG أو PNG بحجم لا يتجاوز 2 ميجابايت. ستظهر لك معاينة قبل الحفظ.</p>
+                  </div>
+                  <form id="avatarForm" class="qb-avatar-editor__actions" method="post" action="/api/v1/user/avatar" enctype="multipart/form-data" novalidate>
+                    <input id="avatarInput" type="file" name="avatar" accept=".jpg,.jpeg,.png,image/jpeg,image/png" aria-describedby="avatarRules avatarStatus" hidden>
+                    <button id="avatarChooseButton" class="qb-button qb-button--quiet qb-avatar-file-button" type="button">اختيار صورة</button>
+                    <button id="avatarUploadButton" class="qb-button qb-button--primary" type="submit" disabled>حفظ الصورة</button>
+                    <button id="avatarDeleteButton" class="qb-button qb-button--danger" type="button" disabled>حذف الصورة</button>
+                  </form>
+                  <span id="avatarStatus" class="qb-avatar-status" role="status" aria-live="polite"></span>
+                </div>
+              </div>
+              <form id="updateaccform" class="qb-form" method="post" action="/api/v1/user">
+                <div class="qb-contact-grid">
+                  <div class="qb-form-group">
+                    <label class="qb-label" for="inputname">الاسم الكامل</label>
+                    <input id="inputname" name="inputname" class="form-control" type="text" autocomplete="name" maxlength="80" required>
+                  </div>
+                  <div class="qb-form-group">
+                    <label class="qb-label" for="inputdob">تاريخ الميلاد</label>
+                    <input id="inputdob" name="inputdob" class="form-control" type="date" autocomplete="bday" required>
+                  </div>
+                </div>
+                <div class="qb-actions">
+                  <button class="qb-button qb-button--primary" type="submit">حفظ بيانات الحساب</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </div>
+      </main>
+
+      <nav class="qb-bottom-nav" aria-label="تنقل الهاتف">
+        <a href="/">الرئيسية</a>
+        <a href="/game/play">الساحة</a>
+        <a href="/user/profile" aria-current="page">حسابي</a>
+      </nav>
+
+      <footer class="qb-footer">
+        <div class="qb-container"><p>QuizBattle — رصيدك وملكية بطاقاتك يؤكدهما سجل الخادم.</p></div>
+      </footer>
+    </div>
+  </body>
+</html>

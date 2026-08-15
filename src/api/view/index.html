@@ -1,54 +1,117 @@
-<!DOCTYPE html>
-	<html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-            <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
-            <meta name="author" content="Ahmed Korwash">
-            <title>Quiz Battle - Play Now</title>
-            <link rel="icon" href="/static/icon.png">
-            <meta name="google-site-verification" content="krjf7Nj43qZK7G_Kyx52IUyq8bPdcxsnJTMnFO7oEnY" />
-            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-           
-            <link rel="stylesheet" href="/static/home.css">
-        </head>
-        <body class="text-center">
-          <div class="d-flex w-100 h-100 p-3 flex-column">
-              <header class="masthead mb-auto">
-                <div class="inner">
-                  <h3 class="masthead-brand">Quiz Battle</h3>
-                  <nav class="nav nav-masthead justify-content-center">
-                    <a class="nav-link active" href="/">Home</a>
-                    <a class="nav-link" href="/about">About</a>
-                    <a class="nav-link" href="/contact">Contact</a>
-                    <a style="display:block" id="signInNav" class="nav-link" href="/auth/signin">Sign In</a>
-                    <a onclick="Logout()" href="" style="display:none" id="logout" class="nav-link">Logout</a>
-                    <a style="display:none" id="useracc" class="nav-link" href="/user/"></a>
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="QuizBattle لعبة معلومات عربية تنافسية تتحول فيها الأسئلة إلى بطاقات معرفة قابلة للجمع.">
+    <meta name="author" content="Ahmed Korwash">
+    <meta name="theme-color" content="#071719">
+    <meta name="google-site-verification" content="krjf7Nj43qZK7G_Kyx52IUyq8bPdcxsnJTMnFO7oEnY">
+    <title>QuizBattle — ساحة المعرفة</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.12">
+    <script defer src="/static/api.js?v=20260815.9"></script>
+    <script defer src="/static/site.js?v=20260815.9"></script>
+  </head>
+  <body class="qb-body qb-page-home">
+    <div class="qb-app-shell">
+      <a class="qb-skip-link" href="#mainContent">انتقل إلى المحتوى</a>
 
-                  </nav>
-                </div>
-              </header>
-            
-              <main role="main" class="inner cover">
-                <h1 class="cover-heading">Welcome to Quiz Battle!.</h1>
-                <p class="lead">Quiz Battle is a cognitive game, our game players own their questions as "Card" and they can trade their "cards " with others or challenge them in "public/private" battles.</p>
-                <p class="lead">
-                  <a href="/game/play" class="btn btn-lg btn-secondary">Play Now</a>
-                </p>
-              
-                <div class="row">
-                  
-                </div>
-                
-              </main>
-        
-              <footer class="mastfoot mt-auto">
-                <div class="inner">
-                  <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
-                </div>
-              </footer>
-          </div>
-        </body>
+      <header class="qb-topbar">
+        <div class="qb-container qb-topbar__inner">
+          <a class="qb-brand" href="/" aria-label="QuizBattle — الصفحة الرئيسية">
+            <span class="qb-brand__mark" aria-hidden="true"><img src="/static/quizbattle-logo.png?v=20260815.1" alt="" width="48" height="48"></span>
+            <span>QuizBattle</span>
+          </a>
+          <nav class="qb-nav" aria-label="التنقل الرئيسي">
+            <a class="qb-nav__link" aria-current="page" href="/">الرئيسية</a>
+            <a class="qb-nav__link" href="/about">عن اللعبة</a>
+            <a class="qb-nav__link" href="/contact">تواصل معنا</a>
+            <a id="signInNav" class="qb-nav__link qb-nav__link--accent" href="/auth/signin">تسجيل الدخول</a>
+            <a id="logout" class="qb-nav__link" href="#" hidden>تسجيل الخروج</a>
+            <a id="useracc" class="qb-nav__link" href="/user/profile" hidden></a>
+          </nav>
+        </div>
+      </header>
 
-        <script type="text/javascript" src="/static/site.js"></script>
-  </html>
+      <main id="mainContent" class="qb-main">
+        <div class="qb-container">
+          <section class="qb-hero" aria-labelledby="heroTitle">
+            <div>
+              <p class="qb-eyebrow">لعبة معرفة عربية تنافسية</p>
+              <h1 id="heroTitle" class="qb-hero__title">حوّل معرفتك إلى <span>بطاقات قوية</span></h1>
+              <p class="qb-hero__copy">ادخل مواجهة بين لاعبين، اختر خمس بطاقات من مجموعتك، وأجب قبل انتهاء العشرين ثانية. يمنحك الخادم نقاطًا ومكافآت يمكنك استخدامها في سوق البطاقات أو عروض التبادل المباشر.</p>
+              <div class="qb-actions">
+                <a class="qb-button qb-button--brass" href="/game/play">ادخل ساحة اللاعبين</a>
+                <a class="qb-button qb-button--quiet" href="/about">اعرف قواعد المواجهة</a>
+              </div>
+              <div class="qb-status-banner mt-4" role="note">
+                <span class="qb-status-banner__mark" aria-hidden="true">◆</span>
+                <p><strong>نسخة تجريبية قابلة للعب:</strong> يبدأ كل حساب بعشر بطاقات و٦٠٠ عملة. تضم المباراة لاعبين وخمس جولات (عشرة أدوار)، بينما تظل الدعوات الخاصة والترتيب العام خارج هذه النسخة.</p>
+              </div>
+              <span id="errorSumm" class="qb-error" role="status" aria-live="polite"></span>
+            </div>
+
+            <div class="qb-hero__cards" aria-label="أمثلة بصرية لهوية بطاقات QuizBattle">
+              <article class="qb-showcase-card qb-game-card rarity--rare">
+                <div class="qb-card-art qb-game-card__art category--geography" aria-hidden="true">
+                  <img src="/static/art/knowledge-categories-atlas.jpg?v=20260815.1" alt="" width="1200" height="1200" decoding="async" fetchpriority="high">
+                </div>
+                <div class="qb-showcase-card__meta"><span>جغرافيا</span><span>◆◆◆ نادرة</span></div>
+                <h2>مدن على ضفاف الأنهار</h2>
+                <p>مثال بصري يوضّح شكل الفئة والقوة وسجل اللعب.</p>
+                <div class="qb-showcase-card__power"><span>القوة ٧٢</span><span>١٤ دفاعًا</span></div>
+              </article>
+              <article class="qb-showcase-card qb-game-card rarity--epic">
+                <div class="qb-card-art qb-game-card__art category--science" aria-hidden="true">
+                  <img src="/static/art/knowledge-categories-atlas.jpg?v=20260815.1" alt="" width="1200" height="1200" loading="lazy" decoding="async">
+                </div>
+                <div class="qb-showcase-card__meta"><span>علوم</span><span>◆◆ مميزة</span></div>
+                <h2>أسرار المادة والطاقة</h2>
+                <p>مثال بصري؛ بطاقات حسابك الفعلية تظهر داخل صفحة المجموعة.</p>
+                <div class="qb-showcase-card__power"><span>القوة ٥٨</span><span>٨ مواجهات</span></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="qb-section" aria-labelledby="journeyTitle">
+            <div class="qb-section__header">
+              <div>
+                <p class="qb-eyebrow">رحلة اللاعب</p>
+                <h2 id="journeyTitle" class="qb-page-heading">ثلاث خطوات واضحة إلى المواجهة</h2>
+              </div>
+            </div>
+            <div class="qb-feature-grid">
+              <article class="qb-feature">
+                <span class="qb-feature__number">١</span>
+                <h3>تجمّع وتعرّف</h3>
+                <p>أنشئ حسابًا، ادخل لوبي المجتمع وتحدث مع اللاعبين قبل بدء التحدي.</p>
+              </article>
+              <article class="qb-feature">
+                <span class="qb-feature__number">٢</span>
+                <h3>جهّز بطاقاتك</h3>
+                <p>اختر خمس بطاقات متاحة؛ يحجزها الخادم للمباراة ويفك الحجز بعد التسوية.</p>
+              </article>
+              <article class="qb-feature">
+                <span class="qb-feature__number">٣</span>
+                <h3>نافس وتقدّم</h3>
+                <p>يحسب الخادم الإجابات والوقت والمكافأة، ثم يمكنك البيع والشراء أو إنشاء تبادل مباشر.</p>
+              </article>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <nav class="qb-bottom-nav" aria-label="تنقل الهاتف">
+        <a href="/" aria-current="page">الرئيسية</a>
+        <a href="/game/play">الساحة</a>
+        <a href="/user/profile">حسابي</a>
+      </nav>
+
+      <footer class="qb-footer">
+        <div class="qb-container"><p>QuizBattle — المعرفة هي أقوى بطاقة.</p></div>
+      </footer>
+    </div>
+  </body>
+</html>

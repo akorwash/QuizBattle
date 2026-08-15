@@ -1,40 +1,28 @@
 package repository
 
 import (
+	"context"
 	"time"
 
-	"github.com/akorwash/QuizBattle/datastore"
-	"github.com/go-redis/redis"
+	"github.com/redis/go-redis/v9"
 )
 
-//RedisCashingRepository repo to redis cashing
 type RedisCashingRepository struct {
-	context *redis.Client
+	client *redis.Client
 }
 
-//NewRedisCashingRepository ctor for RedisCashingRepository
-func NewRedisCashingRepository(config datastore.RedisConfiguration) (*RedisCashingRepository, error) {
-	context, err := datastore.GetRedisContext(config)
-	if err != nil {
-		println("Error while get redis context: %v\n", err)
-		return nil, err
-	}
-	repo := RedisCashingRepository{}
-	repo.context = context
-	return &repo, nil
+func NewRedisCashingRepository(client *redis.Client) *RedisCashingRepository {
+	return &RedisCashingRepository{client: client}
 }
 
-//SetString set string ket value
-func (repos *RedisCashingRepository) SetString(key string, value string, expiration time.Duration) error {
-	return repos.context.Set(key, value, expiration).Err()
+func (repository *RedisCashingRepository) SetString(ctx context.Context, key, value string, expiration time.Duration) error {
+	return repository.client.Set(ctx, key, value, expiration).Err()
 }
 
-//SetByte set object
-func (repos *RedisCashingRepository) SetByte(key string, value []byte, expiration time.Duration) error {
-	return repos.context.Set(key, value, expiration).Err()
+func (repository *RedisCashingRepository) SetByte(ctx context.Context, key string, value []byte, expiration time.Duration) error {
+	return repository.client.Set(ctx, key, value, expiration).Err()
 }
 
-//Get get value by key
-func (repos *RedisCashingRepository) Get(key string) (string, error) {
-	return repos.context.Get(key).Result()
+func (repository *RedisCashingRepository) Get(ctx context.Context, key string) (string, error) {
+	return repository.client.Get(ctx, key).Result()
 }

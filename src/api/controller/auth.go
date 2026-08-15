@@ -2,10 +2,10 @@ package controller
 
 import "net/http"
 
-//AuthController game controller
+// AuthController game controller
 type AuthController struct{}
 
-//SignInPage SignIn page http requst handler
+// SignInPage SignIn page http requst handler
 func (controller *AuthController) SignInPage(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/auth/signin" {
 		http.Error(w, "Not found", http.StatusNotFound)
@@ -19,7 +19,7 @@ func (controller *AuthController) SignInPage(w http.ResponseWriter, r *http.Requ
 	http.ServeFile(w, r, "./api/view/signin.html")
 }
 
-//SignUpPage SignIn page http requst handler
+// SignUpPage SignIn page http requst handler
 func (controller *AuthController) SignUpPage(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/auth/signup" {
 		http.Error(w, "Not found", http.StatusNotFound)

@@ -1,18 +1,26 @@
 module github.com/akorwash/QuizBattle
 
-go 1.14
+go 1.26.0
+
+toolchain go1.26.6
 
 require (
-	github.com/ahmetb/go-linq v3.0.0+incompatible
-	github.com/dgrijalva/jwt-go v3.2.0+incompatible
-	github.com/go-redis/redis v6.15.9+incompatible
-	github.com/gomodule/redigo v1.8.2
-	github.com/gorilla/mux v1.7.4
-	github.com/gorilla/websocket v1.4.2
-	github.com/nu7hatch/gouuid v0.0.0-20131221200532-179d4d0c4d8d
-	github.com/stretchr/testify v1.5.1
-	go.mongodb.org/mongo-driver v1.4.0
-	golang.org/x/crypto v0.0.0-20200728195943-123391ffb6de
-	golang.org/x/text v0.3.3
-	gopkg.in/go-playground/assert.v1 v1.2.1
+	github.com/golang-jwt/jwt/v5 v5.3.1
+	github.com/gorilla/websocket v1.5.3
+	github.com/redis/go-redis/v9 v9.22.0
+	go.mongodb.org/mongo-driver/v2 v2.8.0
+	golang.org/x/crypto v0.55.0
+	golang.org/x/sync v0.22.0
+)
+
+require (
+	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
+	github.com/xdg-go/scram v1.2.0 // indirect
+	github.com/xdg-go/stringprep v1.0.4 // indirect
+	github.com/youmark/pkcs8 v0.0.0-20240726163527-a2c0da244d78 // indirect
+	go.uber.org/atomic v1.11.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/text v0.41.0 // indirect
 )

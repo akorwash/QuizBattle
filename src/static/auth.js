@@ -1,62 +1,48 @@
-if(window.localStorage.getItem('auth_token')){
-  document.location.href = '/'
-}
+(function () {
+  "use strict";
 
-  $(function () {
-
-    $('#loginform').on('submit', function (e) {
-      var errSpan = document.getElementById('errorSumm')
-      errSpan.innerText = ""
-
-      e.preventDefault();
-
-      $.ajax({
-        type: 'post',
-        url: '/user/login',
-        data: $('form').serialize()
-      })
-      .done(function (data) {
-        window.localStorage.setItem('auth_token', data.Token);
-        window.localStorage.setItem('auth_fullname', data.FullName);
-        window.localStorage.setItem('auth_username', data.Username);
-        window.localStorage.setItem('auth_mobile', data.MobileNumber);
-        window.localStorage.setItem('auth_email', data.Email);
-        window.localStorage.setItem('auth_uid', data.UserID);
-        document.location.href = '/'
-        })
-      .fail(function(failObj){
-        var data = JSON.parse(failObj.responseText);
-        var errSpan = document.getElementById('errorSumm')
-        errSpan.innerText = data.error
-      });
-
+  function bindForm(form, buildPayload) {
+    if (!form) return;
+    form.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      const errorElement = document.getElementById("errorSumm");
+      QuizBattle.showError(errorElement, null);
+      const button = form.querySelector("button[type='submit']");
+      if (button) button.disabled = true;
+      try {
+        const account = await QuizBattle.request(form.dataset.endpoint, {
+          method: "POST",
+          body: buildPayload(form),
+        });
+        QuizBattle.setSession(account);
+        window.location.assign("/");
+      } catch (error) {
+        QuizBattle.showError(errorElement, error);
+      } finally {
+        if (button) button.disabled = false;
+      }
     });
+  }
 
-    $('#signupform').on('submit', function (e) {
-      var errSpan = document.getElementById('errorSumm')
-      errSpan.innerText = ""
+  document.addEventListener("DOMContentLoaded", function () {
+    QuizBattle.getSession()
+      .then(function () { window.location.replace("/"); })
+      .catch(function () {});
 
-      e.preventDefault();
-
-      $.ajax({
-        type: 'post',
-        url: '/user/createuser',
-        data: $('form').serialize()
-      })
-      .done(function (data) {
-        window.localStorage.setItem('auth_token', data.Token);
-        window.localStorage.setItem('auth_fullname', data.FullName);
-        window.localStorage.setItem('auth_username', data.Username);
-        window.localStorage.setItem('auth_mobile', data.MobileNumber);
-        window.localStorage.setItem('auth_email', data.Email);
-        window.localStorage.setItem('auth_uid', data.UserID);
-        document.location.href = '/'
-        })
-      .fail(function(failObj){
-        var data = JSON.parse(failObj.responseText);
-        var errSpan = document.getElementById('errorSumm')
-        errSpan.innerText = data.error
-      });
-
+    bindForm(document.getElementById("loginform"), function (form) {
+      return {
+        identifier: form.elements.inputemail.value,
+        password: form.elements.inputpassword.value,
+      };
+    });
+    bindForm(document.getElementById("signupform"), function (form) {
+      return {
+        fullName: form.elements.inputname.value,
+        email: form.elements.inputemail.value,
+        mobileNumber: form.elements.inputmobile.value,
+        username: form.elements.inputusername.value,
+        password: form.elements.inputpassword.value,
+      };
     });
   });
+})();

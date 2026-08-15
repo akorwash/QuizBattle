@@ -1,165 +1,206 @@
 package repository
 
 import (
-	"context"
+	"errors"
 	"fmt"
+	"time"
 
-	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	matchdomain "github.com/akorwash/QuizBattle/domain/match"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-//MongoGameRepository repo to query the question collection at mongo database
 type MongoGameRepository struct {
-	mongoContext *mongo.Database
+	collection *mongo.Collection
 }
 
-//NewMongoGameRepository ctor for MongoQuestionRepository
-func NewMongoGameRepository(dbConfig datastore.DBConfiguration) (*MongoGameRepository, error) {
-	dbcontext, err := datastore.GetContext(dbConfig)
+const maximumBattleMembers = 8
+
+func NewMongoGameRepository(database *mongo.Database) *MongoGameRepository {
+	// MongoDB collection names are case-sensitive. This is the name used by the
+	// original application and therefore preserves existing battle history.
+	return &MongoGameRepository{collection: database.Collection("Game")}
+}
+
+func (repository *MongoGameRepository) CountActiveGame(userID int64) (int64, error) {
+	ctx, cancel := operationContext()
+	defer cancel()
+	// isactive is a lobby lifecycle flag, not the match status. Terminal games
+	// intentionally remain active so both players can reopen their saved result,
+	// but they must no longer consume the owner's concurrent-battle quota.
+	count, err := repository.collection.CountDocuments(ctx, bson.M{
+		"userid":   userID,
+		"isactive": true,
+		"state": bson.M{"$nin": bson.A{
+			string(matchdomain.StatusCompleted),
+			string(matchdomain.StatusForfeited),
+		}},
+	})
 	if err != nil {
-		println("Error while get database context: %v\n", err)
-		return nil, err
+		return 0, fmt.Errorf("count active games: %w", err)
 	}
-
-	repo := MongoGameRepository{}
-	repo.mongoContext = dbcontext
-	return &repo, nil
+	return count, nil
 }
 
-//Count get total count of games
-func (repos MongoGameRepository) Count() (int64, error) {
-	iter := repos.mongoContext.Collection("Game")
-
-	count, err := iter.CountDocuments(context.Background(), bson.M{})
+func (repository *MongoGameRepository) Add(game *entites.Game) error {
+	if game == nil {
+		return fmt.Errorf("add game: nil entity")
+	}
+	id, err := newID()
 	if err != nil {
-		println("Error while count users recored: %v\n", err)
-		return 0, err
-
+		return err
 	}
-
-	return count, err
-}
-
-//CountActiveGame get total count of games that still active
-func (repos MongoGameRepository) CountActiveGame(usreID uint64) (int64, error) {
-	iter := repos.mongoContext.Collection("Game")
-
-	count, err := iter.CountDocuments(context.Background(), bson.M{"userid": bson.M{"$eq": usreID}, "isactive": bson.M{"$eq": true}})
-	if err != nil {
-		println("Error while count users recored: %v\n", err)
-		return 0, err
-
+	game.ID = id
+	if game.CreatedAt.IsZero() {
+		game.CreatedAt = time.Now().UTC()
 	}
-
-	return count, err
-}
-
-//Add add new game
-func (repos MongoGameRepository) Add(game entites.Game) error {
-	iter := repos.mongoContext.Collection("Game")
-
-	iter.InsertOne(context.Background(), game)
+	ctx, cancel := operationContext()
+	defer cancel()
+	if _, err := repository.collection.InsertOne(ctx, game); err != nil {
+		if mongo.IsDuplicateKeyError(err) {
+			return ErrConflict
+		}
+		return fmt.Errorf("add game: %w", err)
+	}
 	return nil
 }
 
-//JoinedGame new user to join for game
-func (repos MongoGameRepository) JoinedGame(gameID int64, usreID []uint64) error {
-	iter := repos.mongoContext.Collection("Game")
-
-	filter := bson.M{"id": bson.M{"$eq": gameID}}
-	update := bson.M{
-		"$set": bson.M{
-			"joinedusers": usreID,
+func (repository *MongoGameRepository) JoinGame(gameID, userID int64) error {
+	ctx, cancel := operationContext()
+	defer cancel()
+	filter := bson.M{
+		"id":          gameID,
+		"isactive":    true,
+		"joinedusers": bson.M{"$ne": userID},
+		"$or": bson.A{
+			bson.M{"state": "lobby"},
+			bson.M{"state": ""},
+			bson.M{"state": bson.M{"$exists": false}},
 		},
+		"$expr": bson.M{"$lt": bson.A{
+			bson.M{"$size": bson.M{"$ifNull": bson.A{"$joinedusers", bson.A{}}}},
+			bson.M{"$min": bson.A{bson.M{"$ifNull": bson.A{"$maxplayers", 2}}, maximumBattleMembers}},
+		}},
 	}
-
-	_, err := iter.UpdateOne(
-		context.Background(),
-		filter,
-		update,
-	)
-	return err
+	result, err := repository.collection.UpdateOne(ctx, filter, bson.M{"$addToSet": bson.M{"joinedusers": userID}})
+	if err != nil {
+		return fmt.Errorf("join game: %w", err)
+	}
+	if result.MatchedCount == 0 {
+		return ErrConflict
+	}
+	return nil
 }
 
-//CloseGame this will end the game
-func (repos MongoGameRepository) CloseGame(gameID int64) error {
-	iter := repos.mongoContext.Collection("Game")
-
-	filter := bson.M{"id": bson.M{"$eq": gameID}}
-	update := bson.M{
-		"$set": bson.M{
-			"isactive": false,
+func (repository *MongoGameRepository) LeaveGame(gameID, userID int64) error {
+	return repository.updateMembers(
+		bson.M{
+			"id": gameID, "isactive": true, "joinedusers": userID,
+			"$or": exitAllowedGameStates(),
 		},
-	}
-
-	_, err := iter.UpdateOne(
-		context.Background(),
-		filter,
-		update,
+		bson.M{"$pull": bson.M{"joinedusers": userID}},
 	)
-	return err
 }
 
-//GetGameByID query the database and find user by their email
-func (repos *MongoGameRepository) GetGameByID(_id int64) (*entites.Game, error) {
-	filter := bson.M{"id": bson.M{"$eq": _id}}
-	iter := repos.mongoContext.Collection("Game")
-	cursor, err := iter.Find(context.Background(), filter)
+func (repository *MongoGameRepository) updateMembers(filter, update bson.M) error {
+	ctx, cancel := operationContext()
+	defer cancel()
+	result, err := repository.collection.UpdateOne(ctx, filter, update)
 	if err != nil {
-		println("Error while getting all todos, Reason: %v\n", err)
-		return nil, err
+		return fmt.Errorf("update game membership: %w", err)
 	}
-
-	var _entity entites.Game
-	for cursor.Next(context.Background()) {
-		cursor.Decode(&_entity)
-		break
+	if result.MatchedCount == 0 {
+		return ErrNotFound
 	}
-
-	if _entity.ID == 0 {
-		return nil, fmt.Errorf("game not found")
-	}
-	return &_entity, nil
+	return nil
 }
 
-//GetPublicBattle query the database and find public battles
-func (repos *MongoGameRepository) GetPublicBattle() ([]entites.Game, error) {
-	filter := bson.M{"ispublic": bson.M{"$eq": true}}
-	iter := repos.mongoContext.Collection("Game")
-	cursor, err := iter.Find(context.Background(), filter)
+func (repository *MongoGameRepository) CloseGame(gameID int64) error {
+	ctx, cancel := operationContext()
+	defer cancel()
+	result, err := repository.collection.UpdateOne(
+		ctx,
+		bson.M{"id": gameID, "isactive": true, "$or": exitAllowedGameStates()},
+		bson.M{"$set": bson.M{"isactive": false}},
+	)
 	if err != nil {
-		println("Error while getting all todos, Reason: %v\n", err)
-		return nil, err
+		return fmt.Errorf("close game: %w", err)
 	}
+	if result.MatchedCount == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
 
-	var entities []entites.Game
-	for cursor.Next(context.Background()) {
-		var _entity entites.Game
-		cursor.Decode(&_entity)
-		if _entity.IsActive {
-			entities = append(entities, _entity)
+func exitAllowedGameStates() bson.A {
+	return bson.A{
+		bson.M{"state": "lobby"},
+		bson.M{"state": ""},
+		bson.M{"state": bson.M{"$exists": false}},
+		bson.M{"state": string(matchdomain.StatusCompleted)},
+		bson.M{"state": string(matchdomain.StatusForfeited)},
+	}
+}
+
+func (repository *MongoGameRepository) GetGameByID(id int64) (*entites.Game, error) {
+	ctx, cancel := operationContext()
+	defer cancel()
+	var game entites.Game
+	if err := repository.collection.FindOne(ctx, bson.M{"id": id}).Decode(&game); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrNotFound
 		}
+		return nil, fmt.Errorf("find game: %w", err)
 	}
-	return entities, nil
+	return &game, nil
 }
 
-//GetMyBattle query the database and find public battles
-func (repos *MongoGameRepository) GetMyBattle(userID uint64) ([]entites.Game, error) {
-	filter := bson.M{"joinedusers": bson.M{"$in": []uint64{userID}}}
-	iter := repos.mongoContext.Collection("Game")
-	cursor, err := iter.Find(context.Background(), filter)
-	if err != nil {
-		println("Error while getting all todos, Reason: %v\n", err)
-		return nil, err
-	}
+func (repository *MongoGameRepository) GetPublicBattle() ([]entites.Game, error) {
+	return repository.findMany(bson.M{
+		"ispublic": true,
+		"isactive": true,
+		"$or": bson.A{
+			bson.M{"state": "lobby"},
+			bson.M{"state": ""},
+			bson.M{"state": bson.M{"$exists": false}},
+		},
+		"$expr": bson.M{"$and": bson.A{
+			bson.M{"$lte": bson.A{
+				bson.M{"$size": bson.M{"$ifNull": bson.A{"$joinedusers", bson.A{}}}},
+				bson.M{"$ifNull": bson.A{"$maxplayers", 2}},
+			}},
+			bson.M{"$lte": bson.A{bson.M{"$ifNull": bson.A{"$maxplayers", 2}}, maximumBattleMembers}},
+		}},
+	})
+}
 
-	var entities []entites.Game
-	for cursor.Next(context.Background()) {
-		var _entity entites.Game
-		cursor.Decode(&_entity)
-		entities = append(entities, _entity)
+func (repository *MongoGameRepository) GetMyBattle(userID int64) ([]entites.Game, error) {
+	return repository.findMany(bson.M{
+		"joinedusers": userID,
+		"isactive":    true,
+		"$expr": bson.M{"$and": bson.A{
+			bson.M{"$lte": bson.A{
+				bson.M{"$size": bson.M{"$ifNull": bson.A{"$joinedusers", bson.A{}}}},
+				bson.M{"$ifNull": bson.A{"$maxplayers", 2}},
+			}},
+			bson.M{"$lte": bson.A{bson.M{"$ifNull": bson.A{"$maxplayers", 2}}, maximumBattleMembers}},
+		}},
+	})
+}
+
+func (repository *MongoGameRepository) findMany(filter bson.M) ([]entites.Game, error) {
+	ctx, cancel := operationContext()
+	defer cancel()
+	cursor, err := repository.collection.Find(ctx, filter, options.Find().SetLimit(100).SetSort(bson.D{{Key: "createdat", Value: -1}, {Key: "id", Value: -1}}))
+	if err != nil {
+		return nil, fmt.Errorf("find games: %w", err)
 	}
-	return entities, nil
+	defer cursor.Close(ctx)
+	games := make([]entites.Game, 0)
+	if err := cursor.All(ctx, &games); err != nil {
+		return nil, fmt.Errorf("decode games: %w", err)
+	}
+	return games, nil
 }

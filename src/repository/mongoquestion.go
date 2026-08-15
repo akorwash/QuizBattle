@@ -1,50 +1,33 @@
 package repository
 
 import (
-	"context"
+	"errors"
+	"fmt"
 
-	"github.com/akorwash/QuizBattle/datastore"
 	"github.com/akorwash/QuizBattle/datastore/entites"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
-//MongoQuestionRepository repo to query the question collection at mongo database
 type MongoQuestionRepository struct {
-	mongoContext *mongo.Database
+	collection *mongo.Collection
 }
 
-//GetQuestionByID query the database and find question by id
-func (repos *MongoQuestionRepository) GetQuestionByID(_id int) (*entites.Question, error) {
-
-	filter := bson.M{"id": _id}
-	iter := repos.mongoContext.Collection("Question")
-	cursor, err := iter.Find(context.Background(), filter)
-	if err != nil {
-		println("Error while getting all todos, Reason: %v\n", err)
-		return nil, err
-	}
-
-	var _question entites.Question
-	for cursor.Next(context.Background()) {
-		cursor.Decode(&_question)
-		break
-	}
-	if _question.Header == "" {
-		return nil, nil
-	}
-	return &_question, nil
+func NewMongoQuestionRepository(database *mongo.Database) *MongoQuestionRepository {
+	// Keep the original collection name so existing installations do not
+	// silently start reading from an empty collection after the driver upgrade.
+	return &MongoQuestionRepository{collection: database.Collection("Question")}
 }
 
-//NewMongoQuestionRepository ctor for MongoQuestionRepository
-func NewMongoQuestionRepository(dbConfig datastore.DBConfiguration) (*MongoQuestionRepository, error) {
-	dbcontext, err := datastore.GetContext(dbConfig)
-	if err != nil {
-		println("Error while get database context: %v\n", err)
-		return nil, err
+func (repository *MongoQuestionRepository) GetQuestionByID(id int) (*entites.Question, error) {
+	ctx, cancel := operationContext()
+	defer cancel()
+	var question entites.Question
+	if err := repository.collection.FindOne(ctx, bson.M{"id": id}).Decode(&question); err != nil {
+		if errors.Is(err, mongo.ErrNoDocuments) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find question: %w", err)
 	}
-
-	repo := MongoQuestionRepository{}
-	repo.mongoContext = dbcontext
-	return &repo, nil
+	return &question, nil
 }

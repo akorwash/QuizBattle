@@ -1,61 +1,88 @@
-<!DOCTYPE html>
-	<html>
-        <head>
-          <script>
-            console.log(window.location.href.split('/'))
-          </script>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-            <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
-            <meta name="author" content="Ahmed Korwash">
-            <title>Quiz Battle - About Us</title>
-            <link rel="icon" href="/static/icon.png">
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="تعرف على رؤية QuizBattle كلعبة معلومات عربية تنافسية مبنية على بطاقات المعرفة.">
+    <meta name="author" content="Ahmed Korwash">
+    <meta name="theme-color" content="#071719">
+    <title>QuizBattle — عن اللعبة</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.12">
+    <script defer src="/static/api.js?v=20260815.9"></script>
+    <script defer src="/static/site.js?v=20260815.9"></script>
+  </head>
+  <body class="qb-body qb-page-info qb-page-about">
+    <div class="qb-app-shell">
+      <a class="qb-skip-link" href="#mainContent">انتقل إلى المحتوى</a>
 
-            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-            <link rel="stylesheet" href="/static/home.css">    
-        </head>
-        <body class="text-center">
-            <div class=" d-flex w-100 h-100 p-3 flex-column">
-              <header class="masthead mb-auto">
-                <div class="inner">
-                  <h3 class="masthead-brand">Quiz Battle</h3>
-                  <nav class="nav nav-masthead justify-content-center">
-                    <a class="nav-link " href="/">Home</a>
-                    <a class="nav-link active" href="/about">About</a>
-                    <a class="nav-link" href="/contact">Contact</a>
-                    <a style="display:block" id="signInNav" class="nav-link" href="/auth/signin">Sign In</a>
-                    <a onclick="Logout()" href="" style="display:none" id="logout" class="nav-link">Logout</a>
-                    <a style="display:none" id="useracc" class="nav-link" href="/user/profile/"></a>
-    
-                  </nav>
-                </div>
-              </header>
-
-          <main role="main" class="inner cover">
-            <h1 class="cover-heading">Welcome to Quiz Battle!.</h1>
-            <h1><a id="user-content-story" class="anchor" aria-hidden="true" href="#story"><svg class="octicon octicon-link" viewBox="0 0 16 16" version="1.1" width="16" height="16" aria-hidden="true"><path fill-rule="evenodd" d="M7.775 3.275a.75.75 0 001.06 1.06l1.25-1.25a2 2 0 112.83 2.83l-2.5 2.5a2 2 0 01-2.83 0 .75.75 0 00-1.06 1.06 3.5 3.5 0 004.95 0l2.5-2.5a3.5 3.5 0 00-4.95-4.95l-1.25 1.25zm-4.69 9.64a2 2 0 010-2.83l2.5-2.5a2 2 0 012.83 0 .75.75 0 001.06-1.06 3.5 3.5 0 00-4.95 0l-2.5 2.5a3.5 3.5 0 004.95 4.95l1.25-1.25a.75.75 0 00-1.06-1.06l-1.25 1.25a2 2 0 01-2.83 0z"></path></svg></a>Story?</h1>
-            <ul>
-              <li>each player can join a quiz battle with other online players or <strong>bots</strong></li>
-              <li>the quiz battle will be 5:10 rounds each round have a 5 questions</li>
-              <li>if the player have no cards they will get get a randome cards each card represent a question</li>
-              <li>eacher round the player will select only 5 cards based or his choice or card's strength [<strong>"power"</strong>] <strong>"if they choice randome selection"</strong></li>
-              <li>when the round started all the cards hold by game engine until the end of round</li>
-              <li>when other players anwser the question of the card became the <strong>"owner"</strong> of the card</li>
-              <li>when the player faild to answer (card's strength [<strong>"power"</strong>] increase) and (number of <strong>hits</strong> increase by one)</li>
-              <li>after each round cards realse again with their new [<strong>"owners"</strong>] and updated [<strong>"power"</strong>]</li>
-              <li>player can't choice same cards in the same battle</li>
-              <li>at the end of the battle game engine will calculate the winners and provide them <strong>"PB"</strong> points</li>
-              <li>players can trade (offer, buy) cards from the cards market</li>
-              <li>player can see leaderboard list based on <strong>"PB"</strong> points</li>
-              </ul>
-          </main>
-        
-          <footer class="mastfoot mt-auto">
-            <div class="inner">
-              <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
-            </div>
-          </footer>
+      <header class="qb-topbar">
+        <div class="qb-container qb-topbar__inner">
+          <a class="qb-brand" href="/" aria-label="QuizBattle — الصفحة الرئيسية">
+            <span class="qb-brand__mark" aria-hidden="true"><img src="/static/quizbattle-logo.png?v=20260815.1" alt="" width="48" height="48"></span>
+            <span>QuizBattle</span>
+          </a>
+          <nav class="qb-nav" aria-label="التنقل الرئيسي">
+            <a class="qb-nav__link" href="/">الرئيسية</a>
+            <a class="qb-nav__link" aria-current="page" href="/about">عن اللعبة</a>
+            <a class="qb-nav__link" href="/contact">تواصل معنا</a>
+            <a id="signInNav" class="qb-nav__link qb-nav__link--accent" href="/auth/signin">تسجيل الدخول</a>
+            <a id="logout" class="qb-nav__link" href="#" hidden>تسجيل الخروج</a>
+            <a id="useracc" class="qb-nav__link" href="/user/profile" hidden></a>
+          </nav>
         </div>
-        </body>
-        <script type="text/javascript" src="/static/site.js"></script>
-	</html>
+      </header>
+
+      <main id="mainContent" class="qb-main">
+        <div class="qb-container">
+          <p class="qb-eyebrow">الفكرة والرؤية</p>
+          <h1 class="qb-page-heading">لعبة معلومات تُعامل السؤال كأصل معرفي</h1>
+          <p class="qb-page-lead">QuizBattle مستوحاة من روح مسابقات المعرفة العربية، لكنها تبني تنافسها حول بطاقات لها قوة ومالك وسجل انتقالات واضح.</p>
+
+          <div class="qb-info-layout">
+            <section class="qb-info-card" aria-labelledby="story">
+              <h2 id="story">كيف تعمل المواجهة؟</h2>
+              <ol>
+                <li>يجهز كل لاعب خمس بطاقات ويدخلها في حجز المباراة.</li>
+                <li>يختار الخادم السؤال والدور والوقت ولا يكشف الإجابة الصحيحة مبكرًا.</li>
+                <li>ترسل المتصفحات أوامر فقط؛ النتيجة والنقاط يقررهما الخادم.</li>
+                <li>تُسوّى النتيجة والمكافآت وتُفك حجوزات البطاقات في عملية خادمة قابلة لإعادة المحاولة.</li>
+              </ol>
+            </section>
+
+            <section class="qb-info-card" aria-labelledby="currentStatusTitle">
+              <h2 id="currentStatusTitle">ما الذي يعمل الآن؟</h2>
+              <ul>
+                <li>إنشاء الحساب وتسجيل الدخول وتحديث الملف الشخصي.</li>
+                <li>ساحات عامة ثنائية، ومجلس لاعبين عام، وتحديثات فورية.</li>
+                <li>خمس جولات وعشرة أدوار مؤقتة مع نقاط ومكافآت خادمة.</li>
+                <li>عشر بطاقات بداية، ومحفظة عملات، وسوق، وعروض تبادل مباشر.</li>
+              </ul>
+            </section>
+
+            <section class="qb-info-card" aria-labelledby="fairPlayTitle">
+              <h2 id="fairPlayTitle">نزاهة المباراة</h2>
+              <p>الإجابة الصحيحة لا تصل إلى المتصفح قبل إغلاق الجولة، والمواعيد تعتمد على وقت الخادم. يحمل كل أمر حساس مفتاحًا يمنع التكرار، ولا يمكن حجز البطاقة في أكثر من مباراة أو عملية تداول في الوقت نفسه.</p>
+            </section>
+
+            <section class="qb-info-card" aria-labelledby="economyTitle">
+              <h2 id="economyTitle">اقتصاد دون تضليل</h2>
+              <p>يعرض السوق البطاقات المتاحة فقط، ويحجز البطاقة عند العرض والعملات عند التبادل. البيع من ١٠ إلى ١٠٠٬٠٠٠ عملة برسوم سوق ٥٪ (بحد أدنى عملة واحدة)، وتُنفذ الملكية والرصيد داخل معاملة واحدة.</p>
+            </section>
+          </div>
+
+          <div class="qb-status-banner mt-4" role="note">
+            <span class="qb-status-banner__mark" aria-hidden="true">◆</span>
+            <p>القواعد الحالية: لاعبان، خمس جولات، خمس بطاقات لكل لاعب، عشرة أدوار، وعشرون ثانية للإجابة في كل دور. الدعوات الخاصة والترتيب العام غير متاحين بعد.</p>
+          </div>
+          <span id="errorSumm" class="qb-error" role="status" aria-live="polite"></span>
+        </div>
+      </main>
+
+      <footer class="qb-footer">
+        <div class="qb-container"><p>QuizBattle — منافسة عادلة، وملكية قابلة للمراجعة.</p></div>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,93 +1,134 @@
-# This workflow will build and push a new container image to Amazon ECR,
-# and then will deploy a new task definition to Amazon ECS, when a release is created
-#
-# To use this workflow, you will need to complete the following set-up steps:
-#
-# 1. Create an ECR repository to store your images.
-#    For example: `aws ecr create-repository --repository-name my-ecr-repo --region us-east-2`.
-#    Replace the value of `ECR_REPOSITORY` in the workflow below with your repository's name.
-#    Replace the value of `aws-region` in the workflow below with your repository's region.
-#
-# 2. Create an ECS task definition, an ECS cluster, and an ECS service.
-#    For example, follow the Getting Started guide on the ECS console:
-#      https://us-east-2.console.aws.amazon.com/ecs/home?region=us-east-2#/firstRun
-#    Replace the values for `service` and `cluster` in the workflow below with your service and cluster names.
-#
-# 3. Store your ECS task definition as a JSON file in your repository.
-#    The format should follow the output of `aws ecs register-task-definition --generate-cli-skeleton`.
-#    Replace the value of `task-definition` in the workflow below with your JSON file's name.
-#    Replace the value of `container-name` in the workflow below with the name of the container
-#    in the `containerDefinitions` section of the task definition.
-#
-# 4. Store an IAM user access key in GitHub Actions secrets named `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
-#    See the documentation for each action used below for the recommended IAM policies for this IAM user,
-#    and best practices on handling the access key credentials.
+name: Deploy to Amazon ECS
 
 on:
-  push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  release:
+    types: [published]
+  workflow_dispatch:
 
-name: Deploy to Amazon ECS
+permissions:
+  contents: read
+
+concurrency:
+  group: quizbattle-production
+  cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Deploy
+    name: Verify and deploy immutable image
     runs-on: ubuntu-latest
-
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER }}
+      ECS_SERVICE: ${{ vars.ECS_SERVICE }}
+      ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION }}
+      CONTAINER_NAME: ${{ vars.ECS_CONTAINER_NAME }}
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v1
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: eu-west-2
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: src/go.mod
+          cache-dependency-path: src/go.sum
 
-    - name: Login to Amazon ECR
-      id: login-ecr
-      uses: aws-actions/amazon-ecr-login@v1
+      - name: Test
+        working-directory: src
+        run: go test -race -count=1 ./...
 
-    - name: Delete Image task
-      run:  
-           aws ecr batch-delete-image --repository-name quizbattle-repo --image-ids imageTag=latest
-           
-    - name: Build, tag, and push image to Amazon ECR
-      id: build-image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: quizbattle-repo
-        IMAGE_TAG: latest
-      run: |
-        # Build a docker container and
-        # push it to ECR so that it can
-        # be deployed to ECS.
-        echo $ECR_REGISTRY
-        echo $IMAGE_TAG
-        echo $ECR_REPOSITORY
-        docker build -t 396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:latest .
-        docker push 396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:latest
-        echo "::set-output name=image::396713953330.dkr.ecr.eu-west-2.amazonaws.com/quizbattle-repo:latest"
+      - name: Validate deployment configuration
+        shell: bash
+        run: |
+          for name in AWS_REGION ECR_REPOSITORY ECS_CLUSTER ECS_SERVICE ECS_TASK_DEFINITION CONTAINER_NAME; do
+            if [ -z "${!name}" ]; then
+              echo "Missing GitHub Actions variable: $name"
+              exit 1
+            fi
+          done
 
-    - name: Fill in the new image ID in the Amazon ECS task definition
-      id: task-def
-      uses: aws-actions/amazon-ecs-render-task-definition@v1
-      with:
-        task-definition: .aws/task-definition.json
-        container-name: quizbattle-app
-        image: ${{ steps.build-image.outputs.image }}
+      - name: Configure short-lived AWS credentials
+        uses: aws-actions/configure-aws-credentials@517a711dbcd0e402f90c77e7e2f81e849156e31d # v6.2.2
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
-    - name: Deploy Amazon ECS task definition
-      uses: aws-actions/amazon-ecs-deploy-task-definition@v1
-      with:
-        task-definition: ${{ steps.task-def.outputs.task-definition }}
-        service: quizbattle-app
-        cluster: quizbattle
-        wait-for-service-stability: true
-        
-    
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@d539f0932e70871a027e9d5a9d8fc38589180a64 # v2.1.6
 
- 
+      - name: Enforce single-replica and immutable-registry baseline
+        shell: bash
+        run: |
+          read -r desired minimum maximum <<< "$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" \
+            --services "$ECS_SERVICE" \
+            --query 'services[0].[desiredCount,deploymentConfiguration.minimumHealthyPercent,deploymentConfiguration.maximumPercent]' \
+            --output text)"
+          if [ "$desired" != "1" ] || [ "$minimum" != "0" ] || [ "$maximum" != "100" ]; then
+            echo "QuizBattle currently requires desiredCount=1, minimumHealthyPercent=0, and maximumPercent=100."
+            exit 1
+          fi
+          mutability="$(aws ecr describe-repositories \
+            --repository-names "$ECR_REPOSITORY" \
+            --query 'repositories[0].imageTagMutability' \
+            --output text)"
+          if [ "$mutability" != "IMMUTABLE" ]; then
+            echo "The ECR repository must have immutable tags enabled."
+            exit 1
+          fi
+
+      - name: Build and push immutable image
+        id: image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          tagged_image="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          existing_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null || true)"
+          if [[ "$existing_digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "The immutable commit tag already exists; refusing to deploy an artifact not built by this run."
+            exit 1
+          fi
+          docker build --tag "$tagged_image" .
+          push_output="$(docker push "$tagged_image")"
+          echo "$push_output"
+          digest="$(printf '%s\n' "$push_output" | awk '{for (field = 1; field <= NF; field++) if ($field ~ /^sha256:/) value = $field} END {print value}')"
+          if [[ ! "$digest" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "Could not resolve the pushed image digest."
+            exit 1
+          fi
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY@$digest" >> "$GITHUB_OUTPUT"
+
+      - name: Download active task definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition "$ECS_TASK_DEFINITION" \
+            --query taskDefinition \
+            > "${{ runner.temp }}/task-definition.json"
+
+      - name: Render immutable image into task definition
+        id: task
+        uses: aws-actions/amazon-ecs-render-task-definition@6853cfae8c3a7d978fbf68b5a55453395541dfbb # v1.8.5
+        with:
+          task-definition: ${{ runner.temp }}/task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.image.outputs.image }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@c465972ecbd160473f22e683363b422a5412a3de # v2.6.3
+        with:
+          task-definition: ${{ steps.task.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+          enable-ecs-managed-tags: true
+          propagate-tags: SERVICE

@@ -1,129 +1,149 @@
 package controller
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
-	"strings"
+	"time"
 
+	"github.com/akorwash/QuizBattle/datastore/entites"
 	"github.com/akorwash/QuizBattle/resources"
 	"github.com/akorwash/QuizBattle/service"
+	"github.com/akorwash/QuizBattle/service/createaccount"
 	"github.com/akorwash/QuizBattle/service/login"
 )
 
-//UserController user controller
-type UserController struct{}
-
-//CreateUser handle create user http request
-func (controller *UserController) CreateUser(createAccountService service.ICreateAccountServices) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var _user resources.CreateAccountModel
-
-		if strings.Contains(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
-			inputemail := r.FormValue("inputemail")
-			inputpassword := r.FormValue("inputpassword")
-			inputmobile := r.FormValue("inputmobile")
-			inputusername := r.FormValue("inputusername")
-			inputname := r.FormValue("inputname")
-			_user = resources.CreateAccountModel{FullName: inputname, Email: inputemail, Password: inputpassword, MobileNumber: inputmobile, Username: inputusername}
-		} else {
-			decoder := json.NewDecoder(r.Body)
-			if err := decoder.Decode(&_user); err != nil {
-				responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-				return
-			}
-		}
-
-		defer r.Body.Close()
-
-		response, err := createAccountService.CrateUser(_user)
-		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		responseHandler.RespondWithJSON(w, http.StatusCreated, *response)
+type UserController struct {
+	authenticator *Authenticator
+	connections   interface {
+		DisconnectSession(userID int64, tokenID string, expiresAt time.Time)
 	}
 }
 
-//UpdateUser handle create user http request
-func (controller *UserController) UpdateUser(updateAccountSvc service.IUpdateAccountServices) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		var _user resources.UpdateAccountModel
-		decoder := json.NewDecoder(r.Body)
-		if err := decoder.Decode(&_user); err != nil {
-			fmt.Println("Invalid request payload")
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-			return
-		}
-		defer r.Body.Close()
+func NewUserController(authenticator *Authenticator, connections interface {
+	DisconnectSession(userID int64, tokenID string, expiresAt time.Time)
+}) *UserController {
+	return &UserController{authenticator: authenticator, connections: connections}
+}
 
-		response, err := updateAccountSvc.UpdateUser(_user)
-		if err != nil {
+func (controller *UserController) CreateUser(createAccountService *createaccount.CreateAccountServices) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var input resources.CreateAccountModel
+		if err := decodeJSON(w, r, &input); err != nil {
 			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-
-		responseHandler.RespondWithJSON(w, http.StatusOK, *response)
+		account, err := createAccountService.CreateUser(input)
+		if err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		if err := controller.issueAccountSession(w, account); err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		responseHandler.RespondWithJSON(w, http.StatusCreated, account)
 	}
 }
 
-//Login  handle user login http request
-func (controller *UserController) Login(loginsvc *login.LoginService) func(w http.ResponseWriter, r *http.Request) {
+func (controller *UserController) Login(loginService *login.LoginService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var _userLogin resources.UserLogin
-		if strings.Contains(r.Header.Get("Content-Type"), "application/x-www-form-urlencoded") {
-			_identifer := r.FormValue("inputemail")
-			_password := r.FormValue("inputpassword")
-			_userLogin = resources.UserLogin{Identifier: _identifer, Password: _password}
-		} else {
-			decoder := json.NewDecoder(r.Body)
-			if err := decoder.Decode(&_userLogin); err != nil {
-				responseHandler.RespondWithError(w, http.StatusBadRequest, "Identifier Invalid request payload")
-				return
-			}
-		}
-
-		defer r.Body.Close()
-
-		if len(_userLogin.Identifier) <= 0 {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Identifier Invalid request payload")
-			return
-		}
-		if len(_userLogin.Password) <= 0 {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Password Invalid request payload")
-			return
-		}
-
-		loginModel := login.LoginFactory(loginsvc, _userLogin.Identifier, _userLogin.Password)
-		loginres, user, err := login.Login(loginModel)
-		if err != nil {
+		var input resources.UserLogin
+		if err := decodeJSON(w, r, &input); err != nil {
 			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
+			return
 		}
-		switch loginres {
-		case true:
-			token, err := login.CreateToken(*user)
-			if err != nil {
-				responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
-				return
-			}
+		user, err := loginService.Authenticate(input.Identifier, input.Password)
+		if err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		if err := controller.authenticator.IssueSession(w, *user); err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		account := service.AccountFromUser(user)
+		w.Header().Set("Cache-Control", "no-store")
+		responseHandler.RespondWithJSON(w, http.StatusOK, account)
+	}
+}
 
-			response := resources.UserAccount{UserID: user.ID, FullName: user.Fullname, Username: user.Username, MobileNumber: user.MobileNumber, Email: user.Email, Token: token}
-			responseHandler.RespondWithJSON(w, http.StatusOK, response)
+func (controller *UserController) UpdateUser(updateAccountService service.IUpdateAccountServices) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, err := Identity(r)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "authentication required")
 			return
-		case false:
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Password Invalid")
+		}
+		var input resources.UpdateAccountModel
+		if err := decodeJSON(w, r, &input); err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
+		}
+		account, err := updateAccountService.UpdateUser(identity.UserID, input)
+		if err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		if err := controller.authenticator.Revoke(identity); err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		if err := controller.issueAccountSession(w, account); err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		responseHandler.RespondWithJSON(w, http.StatusOK, account)
+		if controller.connections != nil {
+			controller.connections.DisconnectSession(identity.UserID, identity.TokenID, controller.authenticator.revocationExpiry(identity))
 		}
 	}
 }
 
-//UserProfilePage user profile page http requst handler
+func (controller *UserController) Session(accountService *service.AccountService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, err := Identity(r)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		account, err := accountService.GetAccount(identity.UserID)
+		if err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		responseHandler.RespondWithJSON(w, http.StatusOK, account)
+	}
+}
+
+func (controller *UserController) Logout(w http.ResponseWriter, r *http.Request) {
+	if rawToken, err := controller.authenticator.extractToken(r); err == nil {
+		if identity, verifyErr := controller.authenticator.verifySignedToken(rawToken); verifyErr == nil {
+			if revokeErr := controller.authenticator.Revoke(identity); revokeErr != nil {
+				responseHandler.RespondWithError(w, http.StatusServiceUnavailable, "could not end session safely; retry")
+				return
+			}
+			if controller.connections != nil {
+				controller.connections.DisconnectSession(identity.UserID, identity.TokenID, controller.authenticator.revocationExpiry(identity))
+			}
+		}
+	}
+	controller.authenticator.ClearSession(w)
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (controller *UserController) UserProfilePage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	http.ServeFile(w, r, "./api/view/user.html")
+}
+
+func (controller *UserController) issueAccountSession(w http.ResponseWriter, account *resources.UserAccount) error {
+	return controller.authenticator.IssueSession(w, entites.User{
+		ID:           account.UserID,
+		Username:     account.Username,
+		Fullname:     account.FullName,
+		Email:        account.Email,
+		MobileNumber: account.MobileNumber,
+	})
 }

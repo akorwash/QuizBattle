@@ -2,321 +2,393 @@ package service
 
 import (
 	"fmt"
+	"strings"
+	"sync"
 
 	"github.com/akorwash/QuizBattle/datastore/entites"
+	matchdomain "github.com/akorwash/QuizBattle/domain/match"
 	"github.com/akorwash/QuizBattle/repository"
 	"github.com/akorwash/QuizBattle/resources"
-	"github.com/akorwash/QuizBattle/websockets"
 )
 
-//GameService busniess of how to create account
+const (
+	maximumActiveBattlesPerOwner = 3
+	maximumPlayersPerBattle      = 8
+)
+
+type GameEventPublisher interface {
+	PublishGameEvent(event resources.GameEvent)
+}
+
+type GameAccessCoordinator interface {
+	AllowBattleUser(gameID, userID int64)
+	DisconnectBattleUser(gameID, userID int64)
+}
+
 type GameService struct {
-	gameRepo repository.IGameRepository
-	userRepo repository.IUserRepository
+	gameRepo        repository.IGameRepository
+	userRepo        repository.IUserRepository
+	events          GameEventPublisher
+	createMu        sync.Mutex
+	membershipLocks [64]sync.Mutex
 }
 
-//NewGameService busniess of how to create account
-func NewGameService(_gameRepo repository.IGameRepository, _userrepo repository.IUserRepository) *GameService {
-	return &GameService{gameRepo: _gameRepo, userRepo: _userrepo}
+func NewGameService(gameRepo repository.IGameRepository, userRepo repository.IUserRepository, events GameEventPublisher) *GameService {
+	return &GameService{gameRepo: gameRepo, userRepo: userRepo, events: events}
 }
 
-//CreateNewGame to do
-func (svc GameService) CreateNewGame(model resources.CreateGameModel) (*resources.Game, error) {
-	user, err := svc.userRepo.GetUserByID(int64(model.UserID))
+func (service *GameService) CreateNewGame(userID int64, model resources.CreateGameModel) (*resources.Game, error) {
+	if !model.IsPublic {
+		return nil, fmt.Errorf("%w: private battles require an invitation flow that is not implemented yet", ErrInvalidInput)
+	}
+	mode, _, maximumPlayers, _, err := normalizeGameMode(model.Mode, model.MaxPlayers)
 	if err != nil {
 		return nil, err
 	}
-
-	if user == nil {
-		return nil, fmt.Errorf("User not found")
+	if _, err := service.validateUser(userID); err != nil {
+		return nil, err
 	}
-
-	countActiveGame, err := svc.gameRepo.CountActiveGame(model.UserID)
+	// A single replica is the supported topology until the realtime/state
+	// layer is distributed. Serialize creation so concurrent requests cannot
+	// bypass the per-owner quota inside that supported topology.
+	service.createMu.Lock()
+	defer service.createMu.Unlock()
+	activeCount, err := service.gameRepo.CountActiveGame(userID)
 	if err != nil {
 		return nil, err
 	}
-
-	if countActiveGame >= 3 {
-		return nil, fmt.Errorf("Can't create another game you have 3 games active")
+	if activeCount >= maximumActiveBattlesPerOwner {
+		return nil, ErrActiveGameLimit
 	}
-
-	gamesCount, err := svc.gameRepo.Count()
+	game := &entites.Game{
+		IsPublic:    model.IsPublic,
+		IsActive:    true,
+		UserID:      userID,
+		Mode:        string(mode),
+		MaxPlayers:  maximumPlayers,
+		JoinedUsers: []int64{userID},
+		State:       "lobby",
+	}
+	if err := service.gameRepo.Add(game); err != nil {
+		return nil, err
+	}
+	service.publish("created", game.ID)
+	result, err := service.toResource(game)
 	if err != nil {
 		return nil, err
 	}
-
-	var game = resources.Game{ID: gamesCount + 1, IsActive: true, IsPublic: true}
-	err = svc.gameRepo.Add(entites.Game{ID: game.ID, IsActive: true, UserID: model.UserID, IsPublic: true, JoinedUsers: []uint64{model.UserID}})
-	if err != nil {
-		return nil, err
-	}
-
-	if websockets.Games == nil {
-		websockets.Games = make(map[int64]resources.Game)
-	}
-
-	if websockets.GameConnections == nil {
-		websockets.GameConnections = make(map[int64]websockets.Hub)
-	}
-
-	joinedUser := resources.UserModel{ID: user.ID, Fullname: user.Fullname}
-	game.User = joinedUser
-	game.JoinedUser = append(game.JoinedUser, joinedUser)
-	websockets.Games[game.ID] = game
-
-	hub := websockets.NewHub()
-	go hub.Run()
-	websockets.GameConnections[game.ID] = *hub
-
-	return &game, nil
+	return result, nil
 }
 
-//JoinGame to do
-func (svc GameService) JoinGame(userID uint64, gameID int64, modAny bool) (*resources.Game, error) {
-	//check where the owner user exist in our system
-	user, err := svc.validateUser(userID)
+func (service *GameService) JoinGame(userID, gameID int64) (*resources.Game, error) {
+	if _, err := service.validateUser(userID); err != nil {
+		return nil, err
+	}
+	unlock := service.lockBattle(gameID)
+	defer unlock()
+	game, err := service.gameRepo.GetGameByID(gameID)
 	if err != nil {
 		return nil, err
 	}
-
-	//here we check about join mod, maybe the player need to join or create
-	if gameID == 0 {
-		return svc.CreateNewGame(resources.CreateGameModel{IsPublic: true, UserID: userID})
-	}
-
-	//check where the game already exist in our system
-	game, err := svc.gameRepo.GetGameByID(gameID)
-	if err != nil {
-		return nil, err
-	}
-
 	if !game.IsActive {
-		return nil, fmt.Errorf("This game is closed")
+		return nil, ErrGameClosed
 	}
-
-	//validate the owner of the game already exist
-	ownderuser, err := svc.validateUser(game.UserID)
+	if game.State != "" && game.State != "lobby" {
+		return nil, ErrBattleFull
+	}
+	if containsUser(game.JoinedUsers, userID) {
+		return service.toResource(game)
+	}
+	if !game.IsPublic {
+		return nil, ErrForbidden
+	}
+	_, _, maximumPlayers, _, err := gameModeDetails(game)
 	if err != nil {
 		return nil, err
 	}
-	owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Fullname}
-	//insure that player not joineed the game twice
-	alreadyExist, seed := svc.checkExistInJoinedPlayer(userID, game)
-	if alreadyExist && !modAny {
-		return nil, fmt.Errorf("User already joined this game")
+	if len(game.JoinedUsers) >= maximumPlayers {
+		return nil, ErrBattleFull
 	}
+	if err := service.gameRepo.JoinGame(gameID, userID); err != nil {
+		return nil, err
+	}
+	if coordinator, ok := service.events.(GameAccessCoordinator); ok {
+		coordinator.AllowBattleUser(gameID, userID)
+	}
+	game.JoinedUsers = append(game.JoinedUsers, userID)
+	service.publish("joined", gameID)
+	result, err := service.toResource(game)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
 
-	//wirte to database joined players and update the document
-	if seed {
-		game.JoinedUsers = append(game.JoinedUsers, userID)
-		err = svc.gameRepo.JoinedGame(gameID, game.JoinedUsers)
-		if err != nil {
+func (service *GameService) ExitGame(userID, gameID int64) (*resources.Game, error) {
+	if _, err := service.validateUser(userID); err != nil {
+		return nil, err
+	}
+	unlock := service.lockBattle(gameID)
+	defer unlock()
+	game, err := service.gameRepo.GetGameByID(gameID)
+	if err != nil {
+		return nil, err
+	}
+	if !game.IsActive {
+		return nil, ErrGameClosed
+	}
+	if !containsUser(game.JoinedUsers, userID) {
+		return nil, ErrForbidden
+	}
+	if game.State != "" && game.State != "lobby" && game.State != "completed" && game.State != "forfeited" {
+		return nil, ErrMatchInProgress
+	}
+	eventType := "left"
+	if game.UserID == userID {
+		if err := service.gameRepo.CloseGame(gameID); err != nil {
 			return nil, err
 		}
-	}
-
-	if websockets.Games == nil {
-		websockets.Games = make(map[int64]resources.Game)
-	}
-
-	if _gamesocket, ok := websockets.Games[game.ID]; ok {
-		svc.updateSocketGame(_gamesocket, user)
+		game.IsActive = false
+		eventType = "closed"
 	} else {
-		gameSocket := resources.Game{ID: game.ID, IsActive: true, IsPublic: game.IsPublic, User: owneruser, TimeLine: game.TimeLine}
-		for _, _juserID := range game.JoinedUsers {
-			_juser, err := svc.userRepo.GetUserByID(int64(_juserID))
-			if err != nil || user == nil {
-				continue
-			}
-
-			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Username}
-			gameSocket.JoinedUser = append(gameSocket.JoinedUser, jUser)
+		if err := service.gameRepo.LeaveGame(gameID, userID); err != nil {
+			return nil, err
 		}
-		websockets.Games[game.ID] = gameSocket
+		if coordinator, ok := service.events.(GameAccessCoordinator); ok {
+			coordinator.DisconnectBattleUser(gameID, userID)
+		}
+		game.JoinedUsers = withoutUser(game.JoinedUsers, userID)
 	}
-
-	responseGameModel := websockets.Games[game.ID]
-	return &responseGameModel, nil
-}
-
-//ExitGame to do
-func (svc GameService) ExitGame(userID uint64, gameID int64) (*resources.Game, error) {
-	//check where the owner user exist in our system
-	_, err := svc.validateUser(userID)
+	service.publish(eventType, gameID)
+	result, err := service.toResource(game)
 	if err != nil {
 		return nil, err
 	}
+	return result, nil
+}
 
-	//check where the game already exist in our system
-	game, err := svc.gameRepo.GetGameByID(gameID)
+func (service *GameService) GetBattle(userID, gameID int64) (*resources.Game, error) {
+	game, err := service.gameRepo.GetGameByID(gameID)
 	if err != nil {
 		return nil, err
 	}
-
-	//insure that player not joineed the game twice
-	alreadyExist := svc.checkExistInGame(userID, game)
-	if !alreadyExist {
-		return nil, fmt.Errorf("User not joined this game yet")
+	if !game.IsActive {
+		return nil, ErrGameClosed
 	}
-
-	//wirte to database joined players and update the document
-	jusers := svc.getJoinedUsers(userID, game)
-	if len(jusers) > 1 {
-		err = svc.gameRepo.JoinedGame(gameID, jusers)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		err = svc.gameRepo.CloseGame(gameID)
-		if err != nil {
-			return nil, err
-		}
-
-		game, err = svc.gameRepo.GetGameByID(gameID)
-		if err != nil {
-			return nil, err
-		}
+	if !containsUser(game.JoinedUsers, userID) {
+		return nil, ErrForbidden
 	}
-
-	if websockets.Games == nil {
-		websockets.Games = make(map[int64]resources.Game)
-	}
-
-	if _gamesocket, ok := websockets.Games[game.ID]; ok {
-		_gamesocket.IsActive = game.IsActive
-		_gamesocket.JoinedUser = svc.getJoinedUsersFromSocketGane(userID, _gamesocket)
-		websockets.Games[_gamesocket.ID] = _gamesocket
-	} else {
-		return nil, fmt.Errorf("Game not intiated by system")
-	}
-
-	responseGameModel := websockets.Games[game.ID]
-	return &responseGameModel, nil
+	return service.toResource(game)
 }
 
-func (svc GameService) validateUser(userID uint64) (*entites.User, error) {
-	user, err := svc.userRepo.GetUserByID(int64(userID))
+func (service *GameService) CanAccessBattle(userID, gameID int64) error {
+	game, err := service.gameRepo.GetGameByID(gameID)
+	if err != nil {
+		return err
+	}
+	if !game.IsActive || !containsUser(game.JoinedUsers, userID) {
+		return ErrForbidden
+	}
+	return nil
+}
+
+func (service *GameService) GetPublicBattles() ([]resources.Game, error) {
+	games, err := service.gameRepo.GetPublicBattle()
 	if err != nil {
 		return nil, err
 	}
+	return service.mapGames(games)
+}
 
-	if user == nil {
-		return nil, fmt.Errorf("User not found")
+func (service *GameService) GetMyBattles(userID int64) ([]resources.Game, error) {
+	if _, err := service.validateUser(userID); err != nil {
+		return nil, err
 	}
-	return user, nil
-}
-
-func (svc GameService) checkExistInJoinedPlayer(userID uint64, game *entites.Game) (notExist bool, seed bool) {
-	seed = true
-	notExist = false
-	for _, uID := range game.JoinedUsers {
-		if uID == userID {
-			seed = false
-			if _gamesocket, ok := websockets.Games[game.ID]; ok {
-				for _, joinedUser := range _gamesocket.JoinedUser {
-					if joinedUser.ID == int64(userID) {
-						notExist = true
-					}
-				}
-			}
-		}
-	}
-	return notExist, seed
-}
-
-func (svc GameService) checkExistInGame(userID uint64, game *entites.Game) (notExist bool) {
-	notExist = false
-	for _, uID := range game.JoinedUsers {
-		if uID == userID {
-			notExist = true
-			break
-		}
-	}
-	return notExist
-}
-
-func (svc GameService) getJoinedUsers(userID uint64, game *entites.Game) (users []uint64) {
-	for _, uID := range game.JoinedUsers {
-		if uID != userID {
-			users = append(users, uID)
-		}
-	}
-	return users
-}
-
-func (svc GameService) getJoinedUsersFromSocketGane(userID uint64, _gamesocket resources.Game) (users []resources.UserModel) {
-	for _, uID := range _gamesocket.JoinedUser {
-		if uID.ID != int64(userID) {
-			users = append(users, uID)
-		}
-	}
-	return users
-}
-
-func (svc GameService) updateSocketGame(_gamesocket resources.Game, user *entites.User) {
-	userplayer := resources.UserModel{ID: user.ID, Fullname: user.Username}
-	_gamesocket.JoinedUser = append(_gamesocket.JoinedUser, userplayer)
-	websockets.Games[_gamesocket.ID] = _gamesocket
-}
-
-//GetPublicBattles get public battles
-func (svc GameService) GetPublicBattles() ([]resources.Game, error) {
-	var response []resources.Game
-	games, err := svc.gameRepo.GetPublicBattle()
+	games, err := service.gameRepo.GetMyBattle(userID)
 	if err != nil {
-		return nil, fmt.Errorf("Error we can't get data now")
+		return nil, err
 	}
-
-	for _, game := range games {
-		ownderuser, err := svc.validateUser(game.UserID)
-		if err != nil {
-			return nil, err
-		}
-
-		owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Fullname}
-		_game := resources.Game{ID: game.ID, IsActive: game.IsActive, IsPublic: game.IsPublic, User: owneruser}
-
-		for _, _juserID := range game.JoinedUsers {
-			_juser, err := svc.userRepo.GetUserByID(int64(_juserID))
-			if err != nil {
-				continue
-			}
-
-			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Fullname}
-			_game.JoinedUser = append(_game.JoinedUser, jUser)
-		}
-		response = append(response, _game)
-	}
-	return response, nil
+	return service.mapGames(games)
 }
 
-//GetMyBattles get my battles
-func (svc GameService) GetMyBattles(userID uint64) ([]resources.Game, error) {
-	var response []resources.Game
-	games, err := svc.gameRepo.GetMyBattle(userID)
-	if err != nil {
-		return nil, fmt.Errorf("Error we can't get data now")
-	}
-
-	for _, game := range games {
-		ownderuser, err := svc.validateUser(game.UserID)
-		if err != nil {
-			return nil, err
+func (service *GameService) mapGames(games []entites.Game) ([]resources.Game, error) {
+	ids := make([]int64, 0, len(games)*(maximumPlayersPerBattle+1))
+	seen := make(map[int64]struct{}, cap(ids))
+	for index := range games {
+		_, _, maximumPlayers, _, modeErr := gameModeDetails(&games[index])
+		if modeErr != nil || len(games[index].JoinedUsers) > maximumPlayers {
+			continue
 		}
-
-		owneruser := resources.UserModel{ID: ownderuser.ID, Fullname: ownderuser.Fullname}
-		_game := resources.Game{ID: game.ID, IsActive: game.IsActive, IsPublic: game.IsPublic, User: owneruser}
-
-		for _, _juserID := range game.JoinedUsers {
-			_juser, err := svc.userRepo.GetUserByID(int64(_juserID))
-			if err != nil {
-				continue
+		appendUserID := func(id int64) {
+			if id <= 0 {
+				return
 			}
-
-			jUser := resources.UserModel{ID: _juser.ID, Fullname: _juser.Fullname}
-			_game.JoinedUser = append(_game.JoinedUser, jUser)
+			if _, exists := seen[id]; exists {
+				return
+			}
+			seen[id] = struct{}{}
+			ids = append(ids, id)
 		}
-		response = append(response, _game)
+		appendUserID(games[index].UserID)
+		for _, id := range games[index].JoinedUsers {
+			appendUserID(id)
+		}
 	}
-	return response, nil
+	users, err := service.userRepo.GetUsersByIDs(ids)
+	if err != nil {
+		return nil, fmt.Errorf("load battle users: %w", err)
+	}
+	result := make([]resources.Game, 0, len(games))
+	for index := range games {
+		_, _, maximumPlayers, _, modeErr := gameModeDetails(&games[index])
+		if modeErr != nil || len(games[index].JoinedUsers) > maximumPlayers {
+			continue
+		}
+		game, ok := resourceFromUsers(&games[index], users)
+		if !ok {
+			continue
+		}
+		result = append(result, game)
+	}
+	return result, nil
+}
+
+func (service *GameService) toResource(game *entites.Game) (*resources.Game, error) {
+	_, _, maximumPlayers, _, err := gameModeDetails(game)
+	if err != nil {
+		return nil, err
+	}
+	if len(game.JoinedUsers) > maximumPlayers {
+		return nil, fmt.Errorf("battle membership exceeds supported limit")
+	}
+	ids := make([]int64, 0, len(game.JoinedUsers)+1)
+	ids = append(ids, game.UserID)
+	ids = append(ids, game.JoinedUsers...)
+	users, err := service.userRepo.GetUsersByIDs(ids)
+	if err != nil {
+		return nil, fmt.Errorf("load battle users: %w", err)
+	}
+	result, ok := resourceFromUsers(game, users)
+	if !ok {
+		return nil, fmt.Errorf("load battle owner: %w", repository.ErrNotFound)
+	}
+	return &result, nil
+}
+
+func resourceFromUsers(game *entites.Game, users map[int64]entites.User) (resources.Game, bool) {
+	owner, found := users[game.UserID]
+	if !found {
+		return resources.Game{}, false
+	}
+	mode, minimumPlayers, maximumPlayers, teamSize, err := gameModeDetails(game)
+	if err != nil {
+		return resources.Game{}, false
+	}
+	result := &resources.Game{
+		ID:         game.ID,
+		IsPublic:   game.IsPublic,
+		IsActive:   game.IsActive,
+		Owner:      resources.UserModel{ID: owner.ID, FullName: owner.Fullname},
+		Mode:       string(mode),
+		MinPlayers: minimumPlayers,
+		MaxPlayers: maximumPlayers,
+		TeamSize:   teamSize,
+		Timeline:   append([]string(nil), game.TimeLine...),
+		State:      game.State,
+		MatchID:    game.MatchID,
+	}
+	for index, joinedUserID := range game.JoinedUsers {
+		user, found := users[joinedUserID]
+		if !found {
+			continue
+		}
+		result.JoinedUsers = append(result.JoinedUsers, resources.UserModel{
+			ID: user.ID, FullName: user.Fullname, Team: teamForPlayer(mode, index),
+		})
+	}
+	return *result, true
+}
+
+func normalizeGameMode(rawMode string, requestedMaximum int) (matchdomain.Mode, int, int, int, error) {
+	if strings.TrimSpace(rawMode) == "" {
+		rawMode = string(matchdomain.ModeDuel)
+	}
+	mode, err := matchdomain.NormalizeMode(rawMode)
+	if err != nil {
+		return "", 0, 0, 0, fmt.Errorf("%w: %v", ErrInvalidInput, err)
+	}
+	minimumPlayers := matchdomain.MinPlayers(mode)
+	maximumPlayers := matchdomain.MaxPlayers(mode)
+	teamSize := matchdomain.TeamSize(mode)
+	if mode == matchdomain.ModeOpen {
+		if requestedMaximum == 0 {
+			requestedMaximum = maximumPlayers
+		}
+		if requestedMaximum < minimumPlayers || requestedMaximum > maximumPlayersPerBattle {
+			return "", 0, 0, 0, fmt.Errorf("%w: open battle capacity must be between %d and %d", ErrInvalidInput, minimumPlayers, maximumPlayersPerBattle)
+		}
+		maximumPlayers = requestedMaximum
+	} else if requestedMaximum != 0 && requestedMaximum != maximumPlayers {
+		return "", 0, 0, 0, fmt.Errorf("%w: %s battles require exactly %d players", ErrInvalidInput, mode, maximumPlayers)
+	}
+	return mode, minimumPlayers, maximumPlayers, teamSize, nil
+}
+
+func gameModeDetails(game *entites.Game) (matchdomain.Mode, int, int, int, error) {
+	if game == nil {
+		return "", 0, 0, 0, fmt.Errorf("%w: nil battle", ErrInvalidInput)
+	}
+	requestedMaximum := game.MaxPlayers
+	if strings.TrimSpace(game.Mode) == "" {
+		requestedMaximum = 0
+	}
+	return normalizeGameMode(game.Mode, requestedMaximum)
+}
+
+func teamForPlayer(mode matchdomain.Mode, rosterIndex int) int {
+	if mode != matchdomain.ModeTeam2v2 && mode != matchdomain.ModeTeam4v4 {
+		return 0
+	}
+	return rosterIndex%2 + 1
+}
+
+func (service *GameService) validateUser(userID int64) (*entites.User, error) {
+	if userID <= 0 {
+		return nil, ErrForbidden
+	}
+	return service.userRepo.GetUserByID(userID)
+}
+
+func (service *GameService) publish(eventType string, gameID int64) {
+	if service.events != nil {
+		service.events.PublishGameEvent(resources.GameEvent{Type: eventType, GameID: gameID})
+	}
+}
+
+func containsUser(users []int64, userID int64) bool {
+	for _, candidate := range users {
+		if candidate == userID {
+			return true
+		}
+	}
+	return false
+}
+
+func withoutUser(users []int64, userID int64) []int64 {
+	result := make([]int64, 0, len(users))
+	for _, candidate := range users {
+		if candidate != userID {
+			result = append(result, candidate)
+		}
+	}
+	return result
+}
+
+func (service *GameService) lockBattle(gameID int64) func() {
+	index := gameID % int64(len(service.membershipLocks))
+	if index < 0 {
+		index += int64(len(service.membershipLocks))
+	}
+	service.membershipLocks[index].Lock()
+	return service.membershipLocks[index].Unlock
 }

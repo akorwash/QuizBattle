@@ -1,0 +1,60 @@
+services:
+  mongo:
+    image: mongo:8.0@sha256:de267922bc1153d923f5c9dc429f21c11faf18299080c1ce04d6d6007097fb06
+    restart: unless-stopped
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    volumes:
+      - quizbattle-mongo:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "quit(db.runCommand({ ping: 1 }).ok ? 0 : 2)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  mongo-init:
+    image: mongo:8.0@sha256:de267922bc1153d923f5c9dc429f21c11faf18299080c1ce04d6d6007097fb06
+    restart: "no"
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint:
+      - mongosh
+      - mongodb://mongo:27017/admin
+      - --quiet
+      - --eval
+      - >-
+        try { rs.status() } catch (error) {
+          rs.initiate({_id: "rs0", members: [{_id: 0, host: "mongo:27017"}]})
+        }
+
+  app:
+    build:
+      context: .
+    restart: unless-stopped
+    init: true
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      APP_ENV: development
+      PORT: "8080"
+      MONGO_URI: mongodb://mongo:27017/?replicaSet=rs0
+      MONGO_DATABASE: ${MONGO_DATABASE:-quizbattle}
+      JWT_SECRET: ${JWT_SECRET:?Copy .env.example to .env and set JWT_SECRET}
+      SESSION_TTL: ${SESSION_TTL:-1h}
+      COOKIE_SECURE: "false"
+      SEED_DATABASE: ${SEED_DATABASE:-true}
+      QUESTION_BANK_PATH: /app/data/question-bank/questions.ar.jsonl
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 30s
+
+volumes:
+  quizbattle-mongo:

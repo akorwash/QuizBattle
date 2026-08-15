@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-08-15T00:00:00Z",
+  "language": "ar",
+  "questionCount": 1573,
+  "sha256": "460985a05c6772a38b3e0dda81e4b5b535fdc85c694199e68687dd50ccf32900",
+  "countsByCategory": {
+    "cities": 157,
+    "civics": 68,
+    "general-knowledge": 54,
+    "geography": 314,
+    "history": 44,
+    "mathematics": 500,
+    "religion": 114,
+    "science": 236,
+    "technology": 86
+  },
+  "countsByDifficulty": {
+    "easy": 487,
+    "hard": 20,
+    "medium": 1066
+  },
+  "countsBySource": {
+    "BIPM SI Brochure, 9th edition": 54,
+    "IANA Hypertext Transfer Protocol (HTTP) Status Code Registry": 86,
+    "IUPAC Periodic Table of the Elements (4 May 2022)": 236,
+    "QuizBattle deterministic mathematics generator v1": 500,
+    "Quran Foundation Chapters API documentation": 114,
+    "United Nations Member States and dates of admission": 68,
+    "United Nations Statistics Division M49 country and regional groupings": 157,
+    "Wikidata structured data": 358
+  },
+  "generator": "tools/question-bank/generate.py",
+  "output": "questions.ar.jsonl"
+}

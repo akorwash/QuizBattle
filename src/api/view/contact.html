@@ -1,76 +1,85 @@
-<!DOCTYPE html>
-	<html>
-        <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-            <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
-            <meta name="author" content="Ahmed Korwash">
-            <title>Quiz Battle - Contact Us</title>
-            <link rel="icon" href="/static/icon.png">
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="صفحة التواصل مع فريق QuizBattle.">
+    <meta name="author" content="Ahmed Korwash">
+    <meta name="theme-color" content="#071719">
+    <title>QuizBattle — تواصل معنا</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.12">
+    <script defer src="/static/api.js?v=20260815.9"></script>
+    <script defer src="/static/site.js?v=20260815.9"></script>
+  </head>
+  <body class="qb-body qb-page-info qb-page-contact">
+    <div class="qb-app-shell">
+      <a class="qb-skip-link" href="#mainContent">انتقل إلى المحتوى</a>
 
-            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-            <link rel="stylesheet" href="/static/home.css">       
-        </head>
-        <body class="text-center">
-            <div class="d-flex w-100 h-100 p-3 flex-column">
-              <header class="masthead mb-auto">
-                <div class="inner">
-                  <h3 class="masthead-brand">Quiz Battle</h3>
-                  <nav class="nav nav-masthead justify-content-center">
-                    <a class="nav-link " href="/">Home</a>
-                    <a class="nav-link" href="/about">About</a>
-                    <a class="nav-link active" href="/contact">Contact</a>
-                    <a style="display:block" id="signInNav" class="nav-link" href="/auth/signin">Sign In</a>
-                    <a onclick="Logout()" href="" style="display:none" id="logout" class="nav-link">Logout</a>
-                    <a style="display:none" id="useracc" class="nav-link" href="/user/profile/"></a>
-    
-                  </nav>
+      <header class="qb-topbar">
+        <div class="qb-container qb-topbar__inner">
+          <a class="qb-brand" href="/" aria-label="QuizBattle — الصفحة الرئيسية">
+            <span class="qb-brand__mark" aria-hidden="true"><img src="/static/quizbattle-logo.png?v=20260815.1" alt="" width="48" height="48"></span>
+            <span>QuizBattle</span>
+          </a>
+          <nav class="qb-nav" aria-label="التنقل الرئيسي">
+            <a class="qb-nav__link" href="/">الرئيسية</a>
+            <a class="qb-nav__link" href="/about">عن اللعبة</a>
+            <a class="qb-nav__link" aria-current="page" href="/contact">تواصل معنا</a>
+            <a id="signInNav" class="qb-nav__link qb-nav__link--accent" href="/auth/signin">تسجيل الدخول</a>
+            <a id="logout" class="qb-nav__link" href="#" hidden>تسجيل الخروج</a>
+            <a id="useracc" class="qb-nav__link" href="/user/profile" hidden></a>
+          </nav>
+        </div>
+      </header>
+
+      <main id="mainContent" class="qb-main">
+        <div class="qb-container">
+          <div class="qb-auth-shell">
+            <section class="qb-auth-intro" aria-labelledby="contactTitle">
+              <p class="qb-eyebrow">قناة التواصل</p>
+              <h1 id="contactTitle">نريد أن نسمع ملاحظتك عندما تصبح القناة جاهزة</h1>
+              <p>نظام إرسال الرسائل غير مفعّل حاليًا، ولذلك حقول النموذج مقفلة ولا تجمع أي بيانات. يمكن استخدام مستودع المشروع لتوثيق ملاحظات التطوير الداخلية.</p>
+              <div class="qb-status-banner" role="note">
+                <span class="qb-status-banner__mark" aria-hidden="true">◆</span>
+                <p>لن نعرض نموذجًا يعمل شكليًا أو نطلب بيانات قبل وجود تخزين وسياسة خصوصية ومسار دعم واضح.</p>
+              </div>
+            </section>
+
+            <form id="contactform" class="qb-panel qb-form" method="post" action="/contact" aria-labelledby="contactFormTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="contactFormTitle" class="qb-panel__title">أرسل رسالة</h2>
+                  <p class="qb-panel__copy">قريبًا — النموذج غير نشط الآن.</p>
                 </div>
               </header>
-        
-              <div style="margin-top:30px" class="row">
-                <div class="col-md-12">
-                  <div class="container contact-form">
-                    <div class="contact-image">
-                      <img width="120" class="rounded-circle py-5" src="/static/icon.png" alt="Contact Us Quiz Battle" style="padding-top: inherit !important; ">                    
-                    </div>
-                    <form method="POST" action="/home/contact">
-                        <h3 class="py-2">Drop Us a Message</h3>
-                       <div class="row">
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <input type="text" name="txtName" class="form-control" placeholder="Your Name *" value="" />
-                                </div>
-                                <div class="form-group">
-                                    <input type="email" name="txtEmail" class="form-control" placeholder="Your Email *" value="" />
-                                </div>
-                                <div class="form-group">
-                                    <input type="text" name="txtPhone" class="form-control" placeholder="Your Phone Number *" value="" />
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="form-group">
-                                    <textarea name="txtMsg" class="form-control" placeholder="Your Message *" style="width: 100%; height: 150px;"></textarea>
-                                </div>
-                            </div>
-                            <div class="col-md-12 py-5">
-                              <div class="form-group">
-                                <input type="submit" name="btnSubmit" class="btn btn-primary" value="Send Message" />
-                              </div>
-                            </div>
-                        </div>
-                    </form>
-        </div>
-                </div>
-           
+              <div class="qb-form-group">
+                <label class="qb-label" for="contactName">الاسم</label>
+                <input id="contactName" name="txtName" class="form-control" type="text" autocomplete="name" maxlength="80" disabled>
               </div>
-        
-          <footer class="mastfoot mt-auto">
-            <div class="inner">
-              <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
-            </div>
-          </footer>
+              <div class="qb-form-group">
+                <label class="qb-label" for="contactEmail">البريد الإلكتروني</label>
+                <input id="contactEmail" name="txtEmail" class="form-control" type="email" autocomplete="email" maxlength="254" disabled>
+              </div>
+              <div class="qb-form-group">
+                <label class="qb-label" for="contactPhone">رقم الهاتف</label>
+                <input id="contactPhone" name="txtPhone" class="form-control" type="tel" autocomplete="tel" maxlength="16" disabled>
+              </div>
+              <div class="qb-form-group">
+                <label class="qb-label" for="contactMessage">الرسالة</label>
+                <textarea id="contactMessage" name="txtMsg" class="form-control qb-message-box" maxlength="2000" disabled></textarea>
+              </div>
+              <button class="qb-button qb-button--quiet" type="button" disabled>نموذج التواصل قريبًا</button>
+              <span id="errorSumm" class="qb-error" role="status" aria-live="polite"></span>
+            </form>
+          </div>
         </div>
-        </body>
-        <script type="text/javascript" src="/static/site.js"></script>
-	</html>
+      </main>
+
+      <footer class="qb-footer">
+        <div class="qb-container"><p>QuizBattle — لا نجمع بيانات من نموذج غير مكتمل.</p></div>
+      </footer>
+    </div>
+  </body>
+</html>

@@ -1,181 +1,138 @@
 package controller
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/akorwash/QuizBattle/resources"
 	"github.com/akorwash/QuizBattle/service"
-	"github.com/gorilla/mux"
 )
 
-//GameController game controller
-type GameController struct{} //GetQuestionByID  handle get question by id http request
+type GameController struct{}
 
-//CreateGame create new game battle
-func (controller *GameController) CreateGame(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
+func (controller *GameController) CreateGame(gameService service.IGameServices) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var _gameModel resources.CreateGameModel
-		decoder := json.NewDecoder(r.Body)
-		if err := decoder.Decode(&_gameModel); err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Invalid request payload")
-			return
-		}
-		defer r.Body.Close()
-
-		userData, err := ExtractTokenMetadata(r)
+		identity, err := Identity(r)
 		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "authentication required")
 			return
 		}
-
-		if userData.UserID != _gameModel.UserID {
-			responseHandler.RespondWithError(w, http.StatusUnauthorized, "you don't have access to create game for another user")
+		var input resources.CreateGameModel
+		if err := decodeJSON(w, r, &input); err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-
-		game, err := svc.CreateNewGame(_gameModel)
+		game, err := gameService.CreateNewGame(identity.UserID, input)
 		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't create game due err: "+err.Error())
+			respondServiceError(w, err)
 			return
 		}
-
-		if game == nil {
-			responseHandler.RespondWithError(w, http.StatusNotFound, "Game not created try again later")
-			return
-		}
-		//respondWithJSON(w, http.StatusOK, "payload")
-		responseHandler.RespondWithJSON(w, http.StatusOK, *game)
+		responseHandler.RespondWithJSON(w, http.StatusCreated, game)
 	}
 }
 
-//JoinGame create new game battle
-func (controller *GameController) JoinGame(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
+func (controller *GameController) JoinGame(gameService service.IGameServices) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		gameID, err := strconv.Atoi(vars["id"])
+		identity, err := Identity(r)
 		if err != nil {
-			gameID = 0
-		}
-
-		var joinAny bool
-		if vars["mod"] == "any" {
-			joinAny = true
-		} else {
-			joinAny = false
-		}
-
-		userData, err := ExtractTokenMetadata(r)
-		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "authentication required")
 			return
 		}
-		game, err := svc.JoinGame(userData.UserID, int64(gameID), joinAny)
-
+		gameID, err := pathID(r, "id")
 		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't create game due err: "+err.Error())
+			responseHandler.RespondWithError(w, http.StatusBadRequest, "invalid battle ID")
 			return
 		}
-
-		if game == nil {
-			responseHandler.RespondWithError(w, http.StatusNotFound, "Game not created try again later")
+		game, err := gameService.JoinGame(identity.UserID, gameID)
+		if err != nil {
+			respondServiceError(w, err)
 			return
 		}
-
-		//respondWithJSON(w, http.StatusOK, "payload")
-		responseHandler.RespondWithJSON(w, http.StatusOK, *game)
+		responseHandler.RespondWithJSON(w, http.StatusOK, game)
 	}
 }
 
-//ExitGame leave the battle
-func (controller *GameController) ExitGame(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
+func (controller *GameController) ExitGame(gameService service.IGameServices) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		vars := mux.Vars(r)
-		gameID, err := strconv.Atoi(vars["id"])
+		identity, err := Identity(r)
 		if err != nil {
-			gameID = 0
-		}
-
-		userData, err := ExtractTokenMetadata(r)
-		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "authentication required")
 			return
 		}
-
-		game, err := svc.ExitGame(userData.UserID, int64(gameID))
+		gameID, err := pathID(r, "id")
 		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, "Can't exit game due err: "+err.Error())
+			responseHandler.RespondWithError(w, http.StatusBadRequest, "invalid battle ID")
 			return
 		}
-
-		if game == nil {
-			responseHandler.RespondWithError(w, http.StatusNotFound, "Error occured during leave the game, try again.")
+		game, err := gameService.ExitGame(identity.UserID, gameID)
+		if err != nil {
+			respondServiceError(w, err)
 			return
 		}
-
-		//respondWithJSON(w, http.StatusOK, "payload")
-		responseHandler.RespondWithJSON(w, http.StatusOK, *game)
+		responseHandler.RespondWithJSON(w, http.StatusOK, game)
 	}
 }
 
-//PlayPage SignIn page http requst handler
+func (controller *GameController) GetBattle(gameService service.IGameServices) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, err := Identity(r)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		gameID, err := pathID(r, "id")
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusBadRequest, "invalid battle ID")
+			return
+		}
+		game, err := gameService.GetBattle(identity.UserID, gameID)
+		if err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		responseHandler.RespondWithJSON(w, http.StatusOK, game)
+	}
+}
+
+func (controller *GameController) GetPublicBattles(gameService service.IGameServices) http.HandlerFunc {
+	return func(w http.ResponseWriter, _ *http.Request) {
+		games, err := gameService.GetPublicBattles()
+		if err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		responseHandler.RespondWithJSON(w, http.StatusOK, games)
+	}
+}
+
+func (controller *GameController) GetMyBattles(gameService service.IGameServices) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		identity, err := Identity(r)
+		if err != nil {
+			responseHandler.RespondWithError(w, http.StatusUnauthorized, "authentication required")
+			return
+		}
+		games, err := gameService.GetMyBattles(identity.UserID)
+		if err != nil {
+			respondServiceError(w, err)
+			return
+		}
+		responseHandler.RespondWithJSON(w, http.StatusOK, games)
+	}
+}
+
 func (controller *GameController) PlayPage(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/game/play" {
-		http.Error(w, "Not found", http.StatusNotFound)
-		return
-	}
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	http.ServeFile(w, r, "./api/view/gameplay.html")
 }
 
-//BattlePage to do
 func (controller *GameController) BattlePage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != "GET" {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	http.ServeFile(w, r, "./api/view/battle.html")
 }
 
-//GetPublicBattles create new game battle
-func (controller *GameController) GetPublicBattles(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		games, err := svc.GetPublicBattles()
-
-		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		//respondWithJSON(w, http.StatusOK, "payload")
-		responseHandler.RespondWithJSON(w, http.StatusOK, games)
+func pathID(r *http.Request, name string) (int64, error) {
+	id, err := strconv.ParseInt(r.PathValue(name), 10, 64)
+	if err != nil || id <= 0 {
+		return 0, strconv.ErrSyntax
 	}
-}
-
-//GetMyBattles create new game battle
-func (controller *GameController) GetMyBattles(svc service.IGameServices) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		userData, err := ExtractTokenMetadata(r)
-		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusUnauthorized, "Can't retrive user data")
-			return
-		}
-
-		games, err := svc.GetMyBattles(userData.UserID)
-
-		if err != nil {
-			responseHandler.RespondWithError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		//respondWithJSON(w, http.StatusOK, "payload")
-		responseHandler.RespondWithJSON(w, http.StatusOK, games)
-	}
+	return id, nil
 }

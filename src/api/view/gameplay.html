@@ -1,67 +1,139 @@
-<!DOCTYPE html>
-	<html>
-        <head>
-         
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-            <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
-            <meta name="author" content="Ahmed Korwash">
-            <title id="pagetile">Quiz Battle - Play new game</title>
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="لوبي QuizBattle العام لإنشاء ساحات المعرفة والانضمام إليها والتحدث مع اللاعبين.">
+    <meta name="author" content="Ahmed Korwash">
+    <meta name="theme-color" content="#071719">
+    <title id="pagetile">QuizBattle — ساحة اللاعبين</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.13">
+    <script defer src="/static/api.js?v=20260815.9"></script>
+    <script defer src="/static/site.js?v=20260815.9"></script>
+    <script defer src="/static/game.js?v=20260815.10"></script>
+    <script defer src="/static/worldchat.js?v=20260815.10"></script>
+  </head>
+  <body class="qb-body qb-page-lobby">
+    <div class="qb-app-shell">
+      <a class="qb-skip-link" href="#mainContent">انتقل إلى المحتوى</a>
 
-            <link rel="icon" href="/static/icon.png">
-
-            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-            <link rel="stylesheet" href="/static/home.css">
-            <script src="/static/authvalidation.js"></script>
-            <script src="/static/game.js"></script>
-            <script type="text/javascript" src="/static/urlbase.js"></script>
-            <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-        </head>
-        <body class="text-center">
-            <div class="cover-container d-flex w-100 h-100 p-3 mx-auto flex-column">
-          <header class="masthead mb-auto">
-            <div class="inner">
-              <h3 class="masthead-brand">Quiz Battle</h3>
-              <nav class="nav nav-masthead justify-content-center">
-                <a class="nav-link active" href="/">Home</a>
-                <a class="nav-link" href="/about">About</a>
-                <a class="nav-link" href="/contact">Contact</a>
-                <a style="display:block" id="signInNav" class="nav-link" href="/auth/signin">Sign In</a>
-                <a onclick="Logout()" href="" style="display:none" id="logout" class="nav-link">Logout</a>
-                <a style="display:none" id="useracc" class="nav-link" href="/user/profile/"></a>
-
-              </nav>
-            </div>
-          </header>
-        
-          <main role="main" class="inner cover">
-            <h1 class="cover-heading">Welcome to Quiz Battle!</h1>
-            
-            <div class="my-3 p-3 bg-white rounded shadow-sm">
-              <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">Recent Games</h6>
-              
-              <label style="text-decoration: none; color: black; font-size: 14px;font-weight: bold;" class="px-3 radio-inline"><input id="public_game" type="radio" name="gameownder" checked>Public</label>
-              <label style="text-decoration: none; color: black; font-size: 14px;font-weight: bold;" class="px-3 radio-inline"><input id="owner_game" type="radio" name="gameownder">My Games</label>
-
-              <div id="games_list">
-               
-          
-              </div>
-              <span id="errorSumm" class="error text-danger"></span>
-              
-              <small style="text-decoration: none; color: black; font-size: 14px;font-weight: bold;" class="d-block text-right mt-3">
-                <input id="createdmodegame" type="checkbox" checked> Public Game
-                <button class="btn btn-sm btn-danger" id="creategame" >Create Game</button>
-              </small>
-            </div>
-          </main>
-        
-          <footer class="mastfoot mt-auto">
-            <div class="inner">
-              <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
-            </div>
-          </footer>
+      <header class="qb-topbar">
+        <div class="qb-container qb-topbar__inner">
+          <a class="qb-brand" href="/" aria-label="QuizBattle — الصفحة الرئيسية">
+            <span class="qb-brand__mark" aria-hidden="true"><img src="/static/quizbattle-logo.png?v=20260815.1" alt="" width="48" height="48"></span>
+            <span>QuizBattle</span>
+          </a>
+          <nav class="qb-nav" aria-label="التنقل الرئيسي">
+            <a class="qb-nav__link" href="/">الرئيسية</a>
+            <a class="qb-nav__link" aria-current="page" href="/game/play">الساحة</a>
+            <a class="qb-nav__link" href="/about">عن اللعبة</a>
+            <a id="signInNav" class="qb-nav__link qb-nav__link--accent" href="/auth/signin">تسجيل الدخول</a>
+            <a id="logout" class="qb-nav__link" href="#" hidden>تسجيل الخروج</a>
+            <a id="useracc" class="qb-nav__link" href="/user/profile" hidden></a>
+          </nav>
         </div>
-        </body>
-        <script type="text/javascript" src="/static/site.js"></script>
-	</html>
+      </header>
+
+      <main id="mainContent" class="qb-main">
+        <div class="qb-container">
+          <p class="qb-eyebrow">المجتمع واللوبي</p>
+          <h1 class="qb-page-heading">اختر ساحة أو ابدأ تجمعًا جديدًا</h1>
+          <p class="qb-page-lead">اختر مواجهة فردية أو فريقية أو افتح ساحة مرنة حتى 8 لاعبين، ثم جهّز بطاقاتك وتنافس على أعلى النقاط.</p>
+
+          <div class="qb-lobby-layout">
+            <section class="qb-panel" aria-labelledby="lobbyTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="lobbyTitle" class="qb-panel__title">ساحات المعرفة</h2>
+                  <p class="qb-panel__copy">تُحدّث القائمة لحظيًا وتعرض نوع كل ساحة، المقاعد المتاحة وحالتها.</p>
+                </div>
+                <div class="qb-segmented" role="group" aria-label="مصدر الساحات">
+                  <label><input id="public_game" type="radio" name="gameowner" checked> العامة</label>
+                  <label><input id="owner_game" type="radio" name="gameowner"> ساحاتي</label>
+                </div>
+              </header>
+
+              <div id="games_list" class="qb-lobby-list" aria-live="polite" aria-busy="false"></div>
+              <span id="errorSumm" class="qb-error" role="status" aria-live="polite"></span>
+
+              <form id="createArenaForm" class="qb-arena-creator" method="post" action="/api/v1/game" novalidate>
+                <input id="createdmodegame" type="checkbox" checked hidden aria-hidden="true" tabindex="-1">
+                <fieldset class="qb-arena-mode-picker">
+                  <legend>اختر نوع الساحة</legend>
+                  <label class="qb-arena-mode-option">
+                    <input id="gameModeDuel" type="radio" name="gameMode" value="duel" checked>
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">1×1</span>
+                    <strong>مواجهة فردية</strong>
+                    <small>لاعبان، فائز واحد</small>
+                  </label>
+                  <label class="qb-arena-mode-option">
+                    <input id="gameModeTeam2" type="radio" name="gameMode" value="team_2v2">
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">2×2</span>
+                    <strong>فريقان صغيران</strong>
+                    <small>4 لاعبين، لاعبان لكل فريق</small>
+                  </label>
+                  <label class="qb-arena-mode-option">
+                    <input id="gameModeTeam4" type="radio" name="gameMode" value="team_4v4">
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">4×4</span>
+                    <strong>معركة الفرق</strong>
+                    <small>8 لاعبين، 4 لكل فريق</small>
+                  </label>
+                  <label class="qb-arena-mode-option">
+                    <input id="gameModeOpen" type="radio" name="gameMode" value="open" aria-controls="openCapacityControl" aria-expanded="false">
+                    <span class="qb-arena-mode-option__mark" aria-hidden="true">2–8</span>
+                    <strong>ساحة مفتوحة</strong>
+                    <small>ابدأ بعد جاهزية الموجودين</small>
+                  </label>
+                </fieldset>
+
+                <div id="openCapacityControl" class="qb-open-capacity" hidden>
+                  <label for="openMaxPlayers">الحد الأقصى للاعبين</label>
+                  <input id="openMaxPlayers" class="form-control" type="number" min="2" max="8" step="1" value="8" inputmode="numeric" aria-describedby="openCapacityHint">
+                  <small id="openCapacityHint">يمكن للمالك تجهيز الساحة من لاعبين، وبحد أقصى 8.</small>
+                </div>
+
+                <div class="qb-lobby-controls">
+                  <p class="qb-help">كل الساحات عامة حاليًا. يوزّع الخادم اللاعبين على الفرق تلقائيًا.</p>
+                  <button id="creategame" class="qb-button qb-button--primary" type="submit">إنشاء ساحة 1 ضد 1</button>
+                </div>
+              </form>
+              <p class="qb-help">يمكنك تشغيل 3 ساحات في الوقت نفسه؛ الساحات المكتملة أو المنتهية بالانسحاب تبقى في سجلك ولا تُحتسب ضمن الحد.</p>
+            </section>
+
+            <section class="qb-panel qb-community-panel" aria-labelledby="communityTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="communityTitle" class="qb-panel__title">مجلس اللاعبين</h2>
+                  <p class="qb-panel__copy">محادثة عامة تحتفظ بأحدث 100 رسالة لمدة تصل إلى سبعة أيام. لا تشارك بيانات شخصية أو معلومات دخول.</p>
+                </div>
+                <span class="qb-card__category">عام</span>
+              </header>
+
+              <div id="messages" class="chat-scroll qb-chat-messages" role="log" aria-label="رسائل المجتمع" aria-live="polite"></div>
+              <span id="worldchaterrorSumm" class="qb-error" role="status" aria-live="polite"></span>
+
+              <div class="qb-chat-composer">
+                <label class="visually-hidden" for="inputmessage">اكتب رسالة إلى مجلس اللاعبين</label>
+                <textarea id="inputmessage" class="form-control" rows="2" maxlength="500" placeholder="اكتب رسالتك…" aria-describedby="chatHint"></textarea>
+                <button id="sendmessage" class="qb-button qb-button--primary" type="button">إرسال</button>
+              </div>
+              <small id="chatHint" class="qb-help">Enter للإرسال، وShift + Enter لسطر جديد. تُعرض أحدث 50 رسالة بعد إعادة التحميل.</small>
+            </section>
+          </div>
+        </div>
+      </main>
+
+      <nav class="qb-bottom-nav" aria-label="تنقل الهاتف">
+        <a href="/">الرئيسية</a>
+        <a href="/game/play" aria-current="page">الساحة</a>
+        <a href="/user/profile">حسابي</a>
+      </nav>
+
+      <footer class="qb-footer">
+        <div class="qb-container"><p>QuizBattle — احترم خصمك، واحمِ حسابك.</p></div>
+      </footer>
+    </div>
+  </body>
+</html>

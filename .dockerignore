@@ -1,0 +1,16 @@
+.git
+.github
+.circleci
+.aws
+.vscode
+.env
+.env.*
+.cache
+androidsrc
+docs
+README.md
+src/.gitignore
+src/**/*_test.go
+src/coverage.out
+src/*.exe
+src/dist

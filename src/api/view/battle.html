@@ -1,93 +1,230 @@
-<!DOCTYPE html>
-	<html>
-        <head>
-         
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-            <meta name="description" content="Quiz Battle is a cognitive game, our game players own their questions as Card and they can trade their cards with others or challenge them in public/private battles">
-            <meta name="author" content="Ahmed Korwash">
-            <title id="pagetile">Quiz Battle - Play new game</title>
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="ساحة QuizBattle لمتابعة اللاعبين وتجهيز بطاقات المعرفة للمواجهة.">
+    <meta name="author" content="Ahmed Korwash">
+    <meta name="theme-color" content="#071719">
+    <meta name="quizbattle-voice-stun" content="stun:stun.cloudflare.com:3478">
+    <title id="pagetile">QuizBattle — ساحة المواجهة</title>
+    <link rel="icon" type="image/png" sizes="512x512" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="apple-touch-icon" href="/static/quizbattle-app-icon.png?v=20260815.1">
+    <link rel="stylesheet" href="/static/quizbattle.css?v=20260815.14">
+    <script defer src="/static/api.js?v=20260815.9"></script>
+    <script defer src="/static/site.js?v=20260815.9"></script>
+    <script defer src="/static/card-visuals.js?v=20260815.9"></script>
+    <script defer src="/static/deck-ranking.js?v=20260815.1"></script>
+    <script defer src="/static/battle.js?v=20260815.11"></script>
+  </head>
+  <body class="qb-body qb-page-battle">
+    <div class="qb-app-shell">
+      <a class="qb-skip-link" href="#mainContent">انتقل إلى المحتوى</a>
 
-            <link rel="icon" href="/static/icon.png">
-
-            <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z" crossorigin="anonymous">
-            <link rel="stylesheet" href="/static/loading.css">
-            <link rel="stylesheet" href="/static/home.css">
-            
-            <script src="/static/authvalidation.js"></script>
-            <script src="/static/battle.js"></script>
-            <script src="/static/urlbase.js"></script>
-            <script src="http://code.jquery.com/jquery-1.9.1.js"></script>
-            <script src="https://kit.fontawesome.com/e0bda46377.js" crossorigin="anonymous"></script>
-
-        </head>
-        <body class="text-center">
-          <div class=" d-flex w-100 h-100 p-3 flex-column">
-            <header class="masthead">
-            <div class="inner">
-              <h3 class="masthead-brand">Quiz Battle</h3>
-              <nav class="nav nav-masthead justify-content-center">
-                <a class="nav-link active" href="/">Home</a>
-                <a class="nav-link" href="/about">About</a>
-                <a class="nav-link" href="/contact">Contact</a>
-                <a style="display:block" id="signInNav" class="nav-link" href="/auth/signin">Sign In</a>
-                <a onclick="Logout()" href="" style="display:none" id="logout" class="nav-link">Logout</a>
-                <a style="display:none" id="useracc" class="nav-link" href="/user/profile/"></a>
-
-              </nav>
-            </div>
-          </header>
-          <div id="battlepage" class=""></div>
-          <div style="margin-top:30px" class="row">
-            <div id="joineduserssection" style="margin-left: auto;margin-right: auto;" class="col-md-3 p-3 bg-white rounded shadow-sm">
-              <h6 class="border-bottom border-gray pb-2 mb-0" style="color: black;">Joined Users</h6>
-              <div id="battle_Joined_Users_container">
-                
-              </div>
-            </div>
-
-            <div id="battleviewsection" style="margin-left: auto;margin-right: auto;" class="col-md-8 p-3 bg-white rounded shadow-sm">
-              <h6 id="battleTitle" class="border-bottom border-gray pb-2 mb-0" style="color: black;"></h6>
-              <button onclick="expandBattleView()" style="float: left; position: relative; bottom: 40px;right: 10px;" class="btn btn-sm btn-primary"><i class="fas fa-expand-arrows-alt"></i></button>
-              <button onclick="exitBattle()" style="display: none; float: right; position: relative; bottom: 40px;left: 10px;" class="btn btn-sm btn-danger"><i class="fas fa-door-open"></i></button>
-              <button id="startgameButton" onclick="startBattle()" style="display: none; float: right;position: relative;bottom: 40px;left: 10px;margin-right: 5px;" class="btn btn-sm btn-info"><i class="fas fa-play-circle" aria-hidden="true"></i></button>              <div id="battle_container">
-               
-          
-              </div>
-              <span id="errorSumm" class="error text-danger"></span>
-            </div>
-          </div>
-          
-          <footer class="mastfoot mt-auto">
-            <div class="inner">
-              <p> <a href="https://www.quizzbattle.com/">Quiz Battle</a>, by <a href="https://www.facebook.com/akorwash">@Ahmed Korwash</a>.</p>
-            </div>
-          </footer>
+      <header class="qb-topbar">
+        <div class="qb-container qb-topbar__inner">
+          <a class="qb-brand" href="/" aria-label="QuizBattle — الصفحة الرئيسية">
+            <span class="qb-brand__mark" aria-hidden="true"><img src="/static/quizbattle-logo.png?v=20260815.1" alt="" width="48" height="48"></span>
+            <span>QuizBattle</span>
+          </a>
+          <nav class="qb-nav" aria-label="التنقل الرئيسي">
+            <a class="qb-nav__link" href="/">الرئيسية</a>
+            <a class="qb-nav__link" aria-current="page" href="/game/play">الساحة</a>
+            <a id="signInNav" class="qb-nav__link qb-nav__link--accent" href="/auth/signin">تسجيل الدخول</a>
+            <a id="logout" class="qb-nav__link" href="#" hidden>تسجيل الخروج</a>
+            <a id="useracc" class="qb-nav__link" href="/user/profile" hidden></a>
+          </nav>
         </div>
-        </body>
-        <script type="text/javascript" src="/static/site.js"></script>
-        <script>
-          var isExpand = false
-          var joineduserssection = $('#joineduserssection')
-          var battleviewsection = $('#battleviewsection')
-          function expandBattleView(){
-            if(isExpand){
-              // if the battle view expanded we will collabse it
-              battleviewsection.removeClass('col-md-11')
-              battleviewsection.addClass('col-md-8')
-              
-              joineduserssection.addClass('col-md-3')
-              joineduserssection.css("display","block")
+      </header>
 
-              isExpand = false
-            }else{
-              battleviewsection.removeClass('col-md-8')
-              battleviewsection.addClass('col-md-11')
+      <main id="mainContent" class="qb-main">
+        <div class="qb-container qb-battle-shell">
+          <header>
+            <p class="qb-eyebrow">ساحة المواجهة</p>
+            <h1 id="battleTitle" class="qb-page-heading">جاري تحميل الساحة…</h1>
+            <p id="battleLead" class="qb-page-lead">ثبّت خمس بطاقات واستعد. بعد اكتمال المقاعد يجهّز المالك الساحة، ثم يبدأ عندما يصبح الجميع جاهزًا.</p>
+          </header>
 
-              joineduserssection.removeClass('col-md-3')
-              joineduserssection.css("display","none")
-              isExpand = true
-            }
-          }
-        </script>
-	</html>
+          <section id="scoreboard" class="qb-match-status" aria-label="حالة المباراة">
+            <div class="qb-match-status__item">
+              <span>الجولة</span>
+              <strong id="roundIndicator">لم تبدأ</strong>
+            </div>
+            <div class="qb-match-status__item">
+              <span>الدور</span>
+              <strong id="turnIndicator">جاري التحميل</strong>
+            </div>
+            <div class="qb-match-status__item">
+              <span>المتصدر</span>
+              <strong id="scoreSummary"><span id="playerScore">—</span><span aria-hidden="true"> · </span><span id="opponentScore">—</span></strong>
+            </div>
+            <div class="qb-match-status__item">
+              <span>الاتصال</span>
+              <strong id="matchConnectionStatus">جاري الاتصال</strong>
+            </div>
+          </section>
+
+          <section id="leaderboardPanel" class="qb-panel qb-leaderboard-panel" aria-labelledby="leaderboardTitle">
+            <header class="qb-panel__header">
+              <div>
+                <p id="arenaModeBadge" class="qb-leaderboard-kicker">نوع الساحة</p>
+                <h2 id="leaderboardTitle" class="qb-panel__title">ترتيب اللاعبين</h2>
+              </div>
+              <span id="readySummary" class="qb-ready-summary" role="status" aria-live="polite">جاري تحميل الجاهزية…</span>
+            </header>
+            <div id="teamScoreboard" class="qb-team-scoreboard" aria-label="نتيجة الفرق" hidden></div>
+            <ol id="scoreboardPlayers" class="qb-scoreboard-players" aria-label="ترتيب اللاعبين"></ol>
+          </section>
+
+          <section id="tieBreakBanner" class="qb-tiebreak-banner" aria-labelledby="tieBreakTitle" role="status" aria-live="polite" hidden>
+            <div class="qb-tiebreak-banner__round" aria-hidden="true"><span>حسم</span><strong id="tieBreakRound">1</strong></div>
+            <div>
+              <p class="qb-tiebreak-banner__kicker">المسابقة المصغّرة</p>
+              <h2 id="tieBreakTitle">كسر التعادل</h2>
+              <p id="tieBreakCopy">يتنافس أصحاب أعلى النقاط حتى يتبقى فائز واحد.</p>
+              <div id="tieBreakParticipants" class="qb-tiebreak-participants" aria-label="المتنافسون في كسر التعادل"></div>
+            </div>
+          </section>
+
+          <div class="qb-battle-layout">
+            <section id="battleviewsection" class="qb-panel qb-panel--dark qb-battle-board col-md-8" aria-labelledby="battleBoardTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="battleBoardTitle" class="qb-panel__title">لوح المباراة</h2>
+                  <p class="qb-panel__copy">كل نتيجة وتغيير ملكية يجب أن يؤكده الخادم.</p>
+                </div>
+                <button id="expandBattleButton" class="qb-button qb-button--quiet battle-action-left" type="button" aria-controls="joineduserssection" aria-expanded="true">توسيع اللوح</button>
+              </header>
+
+              <div id="battlepage" class="qb-loader" role="status" aria-live="polite">جاري تحميل بيانات الساحة…</div>
+
+              <section id="arenaReadiness" class="qb-arena-readiness" aria-labelledby="opponentDeckTitle">
+                <div class="qb-arena-readiness__heading">
+                  <h3 id="opponentDeckTitle">جاهزية الساحة</h3>
+                  <span id="arenaCapacity">— / —</span>
+                </div>
+                <div id="opponentDeck" class="qb-arena-deck-status" aria-label="حالة مجموعات اللاعبين"></div>
+              </section>
+
+              <div id="battle_container">
+                <article id="questionCard" class="qb-question-card" aria-labelledby="questionText">
+                  <header class="qb-card__header">
+                    <span id="questionCategory" class="qb-card__category">بطاقة السؤال</span>
+                    <span id="questionRarity" class="qb-card__rarity">بطاقة الاستعداد</span>
+                  </header>
+                  <div id="questionArt" class="qb-card-art qb-question-card__art category--general-knowledge" aria-hidden="true">
+                    <img src="/static/art/knowledge-categories-atlas.jpg?v=20260815.1" alt="" width="1200" height="1200" decoding="async">
+                  </div>
+                  <span id="questionPower" class="qb-card-level">الخادم يختار البطاقة</span>
+                  <h2 id="questionText" class="qb-card__question">جاري مزامنة حالة المباراة وبطاقات اللاعبين…</h2>
+                  <fieldset id="answerOptions" class="qb-answer-list" disabled>
+                    <legend class="visually-hidden">خيارات الإجابة</legend>
+                    <label class="qb-answer"><input type="radio" name="answer" disabled> جاري تحميل الإجابات…</label>
+                  </fieldset>
+                  <div id="questionTimer" class="qb-card__timer">
+                    <span>الوقت المتبقي: —</span>
+                    <progress max="100" value="0" aria-label="جاري تحميل مؤقت الجولة"></progress>
+                  </div>
+                  <p id="questionResult" class="qb-help" role="status" aria-live="polite">ستظهر حالة الإجابة هنا.</p>
+                </article>
+              </div>
+
+              <section id="deckSetup" class="qb-deck-setup" aria-labelledby="playerDeckTitle">
+                <div class="qb-deck-setup__heading">
+                  <div>
+                    <p class="qb-deck-setup__kicker">خطوة الجاهزية</p>
+                    <h3 id="playerDeckTitle">اختر خمس بطاقات</h3>
+                  </div>
+                  <span id="ownReadyBadge" class="qb-player-state" data-state="waiting">غير جاهز</span>
+                </div>
+                <div id="deckAssist" class="qb-deck-assist" aria-labelledby="deckAssistTitle">
+                  <div class="qb-deck-assist__copy">
+                    <strong id="deckAssistTitle">اقتراح أقوى مجموعة</strong>
+                    <span>نرتّب بطاقاتك بالقوة ثم الندرة ونسبة الفوز، ويمكنك تعديل الاختيار قبل تثبيته.</span>
+                  </div>
+                  <div class="qb-deck-assist__actions">
+                    <button id="autoSelectDeckButton" class="qb-button qb-button--brass" type="button">تجهيز تلقائي</button>
+                    <button id="clearDeckSelectionButton" class="qb-button qb-button--quiet" type="button">مسح الاختيار</button>
+                  </div>
+                  <p id="deckAssistStatus" class="qb-deck-assist__status" role="status" aria-live="polite"></p>
+                </div>
+                <div id="playerDeck" class="qb-deck-row" aria-label="مجموعة بطاقاتك">
+                  <span class="qb-deck-slot">بطاقة</span><span class="qb-deck-slot">بطاقة</span><span class="qb-deck-slot">بطاقة</span><span class="qb-deck-slot">بطاقة</span><span class="qb-deck-slot">بطاقة</span>
+                </div>
+              </section>
+
+              <span id="errorSumm" class="qb-error" role="status" aria-live="polite"></span>
+              <div class="qb-battle-actions">
+                <button id="preparegameButton" class="qb-button qb-button--primary battle-action-right" type="button" hidden>تجهيز الساحة</button>
+                <button id="startgameButton" class="qb-button qb-button--brass battle-action-right" type="button" hidden>بدء المباراة</button>
+                <button id="exitBattleButton" class="qb-button qb-button--danger battle-action-right" type="button" hidden>مغادرة الساحة</button>
+                <p id="startRequirement" class="qb-battle-action-help" role="status" aria-live="polite"></p>
+              </div>
+            </section>
+
+            <aside id="joineduserssection" class="qb-panel qb-participants col-md-3" aria-labelledby="joinedUsersTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="joinedUsersTitle" class="qb-panel__title">الموجودون في الساحة</h2>
+                  <p class="qb-panel__copy">الفريق والجاهزية والنقاط مؤكدة من الخادم.</p>
+                </div>
+              </header>
+              <div id="battle_Joined_Users_container" class="qb-participants-list" aria-live="polite"></div>
+              <div class="qb-empty-state mt-3">
+                <div>
+                  <h3>مقاعد الساحة</h3>
+                  <p>تُحدّث حتى 8 مقاعد تلقائيًا عند الانضمام أو الخروج.</p>
+                </div>
+              </div>
+            </aside>
+
+            <aside id="voiceChatPanel" class="qb-panel qb-voice-panel" aria-labelledby="voiceChatTitle">
+              <header class="qb-panel__header qb-voice-panel__header">
+                <div>
+                  <p class="qb-voice-panel__kicker">صوت الساحة</p>
+                  <h2 id="voiceChatTitle" class="qb-panel__title">تحدث داخل الساحة</h2>
+                </div>
+                <span id="voiceStatusDot" class="qb-voice-status__dot" data-state="idle" aria-hidden="true"></span>
+              </header>
+              <div class="qb-voice-status">
+                <p id="voiceStatus" role="status" aria-live="polite">الصوت غير متصل.</p>
+              </div>
+              <div class="qb-voice-controls" aria-label="أدوات الدردشة الصوتية">
+                <button id="joinVoiceButton" class="qb-button qb-button--primary qb-voice-button" type="button" aria-describedby="voicePrivacyNotice" disabled>انضم إلى الصوت</button>
+                <button id="muteVoiceButton" class="qb-button qb-button--quiet qb-voice-button" type="button" aria-pressed="false" hidden>كتم الميكروفون</button>
+                <button id="leaveVoiceButton" class="qb-button qb-button--danger qb-voice-button" type="button" hidden>مغادرة الصوت</button>
+                <button id="resumeVoiceButton" class="qb-button qb-button--brass qb-voice-button" type="button" hidden>تشغيل صوت المنافس</button>
+              </div>
+              <p id="voicePrivacyNotice" class="qb-voice-privacy">
+                الصوت مباشر وغير مسجل، ومتاح حاليًا للمواجهة الفردية فقط. الانضمام اختياري ويتطلب إذن الميكروفون، وقد يكشف WebRTC عنوان شبكتك العام للمنافس أو لخدمة STUN.
+              </p>
+              <audio id="remoteVoiceAudio" autoplay playsinline aria-label="صوت المنافس"></audio>
+            </aside>
+
+            <aside class="qb-panel qb-match-log" aria-labelledby="matchLogTitle">
+              <header class="qb-panel__header">
+                <div>
+                  <h2 id="matchLogTitle" class="qb-panel__title">سجل الجولة</h2>
+                  <p class="qb-panel__copy">أحداث مؤكدة من الخادم فقط.</p>
+                </div>
+              </header>
+              <ol id="matchLog" class="qb-match-log__list" aria-live="polite">
+                <li>لم تبدأ المباراة بعد.</li>
+              </ol>
+            </aside>
+          </div>
+        </div>
+      </main>
+
+      <nav class="qb-bottom-nav" aria-label="تنقل الهاتف">
+        <a href="/">الرئيسية</a>
+        <a href="/game/play" aria-current="page">الساحة</a>
+        <a href="/user/profile">حسابي</a>
+      </nav>
+
+      <footer class="qb-footer">
+        <div class="qb-container"><p>QuizBattle — أوامر المتصفح طلبات، والحقيقة عند الخادم.</p></div>
+      </footer>
+    </div>
+  </body>
+</html>
