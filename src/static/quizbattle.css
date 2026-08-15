@@ -5340,3 +5340,68 @@ body.qb-body::before {
     border: 2px solid CanvasText;
   }
 }
+
+/* Player identity in live and saved community messages. */
+.qb-chat-avatar-shell {
+  flex: none;
+}
+
+.qb-chat-avatar {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  place-items: center;
+  color: #fffaf0;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(239, 199, 111, 0.42), transparent 34%),
+    linear-gradient(145deg, #168977, #0b403d);
+  border: 2px solid var(--qb-brass);
+  border-radius: 50%;
+  box-shadow: 0 0.25rem 0.6rem rgba(7, 23, 25, 0.2);
+  isolation: isolate;
+}
+
+.qb-chat-avatar .qb-chat-avatar__image {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  background: transparent;
+  border: 0;
+  border-radius: inherit;
+}
+
+.qb-chat-avatar .qb-chat-avatar__image.is-loaded {
+  opacity: 1;
+}
+
+.qb-chat-avatar__fallback {
+  position: relative;
+  z-index: 0;
+  font-size: 0.72rem;
+  font-weight: 950;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.chat_list.is-own-message .qb-chat-avatar {
+  color: #071719;
+  background:
+    radial-gradient(circle at 30% 22%, rgba(255, 250, 240, 0.55), transparent 34%),
+    linear-gradient(145deg, #efc76f, #c08a2b);
+}
+
+@media (forced-colors: active) {
+  .qb-chat-avatar {
+    color: CanvasText;
+    background: Canvas;
+    border: 2px solid CanvasText;
+  }
+}

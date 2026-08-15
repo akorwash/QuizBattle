@@ -3,6 +3,7 @@
 
   const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
   const ALLOWED_AVATAR_TYPES = new Set(["image/jpeg", "image/png"]);
+  const avatarChangeStorageKey = "quizbattle:avatar-change";
 
   document.addEventListener("DOMContentLoaded", function () {
     const accountForm = document.getElementById("updateaccform");
@@ -43,6 +44,19 @@
       if (userID === undefined || userID === null || String(userID).trim() === "") return "";
       const base = "/api/v1/user/avatar/" + encodeURIComponent(String(userID));
       return revision ? base + "?v=" + encodeURIComponent(String(revision)) : base;
+    }
+
+    function announceAvatarChange(hasAvatar, revision) {
+      if (!currentAccount || currentAccount.userId === undefined || currentAccount.userId === null) return;
+      const detail = {
+        userId: String(currentAccount.userId),
+        hasAvatar: Boolean(hasAvatar),
+        revision: String(revision || Date.now()),
+      };
+      window.dispatchEvent(new CustomEvent("quizbattle:avatar-changed", { detail: detail }));
+      try {
+        localStorage.setItem(avatarChangeStorageKey, JSON.stringify(Object.assign({ nonce: Date.now() }, detail)));
+      } catch (_) {}
     }
 
     function setAvatarStatus(message, state) {
@@ -266,14 +280,16 @@
         setAvatarBusy(true);
         setAvatarStatus("جاري حفظ الصورة…", "loading");
         try {
-          await avatarRequest("PUT", data);
+          const savedAvatar = await avatarRequest("PUT", data);
           selectedAvatarFile = null;
           selectedAvatarReady = false;
           if (avatarInput) avatarInput.value = "";
           const oldPreviewURL = selectedPreviewURL;
           selectedPreviewURL = "";
           hasSavedAvatar = true;
-          renderSavedAvatar(Date.now());
+          const revision = savedAvatar && (savedAvatar.etag || savedAvatar.updatedAt) || Date.now();
+          renderSavedAvatar(revision);
+          announceAvatarChange(true, revision);
           if (oldPreviewURL.startsWith("blob:")) URL.revokeObjectURL(oldPreviewURL);
           setAvatarStatus("تم تحديث صورة حسابك بنجاح.", "success");
         } catch (error) {
@@ -295,6 +311,7 @@
           await avatarRequest("DELETE");
           clearSelectedAvatar(false);
           resetAllAvatarImages();
+          announceAvatarChange(false, Date.now());
           setAvatarStatus("تم حذف صورة الحساب.", "success");
         } catch (error) {
           setAvatarStatus(error.message || "تعذر حذف الصورة. حاول مجددًا.", "error");

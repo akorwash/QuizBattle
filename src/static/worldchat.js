@@ -2,7 +2,10 @@
   "use strict";
 
   const maximumRenderedMessages = 100;
+  const avatarChangeStorageKey = "quizbattle:avatar-change";
   const messagesByID = new Map();
+  const avatarRevisionByUser = new Map();
+  const avatarStateByUser = new Map();
   const arabicTime = new Intl.DateTimeFormat("ar-EG", {
     day: "numeric",
     month: "short",
@@ -35,6 +38,152 @@
     };
   }
 
+  function initialsFor(name) {
+    const words = String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    if (!words.length) return "لا";
+    if (words.length === 1) return Array.from(words[0]).slice(0, 2).join("");
+    return (Array.from(words[0])[0] || "") + (Array.from(words[words.length - 1])[0] || "");
+  }
+
+  function avatarURL(userID, revision) {
+    if (userID === undefined || userID === null || String(userID).trim() === "") return "";
+    const base = "/api/v1/user/avatar/" + encodeURIComponent(String(userID));
+    return revision ? base + "?v=" + encodeURIComponent(String(revision)) : base;
+  }
+
+  function showAvatarFallback(container) {
+    const image = container.querySelector(".qb-chat-avatar__image");
+    const fallback = container.querySelector(".qb-chat-avatar__fallback");
+    if (image) {
+      image.classList.remove("is-loaded");
+      image.removeAttribute("src");
+    }
+    if (fallback) fallback.hidden = false;
+  }
+
+  function releaseAvatarState(userID) {
+    const key = String(userID || "");
+    const state = avatarStateByUser.get(key);
+    if (state) state.active = false;
+    avatarStateByUser.delete(key);
+  }
+
+  function imageDataURL(blob) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result || "")); };
+      reader.onerror = function () { reject(new Error("could not read avatar image")); };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function cachedAvatarState(userID, revision, missing) {
+    const key = String(userID || "");
+    const normalizedRevision = String(revision || "");
+    if (!key) return Promise.resolve({ status: "missing", revision: normalizedRevision });
+
+    const existing = avatarStateByUser.get(key);
+    if (existing && existing.revision === normalizedRevision && existing.status !== "error") {
+      return existing.promise;
+    }
+    releaseAvatarState(key);
+
+    if (missing) {
+      const missingState = { status: "missing", revision: normalizedRevision, imageSource: "", active: true };
+      missingState.promise = Promise.resolve(missingState);
+      avatarStateByUser.set(key, missingState);
+      return missingState.promise;
+    }
+
+    const state = { status: "loading", revision: normalizedRevision, imageSource: "", active: true, promise: null };
+    state.promise = fetch(avatarURL(key, normalizedRevision), {
+      credentials: "same-origin",
+      headers: { Accept: "image/jpeg,image/png,image/*" },
+      cache: "no-cache",
+    }).then(async function (response) {
+      if (response.status === 404) {
+        state.status = "missing";
+        return state;
+      }
+      if (response.status === 401) window.dispatchEvent(new Event("quizbattle:session-invalid"));
+      if (!response.ok) throw new Error("avatar request failed with status " + response.status);
+      const blob = await response.blob();
+      if (!blob.type.startsWith("image/")) throw new Error("avatar response is not an image");
+      const source = await imageDataURL(blob);
+      if (!state.active || avatarStateByUser.get(key) !== state) return state;
+      state.imageSource = source;
+      state.status = "ready";
+      return state;
+    }).catch(function () {
+      state.status = "error";
+      return state;
+    });
+    avatarStateByUser.set(key, state);
+    return state.promise;
+  }
+
+  function loadAvatar(container, userID, fullName, revision, deleted) {
+    const image = container.querySelector(".qb-chat-avatar__image");
+    const fallback = container.querySelector(".qb-chat-avatar__fallback");
+    if (!image || !fallback) return;
+
+    const key = String(userID || "");
+    const normalizedRevision = String(revision || "");
+    const requestKey = key + "\u001f" + normalizedRevision;
+    container.dataset.avatarUserId = key;
+    container.dataset.avatarFullName = String(fullName || "");
+    container.dataset.avatarRequestKey = requestKey;
+    fallback.textContent = initialsFor(fullName);
+    image.onload = null;
+    image.onerror = null;
+    showAvatarFallback(container);
+    cachedAvatarState(key, normalizedRevision, deleted).then(function (state) {
+      if (container.dataset.avatarRequestKey !== requestKey || state.status !== "ready" || !state.imageSource) return;
+      image.onload = function () {
+        image.classList.add("is-loaded");
+        fallback.hidden = true;
+      };
+      image.onerror = function () {
+        showAvatarFallback(container);
+      };
+      image.src = state.imageSource;
+    });
+  }
+
+  function createAvatar(userID, fullName) {
+    const container = document.createElement("div");
+    container.className = "qb-chat-avatar";
+    const image = document.createElement("img");
+    image.className = "qb-chat-avatar__image";
+    image.alt = "";
+    image.width = 48;
+    image.height = 48;
+    image.loading = "lazy";
+    image.decoding = "async";
+    const fallback = document.createElement("span");
+    fallback.className = "qb-chat-avatar__fallback";
+    fallback.setAttribute("aria-hidden", "true");
+    container.append(image, fallback);
+    loadAvatar(container, userID, fullName, avatarRevisionByUser.get(String(userID || "")), false);
+    return container;
+  }
+
+  function refreshAvatars(detail) {
+    const userID = detail && detail.userId !== undefined && detail.userId !== null ? String(detail.userId) : "";
+    if (!userID) return;
+    const revision = detail.revision || detail.etag || "";
+    if (revision) avatarRevisionByUser.set(userID, String(revision));
+    releaseAvatarState(userID);
+    if (detail.hasAvatar === false) cachedAvatarState(userID, revision, true);
+    document.querySelectorAll(".qb-chat-avatar[data-avatar-user-id]").forEach(function (container) {
+      if (container.dataset.avatarUserId !== userID) return;
+      loadAvatar(container, userID, container.dataset.avatarFullName, revision, detail.hasAvatar === false);
+    });
+  }
+
   function createMessageRow(message) {
     const ownMessage = account && String(message.userId) === String(account.userId);
     const row = document.createElement("article");
@@ -44,13 +193,8 @@
     const people = document.createElement("div");
     people.className = "chat_people";
     const imageContainer = document.createElement("div");
-    imageContainer.className = ownMessage ? "chat_img_left" : "chat_img_right";
-    const image = document.createElement("img");
-    image.src = "/static/quizbattle-app-icon.png?v=20260815.1";
-    image.alt = "";
-    image.width = 48;
-    image.height = 48;
-    imageContainer.appendChild(image);
+    imageContainer.className = (ownMessage ? "chat_img_left" : "chat_img_right") + " qb-chat-avatar-shell";
+    imageContainer.appendChild(createAvatar(message.userId, message.fullName));
 
     const body = document.createElement("div");
     body.className = "chat_ib";
@@ -225,6 +369,19 @@
 
   window.addEventListener("quizbattle:logout", stopRealtime);
   window.addEventListener("quizbattle:session-invalid", stopRealtime);
+  window.addEventListener("quizbattle:avatar-changed", function (event) {
+    refreshAvatars(event.detail || {});
+  });
+  window.addEventListener("storage", function (event) {
+    if (event.key !== avatarChangeStorageKey || !event.newValue) return;
+    try {
+      refreshAvatars(JSON.parse(event.newValue));
+    } catch (_) {}
+  });
+  window.addEventListener("pagehide", function (event) {
+    if (event.persisted) return;
+    Array.from(avatarStateByUser.keys()).forEach(releaseAvatarState);
+  });
   window.addEventListener("quizbattle:session-changed", function (event) {
     account = event.detail || account;
     if (socket) socket.close();
