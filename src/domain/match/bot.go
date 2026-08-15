@@ -139,7 +139,7 @@ func PlanBotDecision(aggregate *Aggregate, turn *Turn, bot *Player) (BotDecision
 	delayRoll := botDecisionRoll(bot.Bot, aggregate.ID, bot.UserID, turn.ID, "delay")
 	option := int(optionRoll % 4)
 	minimumDelay := 2 * time.Second
-	delaySpan := 17 * time.Second
+	delayMilliseconds := delayRoll % 17_000
 	if strategy == BotSmart {
 		accuracy := smartAccuracy(question.Difficulty)
 		correctRoll := botDecisionRoll(bot.Bot, aggregate.ID, bot.UserID, turn.ID, "accuracy")
@@ -152,9 +152,9 @@ func PlanBotDecision(aggregate *Aggregate, turn *Turn, bot *Player) (BotDecision
 				option++
 			}
 		}
-		delaySpan = 12 * time.Second
+		delayMilliseconds = delayRoll % 12_000
 	}
-	delay := minimumDelay + time.Duration(delayRoll%uint64(delaySpan/time.Millisecond))*time.Millisecond
+	delay := minimumDelay + time.Duration(delayMilliseconds)*time.Millisecond
 	dueAt := turn.StartedAt.Add(delay)
 	latest := turn.Deadline.Add(-time.Millisecond)
 	if dueAt.After(latest) {

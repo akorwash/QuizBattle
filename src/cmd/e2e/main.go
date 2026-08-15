@@ -294,38 +294,31 @@ func testBotBattle(owner *apiClient, before collection) collection {
 }
 
 func loadQuestionAnswers() map[string]int {
-	paths := []string{
-		strings.TrimSpace(os.Getenv("QUIZBATTLE_E2E_QUESTION_BANK")),
-		"../data/question-bank/questions.ar.jsonl",
-		"data/question-bank/questions.ar.jsonl",
+	file, err := openE2EQuestionBank()
+	check(err)
+	answers := make(map[string]int, 1600)
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
+	for scanner.Scan() {
+		var item struct {
+			ID                 string `json:"id"`
+			CorrectOptionIndex int    `json:"correctOptionIndex"`
+		}
+		check(json.Unmarshal(scanner.Bytes(), &item))
+		answers[item.ID] = item.CorrectOptionIndex
 	}
-	for _, path := range paths {
-		if path == "" {
-			continue
-		}
-		file, err := os.Open(path)
-		if err != nil {
-			continue
-		}
-		answers := make(map[string]int, 1600)
-		scanner := bufio.NewScanner(file)
-		scanner.Buffer(make([]byte, 64*1024), 1024*1024)
-		for scanner.Scan() {
-			var item struct {
-				ID                 string `json:"id"`
-				CorrectOptionIndex int    `json:"correctOptionIndex"`
-			}
-			check(json.Unmarshal(scanner.Bytes(), &item))
-			answers[item.ID] = item.CorrectOptionIndex
-		}
-		closeErr := file.Close()
-		check(errors.Join(scanner.Err(), closeErr))
-		if len(answers) > 0 {
-			return answers
-		}
+	closeErr := file.Close()
+	check(errors.Join(scanner.Err(), closeErr))
+	require(len(answers) > 0, "could not load the Arabic question-bank answer key for local bot E2E")
+	return answers
+}
+
+func openE2EQuestionBank() (*os.File, error) {
+	file, err := os.Open("../data/question-bank/questions.ar.jsonl")
+	if err == nil {
+		return file, nil
 	}
-	check(errors.New("could not load the Arabic question-bank answer key for local bot E2E"))
-	return nil
+	return os.Open("data/question-bank/questions.ar.jsonl")
 }
 
 func testForfeitReleasesCards(owner, guest *apiClient, ownerBefore, guestBefore collection) {
